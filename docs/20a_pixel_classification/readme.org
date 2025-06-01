@@ -1,0 +1,22 @@
+* Machine learning for image segmentation
+  :PROPERTIES:
+  :CUSTOM_ID: machine-learning-for-image-segmentation
+  :END:
+In this chapter we will use /classical/ machine learning for pixel
+classification, object segmentation and for generating probability maps.
+We will use [[https://scikit-learn.org/][scikit-learn]] for that and
+[[https://github.com/haesleinhuepf/apoc][APOC]] which is a
+image-processing specific library which brings GPU-accelerated pixel and
+object classification.
+
+** Installation of requirements
+   :PROPERTIES:
+   :CUSTOM_ID: installation-of-requirements
+   :END:
+For execution of the notebooks in this chapter we should install
+scikit-learn and apoc, e.g. using pip:
+
+#+begin_example
+pip install scikit-learn
+pip install apoc
+#+end_example

@@ -1,0 +1,37 @@
+* Image segmentation
+  :PROPERTIES:
+  :CUSTOM_ID: image-segmentation
+  :END:
+Image analysts refer to image segmentation when subdividing an image
+into multiple groups of pixels having different characteristics. In this
+chapter we will learn basic algorithms for binarizing images, for
+labeling objects in images.
+
+** Installation of requirements
+   :PROPERTIES:
+   :CUSTOM_ID: installation-of-requirements
+   :END:
+As in the chapters before, we will use
+[[https://scikit-image.org/][scikit-image]],
+[[https://github.com/clEsperanto/pyclesperanto_prototype][pyclesperanto-prototype]]
+and
+[[https://github.com/haesleinhuepf/napari-simpleitk-image-processing][napari-simpleitk-image-processing]]
+for segmenting the images. Some visualization will again be done using
+[[https://matplotlib.org/][matplotlib]].
+
+** Installation of optional dependencies
+   :PROPERTIES:
+   :CUSTOM_ID: installation-of-optional-dependencies
+   :END:
+For some short-cuts to watershed-based image segmentation algorithms,
+installation of the scriptable napari plugin
+[[https://github.com/haesleinhuepf/napari-segment-blobs-and-things-with-membranes][napari-segment-blobs-and-things-with-membranes]]
+is recommended. You can install it using pip:
+
+#+begin_example
+pip install napari-segment-blobs-and-things-with-membranes
+#+end_example
+
+See also *
+[[https://github.com/InsightSoftwareConsortium/SimpleITK-Notebooks][SimpleITK
+notebooks]]

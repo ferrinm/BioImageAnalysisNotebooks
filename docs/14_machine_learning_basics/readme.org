@@ -1,0 +1,29 @@
+* Machine learning basics
+  :PROPERTIES:
+  :CUSTOM_ID: machine-learning-basics
+  :END:
+In this chapter we will introduce the basics of classical machine
+learning. We will introduce supervised and unsupervised machine learning
+and process a simple data set. As the number of algorithms used in this
+field is overwhelming, we just introduce two classical methods: The
+Random Forest Classifier (supervised) and k-means clustering
+(unsupervised). With the knowledge acquired while using these two, one
+can also use other implementations as these algorithms all work
+similarly, at least from user's perspective.
+
+To get a wider perspective on available algorithms and methods, the
+reader is referred to the
+[[https://scikit-learn.org/stable/supervised_learning.html#supervised-learning][scikit-learn
+documentation]] and [[https://www.youtube.com/c/DigitalSreeni][Digital
+Sreeni's YouTube channel]].
+
+** Python libraries used in this chapter
+   :PROPERTIES:
+   :CUSTOM_ID: python-libraries-used-in-this-chapter
+   :END:
+We will use [[https://scikit-learn.org/][scikit-learn]] which can be
+installed like this:
+
+#+begin_example
+mamba install scikit-learn
+#+end_example

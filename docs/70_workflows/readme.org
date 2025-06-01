@@ -1,0 +1,16 @@
+* Workflow automation
+  :PROPERTIES:
+  :CUSTOM_ID: workflow-automation
+  :END:
+In this chapter we will design image processing workflows in Napari and
+generate notebooks from them. Afterwards we take a look into the
+machinery below which is based on
+[[https://github.com/haesleinhuepf/napari-workflows][napari-workflows]].
+
+** Other techniques and further reading
+   :PROPERTIES:
+   :CUSTOM_ID: other-techniques-and-further-reading
+   :END:
+- [[https://usegalaxy.org/][Galaxy]]
+- [[https://www.nextflow.io/][Nextflow]]
+- [[https://www.dask.org/][Dask]]

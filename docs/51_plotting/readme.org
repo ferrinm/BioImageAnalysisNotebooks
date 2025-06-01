@@ -1,0 +1,21 @@
+* Plotting
+  :PROPERTIES:
+  :CUSTOM_ID: plotting
+  :END:
+To gain insights, e.g. in biological and biophysical processes, it is
+unavoidable to plot data. In this chapter, we will learn how to plot
+scientific data.
+
+** Installing dependencies
+   :PROPERTIES:
+   :CUSTOM_ID: installing-dependencies
+   :END:
+In this chapter, we will work with
+[[https://pandas.pydata.org/][pandas]],
+[[https://matplotlib.org/][matplotlib]], and
+[[https://seaborn.pydata.org/][seaborn]] and those can be installed
+using conda:
+
+#+begin_example
+conda install pandas matplotlib seaborn
+#+end_example

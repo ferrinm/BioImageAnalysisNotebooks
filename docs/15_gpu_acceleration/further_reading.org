@@ -1,0 +1,23 @@
+* Further reading
+  :PROPERTIES:
+  :CUSTOM_ID: further-reading
+  :END:
+In times when graphics cards are hardly available on the market and
+often sold overpriced, there are also many GPU-acceleration libraries
+available. We haven't covered all those in this chapter and thus, should
+at least provide a list for further reading.
+
+- [[https://github.com/rapidsai/cucim][cucim, mimicing scikit-image
+  using CUDA]]
+- [[https://github.com/rapidsai/cudf][cudf, data frames similar to
+  pandas, based on CUDA]]
+- [[https://numba.pydata.org/][numba, a just-in-time python compiler]]
+
+Deep learning became possible due to developments in GPU technology in
+the past decade. Hence, deep-learning libraries technially are also
+libraries that offer some form of GPU-acceleration. Many of them are
+also capable of processing images.
+
+- [[https://www.tensorflow.org/][Tensorflow]]
+- [[https://keras.io/][Keras]]
+- [[https://pytorch.org/][Pytorch]]

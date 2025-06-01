@@ -1,0 +1,29 @@
+* Querying databases
+  :PROPERTIES:
+  :CUSTOM_ID: querying-databases
+  :END:
+A common task in data science is to combine data sources to gain new
+insights. These tasks are typically done using relational databases,
+collections of tables. The
+[[https://en.wikipedia.org/wiki/SQL][Structured Query Language]] (SQL)
+is the tool of choice when it comes to querying databases. When working
+with Pandas dataframes in Python, we can use the
+[[https://github.com/yhat/pandasql/][pandasql]] library for using SQL
+with [[https://pandas.pydata.org/][pandas]], more precisely, it uses
+[[https://www.sqlite.org/][SQLite]].
+
+See also *
+[[https://towardsdatascience.com/how-to-use-sql-in-pandas-62d8a0f6341][How
+to Use SQL in Pandas (Towards Data Science)]] *
+[[https://pandas.pydata.org/docs/getting_started/comparison/comparison_with_sql.html][Pandas -
+SQL comparison]]
+
+** Installation
+   :PROPERTIES:
+   :CUSTOM_ID: installation
+   :END:
+We can install pandasql using mamba/conda
+
+#+begin_example
+mamba install -c conda-forge pandasql
+#+end_example

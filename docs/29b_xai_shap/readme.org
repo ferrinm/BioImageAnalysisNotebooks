@@ -1,0 +1,16 @@
+* Explainable AI / SHAP
+  :PROPERTIES:
+  :CUSTOM_ID: explainable-ai-shap
+  :END:
+In this chapter we will dive into explainable artificial intelligence
+and more precisely into SHapley Additive exPlanations, SHAP-Analysis.
+
+** Installation
+   :PROPERTIES:
+   :CUSTOM_ID: installation
+   :END:
+To make the notebooks run, you need to install [[][shap]]:
+
+#+begin_example
+pip install shap
+#+end_example

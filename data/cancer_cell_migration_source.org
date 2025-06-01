@@ -1,0 +1,8 @@
+This is a crop (in =x=, =y= and =t=) of the cancer cell migration
+dataset from [[https://zenodo.org/record/5206107#.ZFthHnZBxPa][Tinevez,
+J. & Guillaume Jacquemet, G.]] licensed by
+[[https://creativecommons.org/licenses/by/4.0/legalcode][CC BY 4.0]].
+
+For the corresponding Voronoi-Otsu-Labeling result,
+[[https://github.com/clEsperanto/napari_pyclesperanto_assistant][napari-pyclesperanto-assistant]]
+was used with =spot_sigma = 5= and =outline_sigma = 3=

@@ -1,0 +1,3 @@
+This is timepoint 7 channel 1 (nuclei channel) of
+[[https://doi.org/10.5281/zenodo.1063531][Ozpolat, B. et al]] licensed
+[[https://creativecommons.org/licenses/by/4.0/legalcode][CC BY 4.0]]

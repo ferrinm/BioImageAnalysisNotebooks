@@ -1,0 +1,16 @@
+* Remote files
+  :PROPERTIES:
+  :CUSTOM_ID: remote-files
+  :END:
+In this section we will use the Nextcloud client and the BIA-Explorer to
+download and upload data from/to the cloud.
+
+** Installation of required libraries
+   :PROPERTIES:
+   :CUSTOM_ID: installation-of-required-libraries
+   :END:
+The libraries can be installed using =pip= like this:
+
+#+begin_example
+pip install pyncclient bia-explorer
+#+end_example

@@ -1,0 +1,165 @@
+* Setting up your computer
+  :PROPERTIES:
+  :CUSTOM_ID: setting-up-your-computer
+  :END:
+This chapter provides instructions for setting up your computer to run
+Python to analyse images.
+
+* Setting up Python and Conda environments
+  :PROPERTIES:
+  :CUSTOM_ID: setting-up-python-and-conda-environments
+  :END:
+When working with Python, we will make use of many plugins and software
+libraries which need to be organized. One way of doing this, is by
+managing /Conda/ environments. A conda environment can be seen as a
+virtual desktop, or virtual computer, accessible via the terminal. If
+you install some software into one Conda environment, it may not be
+accessible from another environment. If a Conda environment breaks,
+e.g. incompatible software was installed, you can just make a new one
+and start over.
+
+See also *
+[[https://biapol.github.io/blog/mara_lampert/getting_started_with_mambaforge_and_python/readme.html][Getting
+started with Mambaforge and Python]] *
+[[https://focalplane.biologists.com/2022/12/08/managing-scientific-python-environments-using-conda-mamba-and-friends/][Managing
+Scientific Python environments using Conda, Mamba and friends]] *
+[[https://youtu.be/MOEPe9TGBK0][Scientific Data Analysis with Python]]
+
+** Step 1: Install Mini-conda
+   :PROPERTIES:
+   :CUSTOM_ID: step-1-install-mini-conda
+   :END:
+Download and install Conda. We recommend the Conda distribution
+[[https://docs.anaconda.com/miniconda/][mini-conda]].
+
+For ease-of-use, it is recommended to install it for your use only and
+to add Conda to the PATH variable during installation.
+
+#+caption: img.png
+[[file:install_mambaforge.png]]
+
+#+caption: img.png
+[[file:install_mambaforge2.png]]
+
+** Step 2: Install devbio-napari
+   :PROPERTIES:
+   :CUSTOM_ID: step-2-install-devbio-napari
+   :END:
+We recommend installing
+[[https://github.com/haesleinhuepf/devbio-napari][devbio-napari]], a
+distribution of napari with a set of plugins for bioimage analysis.
+
+Use this command from the terminal:
+
+#+begin_example
+conda create --name devbio-napari-env python=3.11 pyqt devbio-napari -c conda-forge
+#+end_example
+
+For technical reasons, also this is required at the moment:
+
+#+begin_example
+pip install napari-assistant==0.6.0 numpy==1.26.4
+#+end_example
+
+*Tip*: It is recommended to create one environment for every project you
+are executing. In that way installed software libraries and tools cannot
+harm each other.
+
+** Step 3: Testing the installation
+   :PROPERTIES:
+   :CUSTOM_ID: step-3-testing-the-installation
+   :END:
+Afterwards you can enter the environment to work with it. Whenever you
+want to work on the same project again, you should start a command line
+and enter this:
+
+#+begin_example
+conda activate devbio-napari-env
+#+end_example
+
+Start [[https://jupyter.org/][Jupyter lab]] from the terminal like this
+
+#+begin_example
+jupyter lab
+#+end_example
+
+A browser will open and show you the following web page. In the section
+=Notebook= click on "Python 3 (ipykernel)" to create a new notebook:
+
+#+caption: img.png
+[[file:start_jupyter_lab.png]]
+
+In the new notebook, click in the first code cell, enter
+=print("Hello world")= and hit SHIFT+ENTER on your keyboard. If
+everything is installed properly, it should look like this:
+
+#+caption: img.png
+[[file:hello_world.png]]
+
+To test if your graphics card driver is properly installed, enter this
+code:
+
+#+begin_example
+import pyclesperanto_prototype as cle
+
+cle.get_device()
+#+end_example
+
+#+caption: img.png
+[[file:test_opencl.png]]
+
+** Troubleshooting: Graphics cards drivers
+   :PROPERTIES:
+   :CUSTOM_ID: troubleshooting-graphics-cards-drivers
+   :END:
+In case error messages contains "ImportError: DLL load failed while
+importing cl: The specified procedure could not be found"
+[[https://github.com/clEsperanto/pyclesperanto_prototype/issues/55][see
+also]] or “"clGetPlatformIDs failed: PLATFORM_NOT_FOUND_KHR", please
+install recent drivers for your graphics card and/or OpenCL device.
+
+Select the right driver source depending on your hardware from this
+list:
+
+- [[https://www.amd.com/en/support][AMD drivers]]
+- [[https://www.nvidia.com/download/index.aspx][NVidia drivers]]
+- [[][Intel GPU
+  drivers]](https://www.intel.com/content/www/us/en/download/726609/intel-arc-graphics-windows-dch-driver.html)
+- [[https://www.intel.com/content/www/us/en/developer/articles/tool/opencl-drivers.html#latest_CPU_runtime][Intel
+  CPU OpenCL drivers]]
+- [[https://www.microsoft.com/en-us/p/opencl-and-opengl-compatibility-pack/9nqpsl29bfff][Microsoft
+  Windows OpenCL support]]
+
+Sometimes, mac-users need to install this:
+
+#+begin_example
+conda install -c conda-forge ocl_icd_wrapper_apple
+#+end_example
+
+Sometimes, linux users need to install this:
+
+#+begin_example
+conda install -c conda-forge ocl-icd-system
+#+end_example
+
+** Troubleshooting: DLL load failed
+   :PROPERTIES:
+   :CUSTOM_ID: troubleshooting-dll-load-failed
+   :END:
+In case of error messages such as this one:
+
+#+begin_example
+[...] _get_win_folder_with_pywin32
+from win32com.shell import shellcon, shell
+ImportError: DLL load failed while importing shell: The specified procedure could not be found.
+#+end_example
+
+Try this command, within the base environment:
+
+#+begin_example
+conda activate base
+
+pip install --upgrade pywin32==228
+#+end_example
+
+[[https://github.com/conda/conda/issues/11503][Source]]

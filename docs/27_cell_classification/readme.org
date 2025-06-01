@@ -1,0 +1,25 @@
+* Cell classification
+  :PROPERTIES:
+  :CUSTOM_ID: cell-classification
+  :END:
+For classifying objects such as cells and nuclei, a common procedure is
+to use feature extraction and afterwards machine learning algorithms
+such as Random Forest Classifiers for differentiating objects.
+
+** Installation of required libraries
+   :PROPERTIES:
+   :CUSTOM_ID: installation-of-required-libraries
+   :END:
+In this section we will work with
+[[https://scikit-learn.org][scikit-learn]] and
+[[https://github.com/haesleinhuepf/apoc][aopc]]. These two can be
+installed like this:
+
+#+begin_example
+pip install scikit-learn
+#+end_example
+
+#+begin_example
+conda install -c conda-forge pyopencl
+pip install apoc
+#+end_example

@@ -1,0 +1,9 @@
+* Writing sustainable code
+  :PROPERTIES:
+  :CUSTOM_ID: writing-sustainable-code
+  :END:
+In this chapter we will learn how to write sustainable code.
+Sustainability comes from readability, maintainability and reusability.
+
+See also: * [[https://www.youtube.com/watch?v=gSBR34m1OCE][BioImage
+Analysis lectures: Writing good code (YouTube)]]

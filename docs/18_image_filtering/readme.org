@@ -1,0 +1,9 @@
+* Image filtering
+  :PROPERTIES:
+  :CUSTOM_ID: image-filtering
+  :END:
+An image filter is an operation that consumes an input image and
+produces a new image out of it.
+
+See also * [[https://youtu.be/LT8L3vSLQ2Q][Introduction to Image
+Filtering and segmentation]]

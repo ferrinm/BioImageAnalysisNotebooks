@@ -1,0 +1,62 @@
+* Prompt engineering
+  :PROPERTIES:
+  :CUSTOM_ID: prompt-engineering
+  :END:
+In this chapter, we will learn about prompt engineering. Prompts are
+used to request information or code from large language models such as
+[[https://chat.openai.com/][chatGPT]] and
+[[https://openai.com/dall-e-3][Dall-E]]. We will also use
+[[https://huggingface.co/][huggingface]],
+[[https://github.com/hwchase17/langchain][LangChain]],
+[[https://github.com/haesleinhuepf/darth-d/][darth-d]], and
+[[https://github.com/haesleinhuepf/bia-bob][bia-bob]] to execute
+specific tasks.
+
+Note: Generated text/code/images are not always reproducible. I had to
+execute some of the notebooks in this chapter multiple times to make
+them show useful examples. When executing them again, you may get
+different results and error messages. As the output also depends on
+software installed on OpenAI's remote server, these notebooks may not
+produce the same result ever again in the far future.
+
+** Installation instructions
+   :PROPERTIES:
+   :CUSTOM_ID: installation-instructions
+   :END:
+The OpenAI API and LangChain can be installed using mamba and pip.
+
+#+begin_example
+mamba install openai==1.5.0 -c conda-forge
+#+end_example
+
+#+begin_example
+pip install langchain==0.0.350
+#+end_example
+
+In order to make it work, you need to get a [paid] subscription to the
+[[https://openai.com/blog/openai-api][openAI API]]. Note: Executing the
+notebooks in this chapter may cost actual money. Furthermore, it is
+recommended to generate an API key and store it in the =OPENAI_API_KEY=
+environment variable.
+
+For running Huggingface models, you need to install these libraries:
+
+#+begin_example
+mamba install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
+#+end_example
+
+#+begin_example
+pip install diffusers==0.24.0 transformers accelerate
+#+end_example
+
+Darth-d can be installed using mamba:
+
+#+begin_example
+mamba install darth-d==0.4.0 -c conda-forge
+#+end_example
+
+For using bia-bob, we need to install it using pip:
+
+#+begin_example
+pip install bia-bob==0.6.1
+#+end_example

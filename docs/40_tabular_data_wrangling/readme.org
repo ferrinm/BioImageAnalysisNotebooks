@@ -1,0 +1,23 @@
+* Tabular data wrangling
+  :PROPERTIES:
+  :CUSTOM_ID: tabular-data-wrangling
+  :END:
+Part of a bio-image analyst's work is also to handle tabular data that
+was extracted from images. In this chapter we will introduce the
+[[https://pandas.pydata.org/][pandas]] library for handling tables and
+ways for deriving descriptive statistics.
+
+** Installing dependencies
+   :PROPERTIES:
+   :CUSTOM_ID: installing-dependencies
+   :END:
+In this chapter, we will work with
+[[https://pandas.pydata.org/][pandas]] which can be installed using
+conda:
+
+#+begin_example
+conda install pandas
+#+end_example
+
+See also * [[https://pandas.pydata.org/Pandas_Cheat_Sheet.pdf][Pandas
+Cheat Sheet]]

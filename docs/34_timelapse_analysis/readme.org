@@ -1,0 +1,20 @@
+* Timelapse analysis
+  :PROPERTIES:
+  :CUSTOM_ID: timelapse-analysis
+  :END:
+In this chapter we will analyze timelapse data. We start by processing
+data frame-by-frame and extracting features.
+
+** Installation of requirements
+   :PROPERTIES:
+   :CUSTOM_ID: installation-of-requirements
+   :END:
+In this chapter, we are using
+[[https://github.com/quantumjot/btrack#installation][btrack]] which can
+be installed using mamba/conda:
+
+#+begin_example
+mamba install btrack -c conda-forge
+#+end_example
+
+See also * [[https://github.com/yfukai/laptrack][LapTrack]]
