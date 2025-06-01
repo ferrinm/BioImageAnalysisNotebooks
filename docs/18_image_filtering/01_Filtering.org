@@ -1,0 +1,85 @@
+* Filtering images
+  :PROPERTIES:
+  :CUSTOM_ID: filtering-images
+  :END:
+Image filters take an image and produce a new image. Typically, a filter
+kernel goes from pixel to pixel and computes a new pixel value depending
+on an old pixel and its neighborhood.
+
+See also
+
+- [[https://scikit-image.org/docs/dev/api/skimage.filters.html][Filters
+  in scikit-image]]
+
+We start with a test image and apply a Gaussian blur filter.
+
+#+begin_src python
+import numpy as np
+from pyclesperanto_prototype import imshow
+from skimage.filters import gaussian
+from skimage import filters
+import matplotlib.pyplot as plt
+from skimage.morphology import disk
+from skimage.io import imread
+#+end_src
+
+#+begin_src python
+test_image = np.zeros((10,10))
+test_image[5,3] = 1
+test_image[5,7] = 1
+test_image
+#+end_src
+
+#+begin_example
+array([[0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+       [0., 0., 0., 1., 0., 0., 0., 1., 0., 0.],
+       [0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]])
+#+end_example
+
+#+begin_src python
+imshow(test_image)
+#+end_src
+
+[[file:de66aabcad125184b563f71df4c2de8ee946bfe1.png]]
+
+The
+[[https://scikit-image.org/docs/dev/api/skimage.filters.html#skimage.filters.gaussian][Gaussian
+filter]] takes two important arguments, the image to blur and a sigma
+parameter. The sigma determines how wide the Gaussian blur should show
+effects.
+
+#+begin_src python
+blurred = gaussian(test_image, sigma=1)
+imshow(blurred)
+#+end_src
+
+[[file:00d6e42fab1478aa6d42ad42bac8a9fdb245a148.png]]
+
+Let's compare Gaussian blurred images with different sigma
+
+#+begin_src python
+blurred05 = gaussian(test_image, sigma=0.5)
+blurred1 = gaussian(test_image, sigma=1)
+blurred2 = gaussian(test_image, sigma=2)
+blurred3 = gaussian(test_image, sigma=3)
+
+fig, axs = plt.subplots(1, 4, figsize=(15,15))
+
+imshow(blurred05, plot=axs[0])
+imshow(blurred1, plot=axs[1])
+imshow(blurred2, plot=axs[2])
+imshow(blurred3, plot=axs[3])
+#+end_src
+
+[[file:83b84b4ea65912417f0ec84d809c54a639502b5d.png]]
+
+Note: If the sigma is larger than the distance between two spots, the
+spots cannot be differentiated as two local maxima in the blurred image
+anymore.

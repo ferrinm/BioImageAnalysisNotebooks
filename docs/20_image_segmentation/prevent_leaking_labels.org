@@ -1,0 +1,151 @@
+<<06bb8856-88b0-4016-9f7f-2ad48fddd130>>
+* Preventing leaking labels
+  :PROPERTIES:
+  :CUSTOM_ID: preventing-leaking-labels
+  :END:
+A common problem when segmenting cells in images with membrane staining
+is /leaking/ labels. When using algorithms such as the [[][seeded
+watershed]] these leakes can be prevented by filtering the image, e.g.
+using a local maximum filter.
+
+<<1c22e8ab-a235-4278-abab-3eccc4f5d76e>>
+#+begin_src python
+import napari_segment_blobs_and_things_with_membranes as nsbatwm
+from skimage.data import cells3d
+import stackview
+import pyclesperanto_prototype as cle
+import matplotlib.pyplot as plt
+#+end_src
+
+<<fd4bb3cc-3c66-49c6-810d-cbb430939b28>>
+For demonstration purposes we use the
+[[https://scikit-image.org/docs/stable/api/skimage.data.html#skimage.data.cells3d][cells3d
+example image from scikit-image]].
+
+<<558a6cf6-b852-435a-9bad-06d8dd266d7c>>
+#+begin_src python
+image = cells3d()[:,0]
+image.shape
+#+end_src
+
+#+begin_example
+(60, 256, 256)
+#+end_example
+
+<<548a4199-dcf6-4e40-9d36-ed9e919358aa>>
+We look at a slice of it in a Z-Y. For code-simplicity we leave out the
+plot axis labels after this figure.
+
+<<e46c83c1-7c4f-4984-b902-29822a06e94a>>
+#+begin_src python
+cle.imshow(image[:,:,128], max_display_intensity=20000, continue_drawing=True)
+plt.xlabel("Y")
+plt.ylabel("Z")
+#+end_src
+
+#+begin_example
+Text(0, 0.5, 'Z')
+#+end_example
+
+[[file:d4c09b181ed7b07535e8fa32808d593fdabbb549.png]]
+
+<<a503bf71-0b12-433b-a8af-9ec06f446b20>>
+When applying the seeded-watershed algorithm to this dataset (in 3D), we
+can see that some labels leak in Z. They merge with the region outside
+the tissue layer.
+
+<<53ca61f3-223d-4ba6-9f25-328c2dae8334>>
+#+begin_src python
+reference_labels = nsbatwm.local_minima_seeded_watershed(image, spot_sigma=9)
+
+cle.imshow(reference_labels[:,:,128], labels=True)
+#+end_src
+
+[[file:bc496e5de4a4f74c594f9794e6273f6768b97b65.png]]
+
+<<25de397c-5bd1-4169-b13f-2ce9851a6bae>>
+The problem can be reduced by applying a maximum-filter to the raw
+image. It will lead to thicker membranes, and thus to a lower chance
+that the watershed algorithm can leak through holes in the membrane.
+
+<<59c1fb40-023f-47e2-87be-3e7f18a7828c>>
+#+begin_src python
+thicker_membranes = nsbatwm.maximum_filter(image, radius=2)
+
+cle.imshow(thicker_membranes[:,:,128], max_display_intensity=20000)
+#+end_src
+
+[[file:67f0adbd21e1e8bea070349721d1371434b97c00.png]]
+
+<<a96b962a-9542-4fa0-85a7-e879e6c7b7d9>>
+The resulting label image has less leaking labels, but also lost
+accuracy of the label borders in all directions.
+
+<<b63c85cd-72ac-4eca-812a-028b67831355>>
+#+begin_src python
+labels1 = nsbatwm.local_minima_seeded_watershed(thicker_membranes, spot_sigma=9)
+
+cle.imshow(labels1[:,:,128], labels=True)
+#+end_src
+
+[[file:9b56323d3fe9961239bbbdf6c778aeb81e7e2199.png]]
+
+<<41ef47ce-20f7-4076-8a94-fbce93d787f5>>
+The leaks often appear to happen in the Z-direction only which is an
+effect of the
+[[https://en.wikipedia.org/wiki/Point_spread_function][point-spread-function]]
+of common microscopy techniques. It is typically anisotropic and thus,
+the microscope cannot capture the membrans in Z as good as in X and Y.
+
+To deal with this leaking-labels issue in X and Y only and save some of
+the accuracy in Z, we need to apply a maximum filter where we can
+specify different radii in X,Y and Z.
+
+<<03663f55-7141-41fc-82f1-f7552cd78ee6>>
+#+begin_src python
+thinker_membranes_in_x_y = cle.maximum_sphere(image, radius_x=2, radius_y=2, radius_z=0)
+
+cle.imshow(thinker_membranes_in_x_y[:,:,128], max_display_intensity=20000)
+#+end_src
+
+[[file:5435f08c209ebb628d94ec2ab1dd7986a43d4799.png]]
+
+<<b29fec20-87ab-49b9-9269-0d0c048360a0>>
+#+begin_src python
+labels2 = nsbatwm.local_minima_seeded_watershed(thinker_membranes_in_x_y, spot_sigma=9)
+
+cle.imshow(labels2[:,:,128], labels=True)
+#+end_src
+
+[[file:cbfd12a56bd4f176d2abd8c426263dc252e9b315.png]]
+
+<<da63abe8-e97a-4113-9280-907b01fe388f>>
+** Excluding labels on image edges in Z
+   :PROPERTIES:
+   :CUSTOM_ID: excluding-labels-on-image-edges-in-z
+   :END:
+Images of single tissue layers are commonly acquired in a way that we
+see some pixels and later segmented labels out of the tissue top and
+bottom (in Z). We can remove those labels while keeping those which
+touch the image border in X and Y explicitly.
+
+<<9cd33052-1016-4a03-ac0b-54ad2b8e71e7>>
+#+begin_src python
+corrected_labels = cle.exclude_labels_on_edges(labels2, 
+                                               exclude_in_x=False, 
+                                               exclude_in_y=False, 
+                                               exclude_in_z=True)
+
+cle.imshow(corrected_labels[:,:,128], labels=True)
+#+end_src
+
+[[file:f5273f158479431d79a392d43e477338afd05de9.png]]
+
+<<f35e803a-828f-4c1b-8ee1-cd2cca001fa4>>
+Obviously, we still loose one cell that was leaking in the area below
+the tissue. It might be impossible to retrieve a picture-perfect result
+though.
+
+<<b0433350-9b6e-4dfb-ac2b-49f8abdc1f15>>
+#+begin_src python
+#+end_src

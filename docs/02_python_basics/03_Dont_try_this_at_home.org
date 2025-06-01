@@ -1,0 +1,63 @@
+<<frank-basement>>
+* Pitfalls when working with Jupyter notebooks
+  :PROPERTIES:
+  :CUSTOM_ID: pitfalls-when-working-with-jupyter-notebooks
+  :END:
+You can execute the same cell in Jupyter notebooks multiple times. This
+may lead to notebooks which make no sense to the reader.
+
+<<metallic-classification>>
+#+begin_src python
+a = 5
+b = 5
+#+end_src
+
+<<wired-crowd>>
+#+begin_src python
+a = a + 1
+#+end_src
+
+<<shaped-capital>>
+#+begin_src python
+a + b
+#+end_src
+
+#+begin_example
+13
+#+end_example
+
+<<olympic-vienna>>
+You can execute them in the wrong order which leads to the same effect.
+
+<<backed-shaft>>
+#+begin_src python
+d = 5
+#+end_src
+
+<<military-bedroom>>
+#+begin_src python
+d = 10
+#+end_src
+
+<<radical-shakespeare>>
+#+begin_src python
+d
+#+end_src
+
+#+begin_example
+5
+#+end_example
+
+<<persistent-porcelain>>
+You can see that cells were executed in wrong order, repeatedly or not
+subsequently, by reading the number =In [?]= on the left.
+
+[[file:cell_execution_number.png]]
+
+Tip: When your notebook is ready, click on menu
+=Kernel > Restart & Run all= to make sure all cells in the notebook are
+executed in the right order.
+
+<<conservative-cyprus>>
+#+begin_src python
+#+end_src

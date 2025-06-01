@@ -1,0 +1,104 @@
+* Cropping images
+  :PROPERTIES:
+  :CUSTOM_ID: cropping-images
+  :END:
+When working with microscopy images, it often makes limited sense to
+process the whole image. We typically crop out interesting regions and
+process them in detail.
+
+#+begin_src python
+from skimage.io import imread, imshow
+#+end_src
+
+#+begin_src python
+image = imread("../../data/blobs.tif")
+#+end_src
+
+Before we can crop an image, we may want to know its precise shape
+(dimensions):
+
+#+begin_src python
+image.shape
+#+end_src
+
+#+begin_example
+(254, 256)
+#+end_example
+
+Recap: Visualization using =imshow=:
+
+#+begin_src python
+imshow(image)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x2448a01e9d0>
+#+end_example
+
+[[file:7785e64864abc8727b291dd121ce32d472356a58.png]]
+
+Cropping images works exactly like cropping lists and tuples, by using
+indices to specify the range of elements to use:
+
+#+begin_src python
+cropped_image1 = image[0:128]
+
+imshow(cropped_image1);
+#+end_src
+
+[[file:5057ad8a65130da6386024e61cb1e6b6ca02ed64.png]]
+
+#+begin_src python
+mylist = [1,2,2,3,4,5,78]
+#+end_src
+
+To crop the image in the second dimension as well, we add a =,= in the
+square brackets:
+
+#+begin_src python
+cropped_image2 = image[0:128, 128:]
+
+imshow(cropped_image2);
+#+end_src
+
+[[file:6953ad51ea464cb9c97d5bbe2a131334412cb95d.png]]
+
+** Sub-sampling images
+   :PROPERTIES:
+   :CUSTOM_ID: sub-sampling-images
+   :END:
+Also step sizes can be specified as if we would process lists and
+tuples. Technically, we are sub-sampling the image in this case. We
+sample a subset of the original pixels for example in steps of 5:
+
+#+begin_src python
+sampled_image = image[::5, ::5]
+
+imshow(sampled_image);
+#+end_src
+
+[[file:986862936605e61b1d043716321c957be1cd1ed9.png]]
+
+** Flipping images
+   :PROPERTIES:
+   :CUSTOM_ID: flipping-images
+   :END:
+Negative step sizes flip the image.
+
+#+begin_src python
+flipped_image = image[::, ::-1]
+
+imshow(flipped_image);
+#+end_src
+
+[[file:b7824471f27fa02d2a9d8ae060003383cd1502b4.png]]
+
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Open the =banana020.tif= data set and crop out the region where the
+banana slice is located.
+
+#+begin_src python
+#+end_src

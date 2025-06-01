@@ -1,0 +1,209 @@
+<<44c515c1>>
+* Edge detection
+  :PROPERTIES:
+  :CUSTOM_ID: edge-detection
+  :END:
+In clesperanto, multiple filters for edge-detection are implemented.
+
+See also
+
+- [[https://en.wikipedia.org/wiki/Edge_detection][Wikipedia]]
+
+<<e10bf0f3>>
+#+begin_src python
+import pyclesperanto_prototype as cle
+from skimage.io import imread
+import matplotlib.pyplot as plt
+
+cle.select_device("RTX")
+#+end_src
+
+#+begin_example
+<gfx90c on Platform: AMD Accelerated Parallel Processing (2 refs)>
+#+end_example
+
+<<6f3e8225>>
+#+begin_src python
+blobs = imread("../../data/blobs.tif")
+blobs.shape
+#+end_src
+
+#+begin_example
+(254, 256)
+#+end_example
+
+<<1846ed62>>
+#+begin_src python
+cle.imshow(blobs)
+#+end_src
+
+[[file:0691d67b662888d48b2a43a629bababf0db05cb3.png]]
+
+<<e74d993b>>
+** Sobel operator
+   :PROPERTIES:
+   :CUSTOM_ID: sobel-operator
+   :END:
+[[https://en.wikipedia.org/wiki/Sobel_operator][see also]]
+
+<<4b32958b>>
+#+begin_src python
+blobs_sobel = cle.sobel(blobs)
+cle.imshow(blobs_sobel)
+#+end_src
+
+[[file:b4bbe7c86e7002c8febcb8dff2b508be4c686598.png]]
+
+<<4728a0a2>>
+** Laplace operator
+   :PROPERTIES:
+   :CUSTOM_ID: laplace-operator
+   :END:
+[[https://en.wikipedia.org/wiki/Discrete_Laplace_operator][see also]]
+
+<<90e57677>>
+#+begin_src python
+blobs_laplace = cle.laplace_box(blobs)
+cle.imshow(blobs_laplace)
+#+end_src
+
+[[file:5ade575f978c807b533ba63bb2d3c8e9292e41bf.png]]
+
+<<ec5943f7>>
+** Laplacian of Gaussian
+   :PROPERTIES:
+   :CUSTOM_ID: laplacian-of-gaussian
+   :END:
+[[https://en.wikipedia.org/wiki/Ricker_wavelet][Also kown as the Mexican
+hat filter]]
+
+<<6ef1206e>>
+#+begin_src python
+blobs_laplacian_of_gaussian = cle.laplace_box(cle.gaussian_blur(blobs, sigma_x=1, sigma_y=1))
+cle.imshow(blobs_laplacian_of_gaussian)
+#+end_src
+
+[[file:ffd05b1fd1b8974c1109a3b877ed7a1d908e4716.png]]
+
+<<79896fca>>
+#+begin_src python
+blobs_laplacian_of_gaussian = cle.laplace_box(cle.gaussian_blur(blobs, sigma_x=5, sigma_y=5))
+cle.imshow(blobs_laplacian_of_gaussian)
+#+end_src
+
+[[file:9fef687ed3c48d79973727c3f5a103ff36b775a3.png]]
+
+<<82f6fa93>>
+** Local Variance filter
+   :PROPERTIES:
+   :CUSTOM_ID: local-variance-filter
+   :END:
+
+<<0a05521c>>
+#+begin_src python
+blobs_edges = cle.variance_box(blobs, radius_x=5, radius_y=5)
+cle.imshow(blobs_edges)
+#+end_src
+
+[[file:ee5233823149d474d0417035f0f803e760e29b09.png]]
+
+<<fbc69b0a>>
+* Local standard deviation
+  :PROPERTIES:
+  :CUSTOM_ID: local-standard-deviation
+  :END:
+... is just the square root of the local variance
+
+<<bddc745e>>
+#+begin_src python
+blobs_edges = cle.standard_deviation_box(blobs, radius_x=5, radius_y=5)
+cle.imshow(blobs_edges)
+#+end_src
+
+[[file:64c1a545257e97046c69c4581d763fb501f7d39f.png]]
+
+<<1dd3d755>>
+** Edge detection is not edge enhancement
+   :PROPERTIES:
+   :CUSTOM_ID: edge-detection-is-not-edge-enhancement
+   :END:
+Intuitively, one could apply an edge detection filter to enhance edges
+in images showing edges. Let's try with an image showing membranes. It's
+a 3D image btw.
+
+<<d86274d9>>
+#+begin_src python
+image = imread("../../data/EM_C_6_c0.tif")
+image.shape
+#+end_src
+
+#+begin_example
+(256, 256, 256)
+#+end_example
+
+<<7a4839b7>>
+#+begin_src python
+cle.imshow(image[60])
+#+end_src
+
+[[file:8e3baa354af206672cab18abe46ecf0c37407813.png]]
+
+<<d1f2dfbe>>
+#+begin_src python
+image_sobel = cle.sobel(image)
+cle.imshow(image_sobel[60])
+#+end_src
+
+[[file:42d2050d48a2f0d58068ce2323d4af281c3f983e.png]]
+
+<<fafc0242>>
+When looking very carefully, you may observe that the edges are a bit
+thicker in the second image. The edge detection filter detects two
+edges, the increasing signal side of the membrane and the decreasing
+signal on the opposite side. Let's zoom:
+
+<<dbe52ac4>>
+#+begin_src python
+fig, axs = plt.subplots(1, 2)
+cle.imshow(                image[60, 125:145, 135:155], plot=axs[0])
+cle.imshow(cle.pull(image_sobel)[60, 125:145, 135:155], plot=axs[1])
+#+end_src
+
+[[file:b75191daa9754d166792bf5a138213986e6c14b9.png]]
+
+<<fc0f4b9a>>
+** Enhancing edges
+   :PROPERTIES:
+   :CUSTOM_ID: enhancing-edges
+   :END:
+Thus, to enhance edges in a membrane image, other filters are more
+useful. Enhancement may for example mean making membranes thicker and
+potentially closing gaps.
+
+<<e80064ba>>
+** Local standard deviation
+   :PROPERTIES:
+   :CUSTOM_ID: local-standard-deviation
+   :END:
+
+<<4dfc175a>>
+#+begin_src python
+image_std = cle.standard_deviation_box(image, radius_x=5, radius_y=5, radius_z=5)
+cle.imshow(image_std[60])
+#+end_src
+
+[[file:b49e0bf78ab9504ab637964ba4c6560c327e48ca.png]]
+
+<<bb03d28f>>
+** Local maximum
+   :PROPERTIES:
+   :CUSTOM_ID: local-maximum
+   :END:
+
+<<c30d63c6>>
+#+begin_src python
+image_max = cle.maximum_box(image, radius_x=5, radius_y=5, radius_z=5)
+cle.imshow(image_max[60])
+#+end_src
+
+[[file:462c199252080b48285a38bf005c19eb9b92845f.png]]

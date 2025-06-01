@@ -1,0 +1,191 @@
+<<fc865825-fe1d-4da8-83e6-8996422cc66d>>
+* Deconvolution on CUDA-compatible GPUs
+  :PROPERTIES:
+  :CUSTOM_ID: deconvolution-on-cuda-compatible-gpus
+  :END:
+We will now apply
+[[https://github.com/tlambert03/pycudadecon][pycudadecon]] for 3D image
+deconvolution.
+
+<<f9023ea3-8166-4484-818d-f350ae2400c8>>
+#+begin_src python
+from skimage.io import imread
+from pyclesperanto_prototype import imshow
+import matplotlib.pyplot as plt
+import numpy as np
+
+from pycudadecon import decon
+#+end_src
+
+<<3541b287-b03c-47bc-944d-7a856b906035>>
+We will load an image showing fluorescent intensity along lines. This 3D
+image was taken with a confocal microscope.
+
+<<8473a58b-6977-4d72-a107-b3c5dfb56460>>
+#+begin_src python
+image = imread('../../data/DeconvolutionSampleVerticalGrid1AU-crop.tif').astype(float)
+image.shape
+#+end_src
+
+#+begin_example
+(21, 150, 150)
+#+end_example
+
+<<b12e8550-c366-471f-b060-989331db129a>>
+#+begin_src python
+imshow(image, colorbar=True)
+#+end_src
+
+[[file:0521ec9140bfe180092662db27bcc25c84c89dd2.png]]
+
+<<1088dbd9-e74f-4953-a9ba-97632b080603>>
+The following PSF image was extracted from images taken with the same
+microscope using the procedure [[deconvolution:extract_psf][explained
+before]].
+
+<<fc5768b9-896f-49d8-951e-e946976519e6>>
+#+begin_src python
+psf = imread('../../data/psf.tif').astype(float)
+
+def pad_64(psf):
+    pad_size = np.asarray([64,64,64])
+
+    pad_before = ((pad_size - np.asarray(psf.shape)) / 2).astype(int)
+    pad_after = pad_size - np.asarray(psf.shape) - pad_before
+
+    pad = np.asarray((pad_before, pad_after)).T
+
+    return np.pad(psf, pad)
+
+psf = pad_64(psf)
+
+print(psf.shape)
+
+imshow(psf, colorbar=True)
+#+end_src
+
+#+begin_example
+(64, 64, 64)
+#+end_example
+
+[[file:4596f214c85b1d323701f8e682df7d41f802a5aa.png]]
+
+<<f75105f7-2232-400b-b10f-9ace82e2904f>>
+#+begin_src python
+image = pad_64(image[:,20:84,0:64])
+print(image.shape)
+imshow(image)
+#+end_src
+
+#+begin_example
+(64, 64, 64)
+#+end_example
+
+[[file:b153fffb6433c47a628e48ef34fe2c3168435d5a.png]]
+
+<<6ee88be1-4a3c-46cc-8756-5441be595f4e>>
+We can now deconvolve the image using pycudadecon's =decon()= function.
+It accepts file names as well as images as input.
+
+<<c05090e0-9b25-4511-a4e5-a528705dfd95>>
+#+begin_src python
+deconvolved = decon(image, psf)
+
+imshow(deconvolved)
+#+end_src
+
+[[file:2bfa08342e580dd38d6b097bff50f831606d2ff9.png]]
+
+<<cefed646-2978-4db8-ac05-92eb7bcc4b0f>>
+#+begin_src python
+deconvolved.min()
+#+end_src
+
+#+begin_example
+0.0
+#+end_example
+
+<<e7e10f95-cb93-4a29-b110-ce6371780d2e>>
+#+begin_src python
+deconvolved.max()
+#+end_src
+
+#+begin_example
+0.0
+#+end_example
+
+<<d7dc240c-5a45-4881-860a-4a825b87f0e0>>
+#+begin_src python
+decon?
+#+end_src
+
+#+begin_example
+Signature:
+decon(
+    images: Union[str, numpy.ndarray, Sequence[Union[str, numpy.ndarray]]],
+    psf: Union[str, numpy.ndarray],
+    fpattern: str = '*.tif',
+    **kwargs,
+) -> Union[numpy.ndarray, List[numpy.ndarray]]
+Docstring:
+Deconvolve an image or images with a PSF or OTF file
+
+If `images` is a directory, use the `fpattern` argument to select files
+by filename pattern.
+
+Parameters
+----------
+images : str, np.ndarray, or sequence of either
+    The array, filepath, directory, or list/tuple thereof to deconvolve
+psf : str or np.ndarray
+    a filepath of a PSF or OTF file, or a 3D numpy PSF array.  Function will
+    auto-detect whether the file is a 3D PSF or a filepath representing a 2D
+    complex OTF.
+fpattern : str, optional
+    Filepattern to use when a directory is provided in the `images` argument,
+    by default "*.tif"
+**kwargs
+    All other kwargs must be valid for either :func:`rl_init` or :func:`rl_decon`.
+
+Returns
+-------
+np.ndarray or list of array
+    The deconvolved image(s)
+
+Raises
+------
+ValueError
+    If save_deskewed is True and deskew is unset or 0
+IOError
+    If a directory is provided as input and ``fpattern`` yields no files
+NotImplementedError
+    If ``psf`` is provided as a complex, 2D numpy array (OTFs can only be
+    provided as filenames created with :func:`pycudadecon.make_otf`)
+
+Examples
+--------
+deconvolve a 3D TIF volume with a 3D PSF volume (e.g. a single bead stack)
+
+>>> result = decon('/path/to/image.tif', '/path/to/psf.tif')
+
+deconvolve all TIF files in a specific directory that match a certain
+`filename pattern <https://docs.python.org/3.6/library/fnmatch.html>`_,
+(in this example, all TIFs with the string '560nm' in their name)
+
+>>> result = decon(
+...     '/directory/with/images', '/path/to/psf.tif', fpattern='*560nm*.tif'
+... )
+
+deconvolve a list of images, provided either as np.ndarrays, filepaths,
+or directories
+
+>>> imarray = tifffile.imread('some_other_image.tif')
+>>> inputs = ['/directory/with/images', '/path/to/image.tif', imarray]
+>>> result = decon(inputs, '/path/to/psf.tif', fpattern='*560nm*.tif')
+File:      c:\users\rober\miniconda3\envs\bio_39\lib\site-packages\pycudadecon\deconvolution.py
+Type:      function
+#+end_example
+
+<<bdd0bf19-bf60-49e8-ae4d-3ba1c1d3e367>>
+#+begin_src python
+#+end_src

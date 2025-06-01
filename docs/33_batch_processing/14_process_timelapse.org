@@ -1,0 +1,178 @@
+<<14c7b35a-4449-47de-bdad-b7362eaaaa9f>>
+* Processing timelapse data
+  :PROPERTIES:
+  :CUSTOM_ID: processing-timelapse-data
+  :END:
+This notebook demonstrates how to process timelapse data frame-by-frame.
+
+<<dd6b7bf9-763f-479c-9d7a-1c1f1c607bb1>>
+#+begin_src python
+from skimage.io import imread, imsave
+import pyclesperanto_prototype as cle
+import numpy as np
+#+end_src
+
+<<687b797b-bfd7-4991-b2eb-5345f64d2d96>>
+First, we should define the origin of the data we want to process and
+where the results should be saved to.
+
+<<706cb518-c4cf-4817-aca8-19d174bc2cc0>>
+#+begin_src python
+input_file = "../../data/CalibZAPWfixed_000154_max.tif"
+output_file = "../../data/CalibZAPWfixed_000154_max_labels.tif"
+#+end_src
+
+<<6562a285-9747-433f-a78e-3b3ed2d2c8e6>>
+Next, we open the dataset and see what image dimensions it has.
+
+<<15cdaa75-c7dd-45c0-bd1b-65169de8d289>>
+#+begin_src python
+timelapse = imread(input_file)
+timelapse.shape
+#+end_src
+
+#+begin_example
+(100, 235, 389)
+#+end_example
+
+<<3619008f-c106-4310-ba22-46aa83dd90d0>>
+If it is not obvious which dimension is the time dimension, it is
+recommended to slice the dataset in different directions.
+
+<<30cc0727-cc16-4092-8e56-a54bbd3cc3b0>>
+#+begin_src python
+cle.imshow(timelapse[:,:,150])
+#+end_src
+
+[[file:cec971b543bba10d37299f561963ae78529ff4b1.png]]
+
+<<dccc3146-d510-48a3-a5ec-6ad6ae2cc4e2>>
+#+begin_src python
+cle.imshow(timelapse[50,:,:])
+#+end_src
+
+[[file:dcc8df01864cd08c1aa3312aef7f28f6756980e1.png]]
+
+<<8688f9f2-79a5-43b2-b11d-fea36ce9c889>>
+Obviously, the time dimension is the first dimension (index 0).
+
+Next, we define the image processing workflow we want to apply to our
+dataset. It is recommended to do this in a function so that we can later
+reuse it without copy&pasting everything.
+
+<<03bbc4aa-e49d-4fac-9ced-ff5403a11cc0>>
+#+begin_src python
+def process_image(image, 
+                  # define default parameters for the procedure
+                  background_subtraction_radius=10, 
+                  spot_sigma=1, 
+                  outline_sigma=1):
+    """Segment nuclei in an image and return labels"""
+    # pre-process image
+    background_subtracted = cle.top_hat_box(image, 
+                  radius_x=background_subtraction_radius, 
+                  radius_y=background_subtraction_radius)
+    
+    # segment nuclei
+    labels = cle.voronoi_otsu_labeling(background_subtracted,
+                  spot_sigma=spot_sigma,
+                  outline_sigma=outline_sigma)
+
+    return labels
+
+# Try out the function
+single_timepoint = timelapse[50]
+segmented = process_image(single_timepoint)
+
+# Visualize result
+cle.imshow(segmented, labels=True)
+#+end_src
+
+[[file:7eb0b3592130484ae09b6d008236281a3c00feff.png]]
+
+<<7dbef236-92f0-46dd-962e-4faa8a813724>>
+After we made this function work on a single timepoint, we should
+program a for-loop that goes through the timelapse, applies the
+procedure to a couple of image and visualizes the results. Note: We go
+in steps of 10 images through the timelapse, to get an overview.
+
+<<d4b758af-604f-42da-bbc4-c9b0d25c0cb1>>
+#+begin_src python
+max_t = timelapse.shape[0]
+for t in range(0, max_t, 10):
+    label_image = process_image(timelapse[t])
+    cle.imshow(label_image, labels=True)
+#+end_src
+
+[[file:94c4cc06860c53e034f9565eb23a42c91fd26d1e.png]]
+
+[[file:85ea334d2023074f41ffef723d9767df2a348f31.png]]
+
+[[file:a6ab604f0c15f13d6b9d8ded9510ca508a0d94e7.png]]
+
+[[file:2850984750118c840bb2c27fd542f80d98043a63.png]]
+
+[[file:39f648d66a3e326b94a4c16a5de25a88662a1855.png]]
+
+[[file:7eb0b3592130484ae09b6d008236281a3c00feff.png]]
+
+[[file:58dc1f75d9486a501e09b9ad7d71677efac2e2a1.png]]
+
+[[file:90d6f18bd974b9222f8d6a4d49e5b6d4e7c34ef7.png]]
+
+[[file:af5005389bb8359d218337343273971d2f114b64.png]]
+
+[[file:36047d49189f56f4a0283aa249ef205db6deeeff.png]]
+
+<<37b16fe4-b2e9-4c41-b88b-6c249eda3d03>>
+When we are convinced that the procedure works, we can apply it to the
+whole timelapse, collect the results in a list and save it as stack to
+disc.
+
+<<7c092694-f6c6-48fb-a298-cacff5c0375a>>
+#+begin_src python
+label_timelapse = []
+for t in range(0, max_t):
+    label_image = process_image(timelapse[t])
+    label_timelapse.append(label_image)
+    
+# convert list of 2D images to 3D stack
+np_stack = np.asarray(label_timelapse)
+
+# save result to disk
+imsave(output_file, np_stack)
+#+end_src
+
+#+begin_example
+C:\Users\rober\AppData\Local\Temp\ipykernel_27924\219181406.py:10: UserWarning: ../../data/CalibZAPWfixed_000154_max_labels.tif is a low contrast image
+  imsave(output_file, np_stack)
+#+end_example
+
+<<4f8b2c0f-6812-4286-945d-73e4003615de>>
+Just to be sure that everything worked nicely, we reopen the dataset and
+print its dimensionality. It's supposed to be identical to the original
+=timelapse= dataset.
+
+<<c60cbd28-4dbd-4733-9624-d7f4f50e244a>>
+#+begin_src python
+result = imread(output_file)
+
+result.shape
+#+end_src
+
+#+begin_example
+(100, 235, 389)
+#+end_example
+
+<<988cf6c3-1cdd-43d1-b596-373f6258c913>>
+#+begin_src python
+timelapse.shape
+#+end_src
+
+#+begin_example
+(100, 235, 389)
+#+end_example
+
+<<9cd2a0f2-9d18-482e-a5ba-722002f27ad4>>
+#+begin_src python
+#+end_src

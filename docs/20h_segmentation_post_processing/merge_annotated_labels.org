@@ -1,0 +1,129 @@
+<<7e60d8b4-f134-4bf2-be1b-6c8548e1e03b>>
+* Merging annotated labels
+  :PROPERTIES:
+  :CUSTOM_ID: merging-annotated-labels
+  :END:
+In this notebook we demonstrate how a label-image can be post-processed
+by annotating labels that should be merged.
+
+<<142cfb4f-63b8-438c-a18f-348af9aa1ec0>>
+#+begin_src python
+import apoc
+from skimage.io import imread, imshow, imsave
+import pyclesperanto_prototype as cle
+import numpy as np
+#+end_src
+
+<<a1367bd7-0786-4e28-ab01-9ac0c25e89ab>>
+Our starting point is an oversegmented (synthetic) label image.
+
+<<353b4667-5e12-4dae-b065-0a7c6054fb0b>>
+#+begin_src python
+oversegmented = cle.asarray(imread('../../data/syntetic_cells.tif')).astype(np.uint32)
+oversegmented
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<b01f1290-0b1b-4ae9-92a5-34cd2895a3c5>>
+Furthermore, we need an annotation where pixel-intensity = 1 implies
+that labels should be merged.
+
+<<313b3b95-6d47-42d0-a60a-88e6604d3fd6>>
+#+begin_src python
+annotation = cle.asarray(imread('../../data/syntetic_cells_merge_annotation.tif')).astype(np.uint32)
+
+# binarize the image
+annotation = annotation == 1
+
+annotation
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint8)
+#+end_example
+
+<<f89af747-9899-43b8-a3e7-45a268291c07>>
+For visualization purposes, we overlay both.
+
+<<29b68c7c-e3d7-400b-81d6-9e4e548763b3>>
+#+begin_src python
+cle.imshow(oversegmented, labels=True, continue_drawing=True)
+cle.imshow(annotation, alpha=0.5)
+#+end_src
+
+[[file:00cf14afe75b58694ccf9d3dba645c769ddf2aed.png]]
+
+<<ae8cb624-001f-4860-ba7d-c4cb7799f04e>>
+We can now merge all cells whose borders are annotated.
+
+<<9b00c0a9-a560-45e9-940b-f0e890a333b5>>
+#+begin_src python
+result = cle.merge_annotated_touching_labels(oversegmented, annotation)
+result
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<c87b0a1f-968f-4ee4-b841-96db5d12985c>>
+** How does it work?
+   :PROPERTIES:
+   :CUSTOM_ID: how-does-it-work
+   :END:
+Under the hood, there is a function for generating a touch-matrix from
+the label image and the annotation and a function for merging labels
+according to a touch-matrix.
+
+<<a586307b-a833-43aa-81e1-e8bbd0d0dbd2>>
+#+begin_src python
+should_touch_matrix = cle.generate_should_touch_matrix(oversegmented, annotation)
+should_touch_matrix
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       ...,
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.]], dtype=float32)
+#+end_example
+
+<<c50e4ba0-35bd-44ba-a08e-e4ace33e9119>>
+#+begin_src python
+result = cle.merge_labels_according_to_touch_matrix(oversegmented, should_touch_matrix)
+result
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example

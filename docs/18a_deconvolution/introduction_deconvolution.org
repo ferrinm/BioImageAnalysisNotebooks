@@ -1,0 +1,158 @@
+<<aecc7d71-f942-471d-81d8-9f079d2fb92e>>
+* An introduction to image deconvolution
+  :PROPERTIES:
+  :CUSTOM_ID: an-introduction-to-image-deconvolution
+  :END:
+In microscopy images are commonly distorted because of the nature of the
+optical system, the microscope. A biological structure emitting photons
+will visually not appear in an image of the scene 100%ly reflecting
+reality. The image will be blurred, convolved with the
+point-spread-function (PSF) of the optical setup. If we know the PSF, it
+is technically possible to /undo/ this convolution to some degree.
+
+<<81a312ac-fc18-4037-9c5f-810316200939>>
+#+begin_src python
+import numpy as np
+from skimage.io import imread, imsave
+from skimage.data import cells3d
+from skimage.filters import gaussian
+from scipy.ndimage import convolve
+from pyclesperanto_prototype import imshow
+import pyclesperanto_prototype as cle
+from napari_simpleitk_image_processing import richardson_lucy_deconvolution
+import matplotlib.pyplot as plt
+#+end_src
+
+<<9d2c8175-1b93-4465-829b-ab6d3a100b88>>
+To demonstrate convolution and deconvolution, we will for a moment
+assume that his image showing a nucleus reflects reality in the
+biological sample.
+
+<<afe01bf5-d2db-4190-908c-692d08d25487>>
+#+begin_src python
+image = cells3d()[30,1,120:190,80:150]
+imshow(image)
+#+end_src
+
+[[file:1f80a7b334070310a18b4806f7797136037d000c.png]]
+
+<<4731e489-d721-4d01-bd87-5747d465b2b2>>
+Furthermore, we construct an artifical PSF image. We start with a
+perfect PSF image, which is black (=0=) in all pixels except one,
+typically but not neccessarily in the center.
+
+<<4884f4bb-1301-40bc-a789-400a8c670b67>>
+#+begin_src python
+perfect_psf = np.zeros( (25,25) )
+perfect_psf[12, 12] = 1
+
+imshow(perfect_psf, colorbar=True)
+#+end_src
+
+[[file:ffc2a3b57b057eb9683311a8810cdd4275388cd1.png]]
+
+<<34515e34-1710-473a-b39a-46ec73ff8d9a>>
+Note that in the above example the total intensity in the image is 1.
+Also the blurred image shown next will approximately have a total
+intensity of 1. This is crucial when doing deconvolution later, because
+this makes it possible that the total intensity in an image (or any
+imaged biological structure) will not change through the deconvolution.
+
+From this perfect PSF we derive a more realistic example PSF by blurring
+it with a Gaussian blur.
+
+<<85af9386-e084-4055-8ab2-a6f7055b082e>>
+#+begin_src python
+psf = gaussian(perfect_psf, sigma=2)
+
+imshow(psf, colorbar=True)
+#+end_src
+
+[[file:9dd4e5031a889cb4c9a2c5d3469aae0ccf66f47e.png]]
+
+<<5259eb45-bff6-4e6e-a3cc-d352417bd636>>
+** Convolution
+   :PROPERTIES:
+   :CUSTOM_ID: convolution
+   :END:
+As introduced in the section about [[image-filtering:convolution][image
+filtering]], convolution is the process of combining every pixel value
+of a given input image with neighboring pixels weighted according to the
+PSF.
+
+<<983152a2-9fac-4346-93e3-017d3da4953d>>
+#+begin_src python
+convolved = convolve(image, psf)
+
+imshow(convolved)
+#+end_src
+
+[[file:752d4ebae57d7ac29adbac292711b2c7dd09d8f3.png]]
+
+<<fc3b8a63-e53a-4dd6-99a0-ddb416a062f5>>
+** Deconvolution
+   :PROPERTIES:
+   :CUSTOM_ID: deconvolution
+   :END:
+One common algorithm to restore the original image from the convolved
+image is
+[[https://en.wikipedia.org/wiki/Richardson%E2%80%93Lucy_deconvolution][Richardson-Lucy
+deconvolution]] which is implemented as
+[[https://simpleitk.org/doxygen/latest/html/classitk_1_1simple_1_1RichardsonLucyDeconvolutionImageFilter.html][SimpleITK's
+RichardsonLucyDeconvolutionImageFilter]]. Here we use a convenience
+layer which is part of [napari-simpleitk-image-processing].
+
+<<27b60b99-7845-45e4-8843-bcb8e05d5892>>
+#+begin_src python
+number_of_iterations = 10
+deconvolved = richardson_lucy_deconvolution(convolved, psf, number_of_iterations)
+
+imshow(deconvolved)
+#+end_src
+
+[[file:640c15f54e86c76789902215392bd60cc5428787.png]]
+
+<<01cd981a-9ca0-409f-96b6-8afdfdc77252>>
+As you can see, this deconvolved image is not equal to the original
+image shown above. Deconvolution is no magic. It is an image processing
+filter and all filters have limitations. Furthermore, in case of this
+deconvolution algorithm, the result depdens on the number of iterations.
+We can empirically find a good number for this parameter by testing
+different values.
+
+<<605034f7-8553-4ade-b875-d927b4ba3c9c>>
+#+begin_src python
+fig, axs = plt.subplots(3, 2, figsize=(20,20))
+
+imshow(image, plot=axs[0, 0])
+axs[0,0].set_title("original")
+
+imshow(convolved, plot=axs[0, 1])
+axs[0,1].set_title("convolved")
+
+for i, number_of_iterations in enumerate([10, 20, 40, 80]):
+
+    deconvolved = richardson_lucy_deconvolution(convolved, psf, number_of_iterations)
+
+    axis = axs[(i) % 2 + 1, int((i) / 2)]
+    imshow(deconvolved, plot=axis)
+    
+    axis.set_title("deconvolved for " + str(number_of_iterations) + " iterations")
+#+end_src
+
+[[file:9eaf4c06060e74194e8e1b8288939ac1fbd3f7e3.png]]
+
+<<2dbac362-8547-47f9-b86a-d034fab99ae8>>
+* Exercise
+  :PROPERTIES:
+  :CUSTOM_ID: exercise
+  :END:
+Program a for loop that deconvolves the =convolved= image using
+different =number_of_iterations= and determing the
+[[https://en.wikipedia.org/wiki/Mean_squared_error][mean squared error]]
+between the original image and the deconvolved image. Hint: You can use
+[[https://scikit-learn.org/stable/modules/generated/sklearn.metrics.mean_squared_error.html][sklearn.metrics.mean_squared_error]].
+
+<<74355f7f-0c76-4f34-9b3b-e12f5f317591>>
+#+begin_src python
+#+end_src

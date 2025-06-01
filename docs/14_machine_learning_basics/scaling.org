@@ -1,0 +1,134 @@
+<<12032af8-547f-486b-baab-d9f3f46cf957>>
+(machine_learning_basics.scaling=)
+
+* Scaling
+  :PROPERTIES:
+  :CUSTOM_ID: scaling
+  :END:
+When using machine learning algorithms for processing data, the range of
+parameters is crucial. To get different parameters in the same range,
+scaling might be necessary.
+
+See also
+
+- [[https://scikit-learn.org/stable/modules/preprocessing.html][Standardization
+  using scikit-learn]]
+
+<<825d6705-cf79-4b52-acc6-da93d6e2d96c>>
+#+begin_src python
+import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+
+# local import; this library is located in the same folder as the notebook
+from data_generator import generate_biomodal_2d_data
+#+end_src
+
+<<8e3707f7-77be-4a26-811d-3e6bdd47018e>>
+#+begin_src python
+data1 = generate_biomodal_2d_data()
+
+plt.scatter(data1[:, 0], data1[:, 1], c='grey')
+#+end_src
+
+#+begin_example
+<matplotlib.collections.PathCollection at 0x7f79e40aeca0>
+#+end_example
+
+[[file:f0c50a65a132668537ca93447a617f28bc16d7cb.png]]
+
+<<a8e874c7-a91b-4596-9b7b-7c2946a55f42>>
+#+begin_src python
+data2 = generate_biomodal_2d_data()
+data2[:, 1] = data2[:, 1] * 0.1
+
+plt.scatter(data2[:, 0], data2[:, 1], c='grey')
+#+end_src
+
+#+begin_example
+<matplotlib.collections.PathCollection at 0x7f7980026b80>
+#+end_example
+
+[[file:ea6d2d1cbac17997f9a30512446c9a01c4e8fcaf.png]]
+
+<<22c17985-c857-4170-84ce-66e96f8e4971>>
+** Clustering data in different ranges
+   :PROPERTIES:
+   :CUSTOM_ID: clustering-data-in-different-ranges
+   :END:
+We will now cluster the two /apparently similar/ data sets using
+[[https://en.wikipedia.org/wiki/K-means_clustering][k-means
+clustering]]. The effect can also be observed when using other
+algorithms. To make sure we apply the same algorithm using the same
+configuration to both datasets, we encapsulate it into a function and
+reuse it.
+
+<<ec60e60e-bc9e-4e46-84a3-90366cf45c99>>
+#+begin_src python
+def classify_and_plot(data):
+    number_of_classes = 2
+    classifier = KMeans(n_clusters=number_of_classes)
+    classifier.fit(data)
+    prediction = classifier.predict(data)
+
+    colors = ['orange', 'blue']
+    predicted_colors = [colors[i] for i in prediction]
+
+    plt.scatter(data[:, 0], data[:, 1], c=predicted_colors)
+#+end_src
+
+<<7d6e788c-1376-4241-810d-88f391b7bd09>>
+When applying the same method to both data sets, we can observe that the
+data points in the center are classified differently. The only
+difference between the data sets is their data range. The data points
+are differently scaled along one axis.
+
+<<64f3b9e2-b6cc-4a0d-a135-5428ece7b222>>
+#+begin_src python
+classify_and_plot(data1)
+#+end_src
+
+[[file:8d6efcc1b5c2797661f0d2902f2c29c5288ad335.png]]
+
+<<fa01dc06-1a8a-4f79-a6c9-de7c54087f54>>
+#+begin_src python
+classify_and_plot(data2)
+#+end_src
+
+[[file:c42ec7aa2b4374ef56b225084d21a7ef1a60d33c.png]]
+
+<<3510324a-584a-4547-8b15-7cd6fe71dc54>>
+** Standard Scaling
+   :PROPERTIES:
+   :CUSTOM_ID: standard-scaling
+   :END:
+[[https://scikit-learn.org/stable/modules/preprocessing.html#standardization-or-mean-removal-and-variance-scaling][Standard
+scaling]] is a technique to change the range of data to a fixed range,
+e.g. =[0, 1]=. It allows to have identical results in case of data that
+was in different ranges.
+
+<<e81ccdad-e22a-4df5-aab9-a2619664423e>>
+#+begin_src python
+def scale(data):
+    scaler = StandardScaler().fit(data)
+    return scaler.transform(data)
+#+end_src
+
+<<40139a04-0a8e-4055-ba0e-514effd48720>>
+#+begin_src python
+scaled_data1 = scale(data1)
+
+classify_and_plot(scaled_data1)
+#+end_src
+
+[[file:47a07fda1f7c3b76e9eaf0ec4f514733294b3896.png]]
+
+<<9b416471-c6e3-4010-a7f2-c2104d8845d2>>
+#+begin_src python
+scaled_data2 = scale(data2)
+
+classify_and_plot(scaled_data2)
+#+end_src
+
+[[file:47a07fda1f7c3b76e9eaf0ec4f514733294b3896.png]]

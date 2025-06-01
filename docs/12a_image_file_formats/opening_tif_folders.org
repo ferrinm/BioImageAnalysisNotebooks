@@ -1,0 +1,155 @@
+<<71f84baf-4332-4a4f-8b04-989417f0dac4>>
+* Loading multi-channel / multi-position folders of tif-files
+  :PROPERTIES:
+  :CUSTOM_ID: loading-multi-channel--multi-position-folders-of-tif-files
+  :END:
+Some microscopes write image data to disc as tif-files slice-by slice.
+You find then many files named for example =image_z03_ch01.tif= in these
+folders. For loading these folders you typically need to know details
+such as how many z-slices and how many channels were imaged, or if the
+image data has multiple time-points or not.
+
+See also
+[[https://forum.image.sc/t/reading-2d-images-as-a-multi-channel-3d-stack-in-python/75460][this
+discussion]].
+
+<<5dcadd94-3c42-435a-a4cc-52082757b13c>>
+#+begin_src python
+from skimage import io
+import matplotlib.pyplot as plt
+import tifffile as tif
+import numpy as np
+
+import shutil
+import os
+
+path = "../../data/tif_folder/"
+#+end_src
+
+<<d16d6962-3e29-4b93-a1b9-54d2d7b9c539>>
+For demonstration purposes, we just create such a folder with dummy
+image data.
+
+<<c4d89a5f-5f7d-44e2-b350-4a8a8ec11040>>
+#+begin_src python
+if not os.path.exists(path):
+    os.mkdir(path)
+#+end_src
+
+<<f5cc4c11-b95e-406a-b16d-f02a98f40ccd>>
+#+begin_src python
+for z in range(1,7):
+    for c in range(1,5):
+        #image = io.imread("c:/structure/data/blobs.tif")
+        #io.imsave(f"c:/structure/data/images/r01c01f34p0{z}-ch0{c}t01.tiff", image)
+        
+        shutil.copy("../../data/blobs.tif",
+                    path + f"image_z{str(z).zfill(2)}-ch{str(c).zfill(2)}.tiff")
+#+end_src
+
+<<2d57f8f6-52e3-454f-a05f-34c28b20cbc0>>
+To get an overview, we can print out the file names in the folder.
+
+<<bbf4b820-b7ab-4406-8ee0-90469159aa25>>
+#+begin_src python
+for file in os.listdir(path):
+    print(file)
+#+end_src
+
+#+begin_example
+image_z01-ch01.tiff
+image_z01-ch02.tiff
+image_z01-ch03.tiff
+image_z01-ch04.tiff
+image_z02-ch01.tiff
+image_z02-ch02.tiff
+image_z02-ch03.tiff
+image_z02-ch04.tiff
+image_z03-ch01.tiff
+image_z03-ch02.tiff
+image_z03-ch03.tiff
+image_z03-ch04.tiff
+image_z04-ch01.tiff
+image_z04-ch02.tiff
+image_z04-ch03.tiff
+image_z04-ch04.tiff
+image_z05-ch01.tiff
+image_z05-ch02.tiff
+image_z05-ch03.tiff
+image_z05-ch04.tiff
+image_z06-ch01.tiff
+image_z06-ch02.tiff
+image_z06-ch03.tiff
+image_z06-ch04.tiff
+#+end_example
+
+<<fecc5d69-2f8c-4c05-89d2-41b40616b916>>
+scikit-image offers a
+[[https://scikit-image.org/docs/stable/api/skimage.io.html#skimage.io.imread_collection][=imread_collection=]]
+for loading files matching to a pattern, e.g. containing =*=.
+
+<<4ee85a79-0c8e-4d1b-a2a5-b563c25d8b39>>
+#+begin_src python
+im_collection = io.imread_collection(path + "*")
+im_collection
+#+end_src
+
+#+begin_example
+<skimage.io.collection.ImageCollection at 0x2244cd228e0>
+#+end_example
+
+<<118f72a7-9124-4970-9d3a-95e78c4635bd>>
+You can turn this collection of images into an numpy-array-based image
+stack. Unfortunately, the number of z-slices and channels is unknown at
+this point.
+
+<<61ebcdcd-a8f8-4b7f-a6e6-470541e14d1b>>
+#+begin_src python
+image_stack = im_collection.concatenate()
+image_stack.shape
+#+end_src
+
+#+begin_example
+(24, 254, 256)
+#+end_example
+
+<<ed8a414b-6b3d-4898-a2cb-be04fe5f2bdc>>
+If you know the number of z-slices and channels, you can [[][=reshape=]]
+the image to a 3D+ch or 4D image.
+
+<<56260861-930d-4faf-9fea-ef16be53a4ab>>
+#+begin_src python
+num_channels = 4
+num_z_slices = 6
+image4d = np.reshape(image_stack, (num_channels, num_z_slices, image_stack.shape[-2], image_stack.shape[-1]))
+image4d.shape
+#+end_src
+
+#+begin_example
+(4, 6, 254, 256)
+#+end_example
+
+<<5eb92aad-91b4-444b-977f-996ba6bec1ff>>
+Alternatively, you can also build your own for-loops for loading the
+data from disc. This gives you a bit more freedom, e.g. for sorting
+slices and channels into the dimensions used.
+
+<<bf1fa78a-de06-406c-97d8-fc42a1627ed7>>
+#+begin_src python
+num_channels = 4
+num_z_slices = 6
+
+image4d_loaded = np.asarray([
+    [io.imread(path + f"image_z{str(z).zfill(2)}-ch{str(c).zfill(2)}.tiff") for c in range(1, 5)]
+    for z in range(1, 7)
+])
+image4d_loaded.shape
+#+end_src
+
+#+begin_example
+(6, 4, 254, 256)
+#+end_example
+
+<<ae87cfa4-5acd-4e98-a520-bd04be1d54ab>>
+#+begin_src python
+#+end_src

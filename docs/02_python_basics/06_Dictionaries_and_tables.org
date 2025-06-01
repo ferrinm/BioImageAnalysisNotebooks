@@ -1,0 +1,185 @@
+<<strange-soundtrack>>
+* Dictionaries
+  :PROPERTIES:
+  :CUSTOM_ID: dictionaries
+  :END:
+Dictionaries are data structures that hold key-value pairs, written as
+=key:value=.
+
+See also
+
+- [[https://www.w3schools.com/python/python_dictionaries.asp][Dictionaries
+  in python]]
+- [[https://stackoverflow.com/questions/16819222/how-to-return-dictionary-keys-as-a-list-in-python][Dictionary
+  keys as list]]
+
+You can define dictionary like this:
+
+<<transparent-external>>
+#+begin_src python
+german_english_dictionary = {'Vorlesung':'Lecture', 'Gleichung':'Equation'}
+#+end_src
+
+<<premier-address>>
+For readers convenience, consider writing them like this:
+
+<<constitutional-civilian>>
+#+begin_src python
+german_english_dictionary = {
+    'Vorlesung':'Lecture', 
+    'Gleichung':'Equation'
+}
+#+end_src
+
+<<fitted-mirror>>
+#+begin_src python
+german_english_dictionary
+#+end_src
+
+#+begin_example
+{'Vorlesung': 'Lecture', 'Gleichung': 'Equation'}
+#+end_example
+
+<<accepted-inspection>>
+If you want to access a given entry in the dictionary, you can address
+it using square brackets and the key:
+
+<<varying-machine>>
+#+begin_src python
+german_english_dictionary['Vorlesung']
+#+end_src
+
+#+begin_example
+'Lecture'
+#+end_example
+
+<<secure-seventh>>
+You can add elements to the dictionary:
+
+<<aboriginal-shareware>>
+#+begin_src python
+german_english_dictionary['Tag'] = 'Day'
+#+end_src
+
+<<motivated-immune>>
+#+begin_src python
+german_english_dictionary
+#+end_src
+
+#+begin_example
+{'Vorlesung': 'Lecture', 'Gleichung': 'Equation', 'Tag': 'Day'}
+#+end_example
+
+<<lovely-investment>>
+You can also retrieve a list of all keys in the dictionary:
+
+<<certain-devon>>
+#+begin_src python
+keys = list(german_english_dictionary.keys())
+#+end_src
+
+<<middle-homeless>>
+#+begin_src python
+keys
+#+end_src
+
+#+begin_example
+['Vorlesung', 'Gleichung', 'Tag']
+#+end_example
+
+<<novel-overall>>
+#+begin_src python
+keys[1]
+#+end_src
+
+#+begin_example
+'Gleichung'
+#+end_example
+
+<<modified-mambo>>
+* Tables
+  :PROPERTIES:
+  :CUSTOM_ID: tables
+  :END:
+Tables /can/ be expressed as dictionaries with arrays as elements.
+
+<<acceptable-cornell>>
+#+begin_src python
+measurements_week = {
+    'Monday':   [2.3, 3.1, 5.6],
+    'Tuesday':  [1.8, 7.0, 4.3],
+    'Wednesday':[4.5, 1.5, 3.2],
+    'Thursday': [1.9, 2.0, 6.4],
+    'Friday':   [4.4, 2.3, 5.4]
+}
+#+end_src
+
+<<expired-ambassador>>
+#+begin_src python
+measurements_week
+#+end_src
+
+#+begin_example
+{'Monday': [2.3, 3.1, 5.6],
+ 'Tuesday': [1.8, 7.0, 4.3],
+ 'Wednesday': [4.5, 1.5, 3.2],
+ 'Thursday': [1.9, 2.0, 6.4],
+ 'Friday': [4.4, 2.3, 5.4]}
+#+end_example
+
+<<permanent-judges>>
+#+begin_src python
+measurements_week['Monday']
+#+end_src
+
+#+begin_example
+[2.3, 3.1, 5.6]
+#+end_example
+
+<<positive-motel>>
+You can also store variables in such /tables/:
+
+<<announced-smart>>
+#+begin_src python
+w1 = 5
+h1 = 3
+area1 = w1 * h1
+
+w2 = 2
+h2 = 4
+area2 = w2 * h2
+
+rectangles = {
+    "width": [w1, w2],
+    "height": [h1, h2],
+    "area": [area1, area2]
+}
+#+end_src
+
+<<happy-advisory>>
+#+begin_src python
+rectangles
+#+end_src
+
+#+begin_example
+{'width': [5, 2], 'height': [3, 4], 'area': [15, 8]}
+#+end_example
+
+<<alike-leisure>>
+* Exercise
+  :PROPERTIES:
+  :CUSTOM_ID: exercise
+  :END:
+You just measured the radius of three circles. Write them into a table
+and add a column with corresponding circlea area measurements.
+
+<<distinguished-simulation>>
+#+begin_src python
+r1 = 12
+r2 = 8
+r3 = 15
+#+end_src
+
+<<compound-crawford>>
+#+begin_src python
+#+end_src

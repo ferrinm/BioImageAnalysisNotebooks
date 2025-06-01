@@ -1,0 +1,81 @@
+<<20746a3f-2a1a-4c94-ab88-d7b0572ccab4>>
+* Modifying borders of tissues
+  :PROPERTIES:
+  :CUSTOM_ID: modifying-borders-of-tissues
+  :END:
+When segmenting clumbs of objects, such as cells in an organoid, it may
+happen that the segmented cells at the tissue border, touching the
+background are not segmented properly. In order to modify only those, it
+may make sense to post-process a label image by only modifying the
+object borders close by the background.
+
+<<efe83c42-9303-43d0-9084-cd2f511ed83a>>
+#+begin_src python
+import pyclesperanto_prototype as cle
+
+# import a function from a file in the same folder
+from simulated_cell_clumb import simulate_data
+#+end_src
+
+<<c17126e1-5731-4cde-942d-84df26dd1850>>
+For demonstrating it we simulate a clumb of cells.
+
+<<8b964cbb-0f1b-489d-bbf8-6096614cd00c>>
+#+begin_src python
+cells = simulate_data()
+cells
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<6a89d831-4dca-45d3-9238-f4105ba11f89>>
+We can erode the entire field of labels as if it was a binary image,
+while keeping the pixels labeled. With this, only the labels at the
+border to the background are modified.
+
+<<5f966526-8f00-4316-bb3a-b6fa41b48633>>
+#+begin_src python
+eroded_cells = cle.erode_connected_labels(cells, radius=5)
+eroded_cells
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<385ea1b7-d861-45b4-ac35-efd5038166a2>>
+Just to compare, how this is different from label erosion:
+
+<<7f69b7ab-1641-43dc-9aed-4bd47229395a>>
+#+begin_src python
+eroded_cells2 = cle.erode_labels(eroded_cells, radius=5)
+eroded_cells2
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<2d4908b5-f238-48d1-bee4-c4095ba1924d>>
+#+begin_src python
+#+end_src

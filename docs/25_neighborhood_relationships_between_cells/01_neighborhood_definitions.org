@@ -1,0 +1,299 @@
+* Neighborhood definitions
+  :PROPERTIES:
+  :CUSTOM_ID: neighborhood-definitions
+  :END:
+In pyclesperanto, neighbor adjacency graphs are used to investigate
+relationships between neighboring labeled objects, such as cells. This
+notebook demonstrates the considered neighborhood definitions.
+
+See also
+
+- [[https://www.frontiersin.org/articles/10.3389/fcomp.2021.774396/full][Image
+  Processing Filters for Grids of Cells Analogous to Filters Processing
+  Grids of Pixels]]
+
+#+begin_src python
+import pyclesperanto_prototype as cle
+import numpy as np
+import matplotlib
+from numpy.random import random
+
+cle.select_device("RTX")
+#+end_src
+
+#+begin_example
+<NVIDIA GeForce RTX 3050 Ti Laptop GPU on Platform: NVIDIA CUDA (1 refs)>
+#+end_example
+
+For visualizing relationships between neighboring objects, we start at
+an artificial cell grid. Cells are aligned approximately in a honeycomb
+grid. Intensity in these cells is uniformly distributed. Just a single
+cell in the center of the grid has much higher intensity.
+
+#+begin_src python
+# Generate artificial cells as test data
+tissue = cle.artificial_tissue_2d()
+
+# fill it with random measurements
+values = random([int(cle.maximum_of_all_pixels(tissue))])
+for i, y in enumerate(values):
+    if (i != 95):
+        values[i] = values[i] * 10 + 45
+    else:
+        values[i] = values[i] * 10 + 90
+
+measurements = cle.push(np.asarray([values]))
+
+# visualize measurments in space
+example_image = cle.replace_intensities(tissue, measurements)
+#+end_src
+
+** Example data
+   :PROPERTIES:
+   :CUSTOM_ID: example-data
+   :END:
+Let's take a look at an image with arbitrarily shaped pixels. Let's call
+them "cells". In our example image, there is one cell in the center with
+higher intensity:
+
+#+begin_src python
+cle.imshow(example_image, min_display_intensity=30, max_display_intensity=90, color_map='jet')
+#+end_src
+
+[[file:e3a10153750cc75eb7e7822949f2fc8107a609a6.png]]
+
+** Touching neighbors
+   :PROPERTIES:
+   :CUSTOM_ID: touching-neighbors
+   :END:
+We can show all cells that belong to the "touching" neighborhood by
+visualizing the touching neighbor graph as mesh.
+
+#+begin_src python
+mesh = cle.draw_mesh_between_touching_labels(tissue)
+
+# make lines a bit thicker for visualization purposes
+mesh = cle.maximum_sphere(mesh, radius_x=1, radius_y=1)
+
+cle.imshow(mesh)
+#+end_src
+
+[[file:97f0172da041710b0b1da1f5e80588ea5d5300fb.png]]
+
+If we apply a local maximum filter to this grid, we can see how the high
+intensity of the single cell in the center spreads to directly touching
+neighbor cells.
+
+#+begin_src python
+local_maximum = cle.maximum_of_touching_neighbors_map(example_image, tissue)
+
+cle.imshow(local_maximum, min_display_intensity=30, max_display_intensity=90, color_map='jet')
+#+end_src
+
+[[file:ab30ab320532f45805bda34df7979893ac885257.png]]
+
+** Neighbors of touching neighbors
+   :PROPERTIES:
+   :CUSTOM_ID: neighbors-of-touching-neighbors
+   :END:
+You can also extend the neighborhood by considering neighbors of
+neighbor (of neighbors (of neighbors)). How far you go, can be
+configured with a radius parameter.
+
+- Radius==0 means, no neighbors are taken into account,
+- radius==1 is identical with touching neighbors,
+- radius > 1 are neighbors of neighbors.
+
+#+begin_src python
+for radius in range(0, 5):
+    local_maximum = cle.maximum_of_touching_neighbors_map(example_image, tissue, radius=radius)
+    cle.imshow(local_maximum, min_display_intensity=30, max_display_intensity=90, color_map='jet')
+#+end_src
+
+[[file:e3a10153750cc75eb7e7822949f2fc8107a609a6.png]]
+
+[[file:cbf0ba472df5ef2005755a08cd9646c4d7972c9b.png]]
+
+[[file:062861ccfe09159214c7e12423cfc1c937461a64.png]]
+
+[[file:eb54f9b9605248ca1adcfa8c73524f8c9a646a78.png]]
+
+[[file:154c52817cae766c8394a5c185e6497e0d3143fb.png]]
+
+** N nearest neighbors
+   :PROPERTIES:
+   :CUSTOM_ID: n-nearest-neighbors
+   :END:
+You can also define a neighborhood from the distances between cells. As
+distance measurement, we use the Euclidean distance between label
+centroids. Also in this case you can configure how far the neighborhood
+should range by setting the number of nearest neighbors /n/. As
+mentioned above, neighborhoods include the center cell. Thus, the
+neighborhood of an object and its =n=1= nearest neighbor contains two
+neighbors.
+
+#+begin_src python
+for n in range(1, 10):
+    print("n = ", n)
+    mesh = cle.draw_mesh_between_n_closest_labels(tissue, n=n)
+
+    # make lines a bit thicker for visualization purposes
+    mesh = cle.maximum_sphere(mesh, radius_x=1, radius_y=1)
+
+    cle.imshow(mesh)
+#+end_src
+
+#+begin_example
+n =  1
+#+end_example
+
+[[file:430b54ed6335423c793f4ccc249c8bb3ec06ed50.png]]
+
+#+begin_example
+n =  2
+#+end_example
+
+[[file:9042265af6ffac8a0307a22d7adb7673b6cfef96.png]]
+
+#+begin_example
+n =  3
+#+end_example
+
+[[file:1b8e143acee67e159ec32f0dd27b5a27a4339ad5.png]]
+
+#+begin_example
+n =  4
+#+end_example
+
+[[file:5d15dbf7d0277e2c9ac633a78e42e0cf0e6e0ce8.png]]
+
+#+begin_example
+n =  5
+#+end_example
+
+[[file:49990117ee022203dda5810ad48b70a142b472b6.png]]
+
+#+begin_example
+n =  6
+#+end_example
+
+[[file:332b83bdef5ba7b41e2ca1b11626942ef0f8fd34.png]]
+
+#+begin_example
+n =  7
+#+end_example
+
+[[file:d59a3e92be8e62cec08aa8052b8ccd9f18a0f9a4.png]]
+
+#+begin_example
+n =  8
+#+end_example
+
+[[file:3b25a3da5b55163890e5f6695b528c7c24a00567.png]]
+
+#+begin_example
+n =  9
+#+end_example
+
+[[file:3b6abe61dc6c7fe762bc599e16aab99a71931680.png]]
+
+Also this can be visualized using the local maximum filter. Compared to
+neighbors-of-neighbors, the radius of the neighborhood can be tuned more
+fine-granular using n-nearest neighbors. Note that for computing the
+maximum in that neighborhood, not every increase by =n += 1= the size of
+the red area increases. This is due to the fact that not the maximum
+pixel pushes its intensity to the neighbors, it's the neighbors which
+pull that intensity when applying the maximum filter.
+
+#+begin_src python
+for n in range(1, 10):
+    print("n = ", n)
+
+    local_maximum = cle.maximum_of_n_nearest_neighbors_map(example_image, tissue, n=n)
+    cle.imshow(local_maximum, min_display_intensity=30, max_display_intensity=90, color_map='jet')
+#+end_src
+
+#+begin_example
+n =  1
+#+end_example
+
+[[file:75ffd6e54edb6a8f90b8ebeac7984190f9b21132.png]]
+
+#+begin_example
+n =  2
+#+end_example
+
+[[file:d45ca6187724959ba243bb74b9c8d3a1883781c3.png]]
+
+#+begin_example
+n =  3
+#+end_example
+
+[[file:71695a40ebf2fc7659b4ed004a5bbd79c920523f.png]]
+
+#+begin_example
+n =  4
+#+end_example
+
+[[file:013728ca2e24733cf3e1ae675ad56be5b10664c8.png]]
+
+#+begin_example
+n =  5
+#+end_example
+
+[[file:e08fe5ee135af883c403f76c98143b64dcd52739.png]]
+
+#+begin_example
+n =  6
+#+end_example
+
+[[file:795777db3f0c2ca4923d5c041acc28a85821997f.png]]
+
+#+begin_example
+n =  7
+#+end_example
+
+[[file:ba8f72013cc45d7271ab24070e35289dab69d8db.png]]
+
+#+begin_example
+n =  8
+#+end_example
+
+[[file:ba8fb6859e173e707f5493c444224b92f091ed96.png]]
+
+#+begin_example
+n =  9
+#+end_example
+
+[[file:b39d0567587a92740d14c9128957afc7f0993b81.png]]
+
+** Proximal neighbors
+   :PROPERTIES:
+   :CUSTOM_ID: proximal-neighbors
+   :END:
+We can also compute the local maximum of cells with centroid distances
+below a given upper threshold.
+
+#+begin_src python
+local_maximum = cle.maximum_of_proximal_neighbors_map(example_image, tissue, max_distance=20)
+cle.imshow(local_maximum, min_display_intensity=30, max_display_intensity=90, color_map='jet')
+#+end_src
+
+[[file:2d3ea098311bdb0f33e3e9ab689685f7784cc835.png]]
+
+#+begin_src python
+local_maximum = cle.maximum_of_proximal_neighbors_map(example_image, tissue, max_distance=50)
+cle.imshow(local_maximum, min_display_intensity=30, max_display_intensity=90, color_map='jet')
+#+end_src
+
+[[file:2e6b39b698f9c6e7167939bf0acc00203db0292e.png]]
+
+* Exercise
+  :PROPERTIES:
+  :CUSTOM_ID: exercise
+  :END:
+Draw a mesh between proximal neighbors with different distances, e.g. in
+a for-loop.
+
+#+begin_src python
+#+end_src

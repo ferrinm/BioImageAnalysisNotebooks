@@ -1,0 +1,205 @@
+(image-filtering:convolution)=
+
+* Convolution
+  :PROPERTIES:
+  :CUSTOM_ID: convolution
+  :END:
+When we apply a so called /linear/ filter to an image we compute every
+new pixel as a weighted sum of its neighbors. The process is called
+[[https://en.wikipedia.org/wiki/Convolution][/convolution/]] and the
+matrix defining the weights is called /convolution kernel/. In the
+context of microscopy, we often speal about the point-spread-function
+(PSF) of microscopes. This PSF technically describes how an image is
+convolved by the microsocpe before we save it to disk.
+
+#+begin_src python
+import numpy as np
+import pyclesperanto_prototype as cle
+from skimage.io import imread
+from pyclesperanto_prototype import imshow
+from skimage import filters
+from skimage.morphology import ball
+from scipy.ndimage import convolve
+import matplotlib.pyplot as plt
+
+cle.select_device('RTX')
+#+end_src
+
+#+begin_example
+<gfx90c on Platform: AMD Accelerated Parallel Processing (2 refs)>
+#+end_example
+
+For demonstrating the principle of convolution, we first define an
+example image that's rather simple.
+
+#+begin_src python
+image = np.asarray([
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 2, 0, 0],
+  [0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+]).astype(float)
+
+imshow(image)
+#+end_src
+
+[[file:def3de2ad996bd4f89937fe20e9d67662e4f542b.png]]
+
+Next, we define a simple convolution kernel, that is represented by a
+small image.
+
+#+begin_src python
+kernel = np.asarray([
+  [0, 1, 0],
+  [1, 1, 1],
+  [0, 1, 0],
+])
+#+end_src
+
+Next, we convolve the image with the kernel using
+[[https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.convolve.html][scipy.ndimage.convolve]].
+When we print out the result, we can see how a =1= in the original image
+spreads, because for every directly neighboring pixel, the kernel sums
+the neighbor intensities. If there are multuple pixels with intensity >
+0 in the original image, the resulting image will in their neighborhood
+compute the sum. You could call this kernel a local sum-kernel.
+
+#+begin_src python
+convolved = convolve(image, kernel)
+
+imshow(convolved, colorbar=True)
+#+end_src
+
+[[file:8aad04bf74b2c8b882cf931fe01f2461ef0708ab.png]]
+
+#+begin_src python
+convolved
+#+end_src
+
+#+begin_example
+array([[0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+       [0., 0., 1., 0., 0., 0., 0., 0., 0., 0.],
+       [0., 1., 1., 1., 0., 0., 0., 0., 0., 0.],
+       [0., 0., 1., 0., 0., 0., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 0., 0., 0., 2., 0., 0.],
+       [0., 0., 0., 0., 0., 0., 3., 2., 2., 0.],
+       [0., 0., 0., 0., 0., 1., 1., 3., 0., 0.],
+       [0., 0., 0., 0., 0., 0., 1., 0., 0., 0.],
+       [0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]])
+#+end_example
+
+** Other kernels
+   :PROPERTIES:
+   :CUSTOM_ID: other-kernels
+   :END:
+Depending on which kerne is used for the convolution, the images can
+look quite differently. A /mean/-kernel for example computes the average
+pixel intensity locally:
+
+#+begin_src python
+mean_kernel = np.asarray([
+  [0, 0.2, 0],
+  [0.2, 0.2, 0.2],
+  [0, 0.2, 0],
+])
+#+end_src
+
+#+begin_src python
+mean_convolved = convolve(image, mean_kernel)
+
+imshow(mean_convolved, colorbar=True)
+#+end_src
+
+[[file:6038022fdf6184e7235471d532e729ffb9c8ab3a.png]]
+
+#+begin_src python
+mean_convolved
+#+end_src
+
+#+begin_example
+array([[0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. ],
+       [0. , 0. , 0.2, 0. , 0. , 0. , 0. , 0. , 0. , 0. ],
+       [0. , 0.2, 0.2, 0.2, 0. , 0. , 0. , 0. , 0. , 0. ],
+       [0. , 0. , 0.2, 0. , 0. , 0. , 0. , 0. , 0. , 0. ],
+       [0. , 0. , 0. , 0. , 0. , 0. , 0. , 0.4, 0. , 0. ],
+       [0. , 0. , 0. , 0. , 0. , 0. , 0.6, 0.4, 0.4, 0. ],
+       [0. , 0. , 0. , 0. , 0. , 0.2, 0.2, 0.6, 0. , 0. ],
+       [0. , 0. , 0. , 0. , 0. , 0. , 0.2, 0. , 0. , 0. ],
+       [0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. ]])
+#+end_example
+
+The following kernel is a simple form of a
+[[https://en.wikipedia.org/wiki/Laplace_operator][Laplace operator]].
+
+#+begin_src python
+laplace_operator = np.asarray([
+  [0, 1, 0],
+  [1, -4, 1],
+  [0, 1, 0],
+])
+#+end_src
+
+#+begin_src python
+laplacian = convolve(image, laplace_operator)
+
+imshow(laplacian, colorbar=True)
+#+end_src
+
+[[file:de35bfc61da9a0caf387ac2f2b5ed3a3706345cf.png]]
+
+#+begin_src python
+laplacian
+#+end_src
+
+#+begin_example
+array([[ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
+       [ 0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
+       [ 0.,  1., -4.,  1.,  0.,  0.,  0.,  0.,  0.,  0.],
+       [ 0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
+       [ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  2.,  0.,  0.],
+       [ 0.,  0.,  0.,  0.,  0.,  0.,  3., -8.,  2.,  0.],
+       [ 0.,  0.,  0.,  0.,  0.,  1., -4.,  3.,  0.,  0.],
+       [ 0.,  0.,  0.,  0.,  0.,  0.,  1.,  0.,  0.,  0.],
+       [ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.]])
+#+end_example
+
+To demonstrate what these different kernels do, we apply them to the MRI
+image shown before.
+
+#+begin_src python
+# open dataset and extract single plane
+noisy_mri = imread('../../data/Haase_MRT_tfl3d1.tif')[90].astype(float)
+
+# zoom in by cropping a part out
+noisy_mri_zoom = noisy_mri[50:100, 50:100]
+#+end_src
+
+#+begin_src python
+convolved_mri = convolve(noisy_mri_zoom, kernel)
+mean_mri = convolve(noisy_mri_zoom, mean_kernel)
+laplacian_mri = convolve(noisy_mri_zoom, laplace_operator)
+#+end_src
+
+#+begin_src python
+fig, axes = plt.subplots(2, 2, figsize=(10,10))
+
+imshow(noisy_mri_zoom, plot=axes[0,0])
+axes[0,0].set_title("original")
+imshow(laplacian_mri, plot=axes[0,1])
+axes[0,1].set_title("Laplacian")
+imshow(convolved_mri, plot=axes[1,0])
+axes[1,0].set_title("sum-kernel")
+imshow(mean_mri, plot=axes[1,1])
+axes[1,1].set_title("Mean-kernel")
+#+end_src
+
+#+begin_example
+Text(0.5, 1.0, 'Mean-kernel')
+#+end_example
+
+[[file:cb97965a5b9ac76fc5929a8baa6c505f69374613.png]]

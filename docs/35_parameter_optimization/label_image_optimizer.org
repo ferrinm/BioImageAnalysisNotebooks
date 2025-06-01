@@ -1,0 +1,159 @@
+<<f54b7365-81ec-4fb7-97be-1e133e1701a6>>
+* Optimize segmentation algorithms
+  :PROPERTIES:
+  :CUSTOM_ID: optimize-segmentation-algorithms
+  :END:
+The Napari plugin
+[[https://github.com/haesleinhuepf/napari-workflow-optimizer][napari-workflow-optimizer]]
+allows optimizing image segmentation workflows in a convenient way.
+
+<<4857bed8>>
+#+begin_src python
+from napari_workflow_optimizer import JaccardLabelImageOptimizer, Workflow
+
+from skimage.io import imread
+import pyclesperanto_prototype as cle
+import matplotlib.pyplot as plt
+#+end_src
+
+<<d7e47173-d822-4b69-8932-59d7a0d4805d>>
+To use the optimizer, we need to define our workflow using a =Workflow=
+object. It works like a dictionary with image names as keywords and list
+of operations and parameters as values. The underlying infrastructure is
+based on [[https://docs.dask.org/en/stable/graphs.html][dask graphs]].
+
+<<b44ea564>>
+#+begin_src python
+w = Workflow()
+# define background subtraction
+w.set("blurred", cle.gaussian_blur, "input", sigma_x=5, sigma_y=5)
+# define segmentation
+w.set("binarized", cle.threshold_otsu, "blurred")
+w.set("labeled", cle.label, "binarized")
+#+end_src
+
+<<59d6218f-7d27-4995-b1d3-a253186c6f2e>>
+These workflows can be explored. For example we can read from it which
+image parameters are needed to get started.
+
+<<dad380dd-0c20-4793-bc95-ced9372d6b51>>
+#+begin_src python
+w.roots()
+#+end_src
+
+#+begin_example
+['input']
+#+end_example
+
+<<32ad9101-bbf7-4a72-b5b3-20384a977fe5>>
+We can also determine what the result images of the workflow are.
+
+<<d6d85816-cecf-429b-aeaa-1161eb98f26c>>
+#+begin_src python
+w.leafs()
+#+end_src
+
+#+begin_example
+['labeled']
+#+end_example
+
+<<8078c73e-a43a-4943-9e17-0080789312a0>>
+After setting the inputs, we can ask the workflow to compute results.
+
+<<c542d9f1>>
+#+begin_src python
+w.set("input", imread("../../data/blobs.tif"))
+result = w.get("labeled")
+
+cle.imshow(result, labels=True)
+#+end_src
+
+[[file:cb96d6675aacabcba011b8c6d11a26dbcfee43d1.png]]
+
+<<06f12112-b492-46af-af2a-a48a7daae22c>>
+For optimization of such a workflow, we need a ground truth annotation
+image. A sparse annotation of some objects is enough for this.
+
+<<bd131366>>
+#+begin_src python
+ground_truth = imread("../../data/blobs_sparse_labels.tif")
+cle.imshow(ground_truth, labels=True)
+#+end_src
+
+[[file:1b9af33f90a271da9c59d7de775151b1d86ffe13.png]]
+
+<<53505cdf-5462-4221-9877-07eb2bcdd8e3>>
+The =JaccardLabelImageOptimizer= consumes a workflow and can optimize
+parameters with respect to a sparse ground truth. Its =optimize=
+function returns a set of parameters which corresponds to all numeric
+parameters of the workflow.
+
+<<edb7ebe8-0623-402a-8984-b12bbf67a2c3>>
+#+begin_src python
+jlio = JaccardLabelImageOptimizer(w)
+best_param = jlio.optimize("labeled", ground_truth, maxiter=20)
+best_param
+#+end_src
+
+#+begin_example
+array([4.80023582e+00, 4.44562637e+00, 3.84861161e-04])
+#+end_example
+
+<<c79efc35-c3e2-439a-a37d-59c9fa9dc305>>
+We can then use the optimizer for setting these parameters to the
+workflow and afterwards read where in the workflow the paramweters were
+set.
+
+<<e6725181-1d83-4b96-a479-97fa43a384e4>>
+#+begin_src python
+jlio.set_numeric_parameters(best_param)
+
+# before printing the workflow, we quickly remove the input image
+w.remove('input')
+print(w)
+#+end_src
+
+#+begin_example
+Workflow:
+blurred <- (<function gaussian_blur at 0x0000023723085A60>, 'input', None, 4.8002358210977345, 4.445626372447739, 0.00038486116050511713)
+binarized <- (<function threshold_otsu at 0x00000237232EADC0>, 'blurred')
+labeled <- (<function connected_components_labeling_box at 0x000002372316AB80>, 'binarized')
+
+#+end_example
+
+<<028ff547-3c5e-44aa-b7f7-c4be8e46e478>>
+After setting the input again, we can also apply the workflow to the
+image and inspect the result visually.
+
+<<81c1205e-db7f-4b94-b408-7deca7e7bd77>>
+#+begin_src python
+w.set("input", imread("../../data/blobs.tif"))
+cle.imshow(w.get("labeled"), labels=True)
+#+end_src
+
+[[file:67cb56b8cb9500ea464df5c1cb7b0c46734652e1.png]]
+
+<<e2d29ca8-f1ce-4ccc-aadc-17ce71c934bb>>
+** Further insights in optimization
+   :PROPERTIES:
+   :CUSTOM_ID: further-insights-in-optimization
+   :END:
+The =JaccardLabelImageOptimizer= also allows to take a look at the
+optimization process applied earlier.
+
+<<a7637853>>
+#+begin_src python
+attempt, quality = jlio.get_plot()
+
+plt.plot(attempt, quality)
+#+end_src
+
+#+begin_example
+[<matplotlib.lines.Line2D at 0x23735c22c70>]
+#+end_example
+
+[[file:bcf081f5de532e7595b0545ed19f656be179848d.png]]
+
+<<2391464c-78d3-41eb-9772-c5d366cd3743>>
+#+begin_src python
+#+end_src

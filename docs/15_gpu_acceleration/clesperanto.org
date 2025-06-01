@@ -1,0 +1,344 @@
+<<a7bcf486>>
+* clEsperanto
+  :PROPERTIES:
+  :CUSTOM_ID: clesperanto
+  :END:
+[[http://clesperanto.net][clEsperanto]] is a project between multiple
+bio-image analysis ecosystem aiming at removing language barriers. It is
+based on [[https://www.khronos.org/opencl/][OpenCL]], an open standard
+for programming graphics processing units (GPUs, and more) and its
+python wrapper [[https://documen.tician.de/pyopencl/][pyopencl]]. Under
+the hood, it uses processing kernels originating from the
+[[https://clij.github.io][clij]] project.
+
+See also
+
+- [[https://www.youtube.com/watch?v=MERVnf5_QkI][GPU-accelerated image
+  analysis in Fiji and Napari, EuroBioimaging Virtual Pub]]
+- [[https://github.com/clEsperanto/pyclesperanto_prototype][pyclesperanto-prototype]]
+- [[https://clij.github.io/clij2-docs/reference__pyclesperanto][pyclesperanto
+  API]]
+- [[https://clesperanto.github.io/napari_pyclesperanto_assistant/][Napari
+  pyclesperanto Assistant]]
+
+** GPU Initialization
+   :PROPERTIES:
+   :CUSTOM_ID: gpu-initialization
+   :END:
+We'll start with initializing checking out what GPUs are installed:
+
+<<8c6e58e5>>
+#+begin_src python
+import pyclesperanto_prototype as cle
+import matplotlib.pyplot as plt
+import stackview
+
+# list available devices
+cle.available_device_names()
+#+end_src
+
+#+begin_example
+['NVIDIA GeForce RTX 3050 Ti Laptop GPU',
+ 'gfx1035',
+ 'cupy backend (experimental)']
+#+end_example
+
+<<e3565433>>
+#+begin_src python
+# select a specific device with only a part of its name
+cle.select_device("2080")
+#+end_src
+
+#+begin_example
+C:\Users\haase\mambaforge\envs\bio39\lib\site-packages\pyclesperanto_prototype\_tier0\_device.py:77: UserWarning: No OpenCL device found with 2080 in their name. Using gfx1035 instead.
+  warnings.warn(f"No OpenCL device found with {name} in their name. Using {device.name} instead.")
+#+end_example
+
+#+begin_example
+<gfx1035 on Platform: AMD Accelerated Parallel Processing (2 refs)>
+#+end_example
+
+<<276a2362>>
+#+begin_src python
+# check which device is uses right now
+cle.get_device()
+#+end_src
+
+#+begin_example
+<gfx1035 on Platform: AMD Accelerated Parallel Processing (2 refs)>
+#+end_example
+
+<<e59e1f00>>
+** Processing images
+   :PROPERTIES:
+   :CUSTOM_ID: processing-images
+   :END:
+For loading image data, we use scikit-image as usual:
+
+<<05d9b68c>>
+#+begin_src python
+from skimage.io import imread, imshow
+
+image = imread("../../data/blobs.tif")
+imshow(image)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x206d07ad0a0>
+#+end_example
+
+[[file:f0e5f30db2232fc22754c8f0ba218a05bd9b92c4.png]]
+
+<<b47ecce6>>
+The =cle.= gateway has all methods you need, it does not have
+sub-packages:
+
+<<a16e775d>>
+#+begin_src python
+# noise removal
+blurred = cle.gaussian_blur(image, sigma_x=1, sigma_y=1)
+blurred
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 41.428753,  34.696438,  27.733936, ..., 220.92714 , 211.21164 ,
+        206.71573 ],
+       [ 47.421425,  38.878723,  30.323011, ..., 228.32323 , 220.60194 ,
+        216.83534 ],
+       [ 48.121437,  40.610855,  33.357384, ..., 235.32935 , 229.7049  ,
+        226.88821 ],
+       ...,
+       [ 74.4386  ,  76.32904 ,  77.03725 , ...,  48.000324,  48.00075 ,
+         48.001007],
+       [ 81.793655,  81.17787 ,  79.80763 , ...,  48.      ,  48.      ,
+         48.      ],
+       [ 88.816925,  85.382095,  81.478806, ...,  48.      ,  48.      ,
+         48.      ]], dtype=float32)
+#+end_example
+
+<<bc05f455>>
+#+begin_src python
+# binarization
+binary = cle.threshold_otsu(blurred)
+binary
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 1, 1, 1],
+       [0, 0, 0, ..., 1, 1, 1],
+       [0, 0, 0, ..., 1, 1, 1],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint8)
+#+end_example
+
+<<c32d8bb3-efb4-4966-9c29-ed4ce205926f>>
+#+begin_src python
+# labeling
+labels = cle.connected_components_labeling_box(binary)
+labels
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 0,  0,  0, ..., 59, 59, 59],
+       [ 0,  0,  0, ..., 59, 59, 59],
+       [ 0,  0,  0, ..., 59, 59, 59],
+       ...,
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0]], dtype=uint32)
+#+end_example
+
+<<8bf0a0a7-15c2-414d-80c8-b253c7694c53>>
+#+begin_src python
+# visualize results
+imshow(labels)
+#+end_src
+
+#+begin_example
+C:\Users\haase\mambaforge\envs\bio39\lib\site-packages\skimage\io\_plugins\matplotlib_plugin.py:149: UserWarning: Low image data range; displaying image with stretched contrast.
+  lo, hi, cmap = _get_display_range(image)
+#+end_example
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x206d2d6cb80>
+#+end_example
+
+[[file:b9057497ed8108486f043b29daaf825d58e6f890.png]]
+
+<<f7c7b096>>
+=stackview= also comes with an imshow function, that allows for example
+showing label images more conveniently:
+
+<<3f0e9229>>
+#+begin_src python
+stackview.imshow(labels)
+#+end_src
+
+[[file:d7ec1649806e5c7eb002d882677ed3baa02bfd9f.png]]
+
+<<9976cbdc-2052-490f-91ee-d30a187bd979>>
+One can also determine label edges and blend them over the image.
+
+<<64e535a0-9873-4b18-9c18-8cb2481cdd3e>>
+#+begin_src python
+label_edges = cle.detect_label_edges(labels) * labels
+
+stackview.imshow(image, continue_drawing=True)
+stackview.imshow(label_edges, alpha=0.5)
+#+end_src
+
+[[file:afb3e2934a677c0f9341023c1abab3a271b977d9.png]]
+
+<<31f03bf2-9d32-4c88-a0cb-6dfdfb191cbe>>
+Therefore, it may make sense to increase the figure and combine multiple
+sub-plots
+
+<<24ab7ada-0c83-4f1d-bdde-05a60f109678>>
+#+begin_src python
+fig, axs = plt.subplots(1, 2, figsize=(12,12))
+
+# left plot
+stackview.imshow(image, plot=axs[0])
+
+# right plot
+stackview.imshow(image, alpha=0.5, continue_drawing=True, plot=axs[1])
+stackview.imshow(label_edges, labels=True, alpha=0.5, plot=axs[1])
+#+end_src
+
+[[file:4dd1b288d0e58aee2ef522a36a7f01d7cd16b49e.png]]
+
+<<9001e4dd>>
+Some of these operations, e.g.
+[[https://nbviewer.jupyter.org/github/clEsperanto/pyclesperanto_prototype/blob/master/demo/segmentation/voronoi_otsu_labeling.ipynb][voronoi_otsu_labeling]]
+are in fact short-cuts and combine a number of operations such as
+Gaussian blur, Voronoi-labeling and Otsu-thresholding to go from a raw
+image to a label image directly:
+
+<<e88b4477>>
+#+begin_src python
+labels = cle.voronoi_otsu_labeling(image, spot_sigma=3.5, outline_sigma=1)
+labels
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 0,  0,  0, ..., 62, 62, 62],
+       [ 0,  0,  0, ..., 62, 62, 62],
+       [ 0,  0,  0, ..., 62, 62, 62],
+       ...,
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0]], dtype=uint32)
+#+end_example
+
+<<279b92dc>>
+Also, just a reminder, read the documentation of methods you haven't
+used before:
+
+<<17a1b3df>>
+#+begin_src python
+print(cle.voronoi_otsu_labeling.__doc__)
+#+end_src
+
+#+begin_example
+Labels objects directly from grey-value images.
+
+    The two sigma parameters allow tuning the segmentation result. Under the hood,
+    this filter applies two Gaussian blurs, spot detection, Otsu-thresholding [2] and Voronoi-labeling [3]. The
+    thresholded binary image is flooded using the Voronoi tesselation approach starting from the found local maxima.
+
+    Notes
+    -----
+    * This operation assumes input images are isotropic.
+
+    Parameters
+    ----------
+    source : Image
+        Input grey-value image
+    label_image_destination : Image, optional
+        Output image
+    spot_sigma : float, optional
+        controls how close detected cells can be
+    outline_sigma : float, optional
+        controls how precise segmented objects are outlined.
+    
+    Returns
+    -------
+    label_image_destination
+    
+    Examples
+    --------
+    >>> import pyclesperanto_prototype as cle
+    >>> cle.voronoi_otsu_labeling(source, label_image_destination, 10, 2)
+    
+    References
+    ----------
+    .. [1] https://clij.github.io/clij2-docs/reference_voronoiOtsuLabeling
+    .. [2] https://ieeexplore.ieee.org/document/4310076
+    .. [3] https://en.wikipedia.org/wiki/Voronoi_diagram
+    
+#+end_example
+
+<<6e97e6c5>>
+** Interoperability
+   :PROPERTIES:
+   :CUSTOM_ID: interoperability
+   :END:
+In pyclesperanto, images are handled in the random access memory (RAM)
+of your GPU. If you want to use other libraries, which process images on
+the GPU, the memory must be transferred back. Usually, this happens
+transparently for the user, e.g. when using scikit-image for measuring
+region properties:
+
+<<60ee9f72>>
+#+begin_src python
+from skimage.measure import regionprops
+
+statistics = regionprops(labels)
+
+import numpy as np
+np.mean([s.area for s in statistics])
+#+end_src
+
+#+begin_example
+333.77272727272725
+#+end_example
+
+<<e604a6b8>>
+If you want to explicitly convert your image, e.g. into a numpy array,
+you can do it like this:
+
+<<66bb0002>>
+#+begin_src python
+np.asarray(labels)
+#+end_src
+
+#+begin_example
+array([[ 0,  0,  0, ..., 62, 62, 62],
+       [ 0,  0,  0, ..., 62, 62, 62],
+       [ 0,  0,  0, ..., 62, 62, 62],
+       ...,
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0]], dtype=uint32)
+#+end_example
+
+<<70166d04>>
+** Memory management
+   :PROPERTIES:
+   :CUSTOM_ID: memory-management
+   :END:
+In jupyter noteboooks, variables are kept alive as long as the notebook
+kernel is running. Thus, your GPU may fill up with memory. Thus, if you
+don't need an image anymore, remove it from memory using =del=. It will
+then be remove from GPU memory thanks to
+[[https://documen.tician.de/pyopencl/][pyopencl]] magic.
+
+<<70a504ac>>
+#+begin_src python
+del image
+del blurred
+del binary
+del labels
+#+end_src

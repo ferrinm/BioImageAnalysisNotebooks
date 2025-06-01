@@ -1,0 +1,232 @@
+<<aca194ba-cf56-408a-ada4-1f3213741240>>
+* Local maxima detection
+  :PROPERTIES:
+  :CUSTOM_ID: local-maxima-detection
+  :END:
+For detecting local maxima, pixels surrounded by pixels with lower
+intensity, we can use some functions in
+[[https://scikit-image.org][scikit-image]] and
+[[https://github.com/clEsperanto/pyclesperanto_prototype][clesperanto]].
+
+See also
+
+- [[https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_peak_local_max.html][Finding
+  local maxima (scikit-image tutorial)]]
+
+<<165bb00a-9faf-4a36-94ee-5e8fc694eb45>>
+#+begin_src python
+from skimage.feature import peak_local_max
+import pyclesperanto_prototype as cle
+from skimage.io import imread, imshow
+from skimage.filters import gaussian 
+import matplotlib.pyplot as plt
+#+end_src
+
+<<a7d3de85-b93b-4ff6-95f4-a2f8dbcb8c12>>
+We start by loading an image and cropping a region for demonstration
+purposes. We used image set
+[[https://bbbc.broadinstitute.org/BBBC007][BBBC007v1]] image set version
+1 (Jones et al., Proc. ICCV Workshop on Computer Vision for Biomedical
+Image Applications, 2005), available from the Broad Bioimage Benchmark
+Collection [Ljosa et al., Nature Methods, 2012].
+
+<<8ca305b4-047c-4a6d-b6ec-2ee8e43c89fa>>
+#+begin_src python
+image = imread("../../data/BBBC007_batch/A9 p7d.tif")[-100:, 0:100]
+
+cle.imshow(image)
+#+end_src
+
+[[file:088dbf9b951cb7c727a414ec62954866e699fe96.png]]
+
+<<51a475c7-e1f1-4e05-8b5d-f4da1eb8db71>>
+** Preprocessing
+   :PROPERTIES:
+   :CUSTOM_ID: preprocessing
+   :END:
+A common preprocessing step before detecting maxima is blurring the
+image. This makes sense to avoid detecting maxima that are just
+intensity variations resulting from noise.
+
+<<062fd9f7-0356-455a-938e-74c3ba1f79a4>>
+#+begin_src python
+preprocessed = gaussian(image, sigma=2, preserve_range=True)
+
+cle.imshow(preprocessed)
+#+end_src
+
+[[file:c5c8ac73133b9e6f5ec307dc4a7e14e8deec1857.png]]
+
+<<56b48b15-3693-4888-b74b-1647c4d590b3>>
+** peak_local_max
+   :PROPERTIES:
+   :CUSTOM_ID: peak_local_max
+   :END:
+The
+[[https://scikit-image.org/docs/stable/api/skimage.feature.html?highlight=peak_local_max#skimage.feature.peak_local_max][=peak_local_max=
+function]] allows detecting maxima which have higher intensity than
+surrounding pixels and other maxima according to a defined threshold.
+
+<<b1d4996f-849d-4edb-85fa-d2eb45c49ef9>>
+#+begin_src python
+coordinates = peak_local_max(preprocessed, threshold_abs=5)
+coordinates
+#+end_src
+
+#+begin_example
+array([[23, 85],
+       [11, 29],
+       [41, 40],
+       [88, 34],
+       [72, 83],
+       [69, 89],
+       [31, 72],
+       [75, 16],
+       [80, 22],
+       [ 6, 56]], dtype=int64)
+#+end_example
+
+<<b242eefa-d1de-4af2-a7ed-098823b3518a>>
+These coordinates can be visualized using matplotlib's plot function.
+
+<<ea84c5f6-cdca-4235-a147-3635df21a425>>
+#+begin_src python
+cle.imshow(preprocessed, continue_drawing=True)
+plt.plot(coordinates[:, 1], coordinates[:, 0], 'r.')
+#+end_src
+
+#+begin_example
+[<matplotlib.lines.Line2D at 0x2309908fbb0>]
+#+end_example
+
+[[file:17a81d6ca8b7abc0e556b0732bcb2f17045251fc.png]]
+
+<<01e90770-4298-44d2-b9c1-aeceef3fa70a>>
+If there are too many maxima detected, one can modify the results by
+changing the =sigma= parameter of the Gaussian blur above or by changing
+the threshold passed to the =peak_local_max= function.
+
+<<2ce6054b-e698-466a-8130-b6571c3355df>>
+** detect_maxima_box
+   :PROPERTIES:
+   :CUSTOM_ID: detect_maxima_box
+   :END:
+The function =peak_local_max= tends to take long time, e.g. when
+processing large 3D image data. Thus, an alternaive shall be introduced:
+clesperanto's =detect_maxima_box= is an image filter that sets pixels to
+value =1= in case surrounding pixels have lower intensity. It typically
+performs fast also on large 3D image data.
+
+<<0d14f240-a000-4fea-85fe-a182d12eea70>>
+#+begin_src python
+local_maxima_image = cle.detect_maxima_box(preprocessed)
+local_maxima_image
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint8)
+#+end_example
+
+<<6ee8d05d-5f82-4b16-a580-f0d6e4c0ce74>>
+Obviously, it results in a binary image. This binary image can be
+converted to a label image by labeling individual spots with different
+numbers. From this label image, we can remove maxima detected at image
+borders, which might be useful in this case.
+
+<<93c563bf-a5e4-44dd-b3c2-6a23e8655f31>>
+#+begin_src python
+all_labeled_spots = cle.label_spots(local_maxima_image)
+
+labeled_spots = cle.exclude_labels_on_edges(all_labeled_spots)
+labeled_spots
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<ae1375d2-3e1c-4176-892c-ca211d9334e1>>
+To visualize these spots on the original image, it might make sense to
+increase the size of the spots - just for visualization purposes.
+
+<<4d467d35-1755-4af0-a9c7-d60cbc525738>>
+#+begin_src python
+label_visualization = cle.dilate_labels(labeled_spots, radius=3)
+
+cle.imshow(preprocessed, continue_drawing=True)
+cle.imshow(label_visualization, labels=True, alpha=0.5)
+#+end_src
+
+[[file:066200ef0956b3f1b483f7fd89c7103b0137b82e.png]]
+
+<<617b01a6-6e18-4e4b-b987-188244da9e5d>>
+In the lower center of this image we see now a local maximum that has
+been detected in the background. We can remove those maxima in lower
+intensity regions by thresholding.
+
+<<32b8259d-65ca-4db6-9c88-41acc86f86e8>>
+#+begin_src python
+binary_image = cle.threshold_otsu(preprocessed)
+binary_image
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 1, 1, 1],
+       [0, 0, 0, ..., 1, 1, 1],
+       [1, 1, 0, ..., 1, 1, 1],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint8)
+#+end_example
+
+<<07c99657-4469-4121-8006-d5dd0283abcd>>
+We can now exclude labels from the spots image where the intensity in
+the binary image is not within range =[1..1]= (i.e. exactly 1).
+
+<<84b41b81-4fd0-4108-adc6-4fa07311f783>>
+#+begin_src python
+final_spots = cle.exclude_labels_with_map_values_out_of_range(
+    binary_image,
+    labeled_spots,
+    minimum_value_range=1,
+    maximum_value_range=1
+)
+final_spots
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<72b2ed50-ec31-4192-841a-6360c1aeefe3>>
+We can then visualize the spots again using the strategy introduced
+above, but this time on the original image.
+
+<<9137b5c1-f725-4b08-9b15-57caf85b3ede>>
+#+begin_src python
+label_visualization2 = cle.dilate_labels(final_spots, radius=3)
+
+cle.imshow(image, continue_drawing=True)
+cle.imshow(label_visualization2, labels=True, alpha=0.5)
+#+end_src
+
+[[file:91130cfdf38505a0e5c96103b3e15fc0ba22a6e3.png]]

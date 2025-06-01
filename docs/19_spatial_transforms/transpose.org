@@ -1,0 +1,133 @@
+* Axis transposition benchmarking
+  :PROPERTIES:
+  :CUSTOM_ID: axis-transposition-benchmarking
+  :END:
+This notebook compares performance of different implementations of
+transposing axes.
+
+*Note:* benchmarking results vary heavily depending on image size,
+kernel size, used operations, parameters and used hardware. Use this
+notebook to adapt it to your use-case scenario and benchmark on your
+target hardware. If you have different scenarios or use-cases, you are
+very welcome to submit your notebook as pull-request!
+
+#+begin_src python
+import pyclesperanto_prototype as cle
+import numpy as np
+import time
+import cupy as cp
+
+# to measure kernel execution duration properly, we need to set this flag. It will slow down exection of workflows a bit though
+cle.set_wait_for_kernel_finish(True)
+
+# selet a GPU with the following in the name. This will fallback to any other GPU if none with this name is found
+cle.select_device('RTX')
+#+end_src
+
+#+begin_example
+<NVIDIA GeForce RTX 3050 Ti Laptop GPU on Platform: NVIDIA CUDA (1 refs)>
+#+end_example
+
+#+begin_src python
+# test data
+import numpy as np
+
+test_image = np.random.random([100, 512, 1024])
+#+end_src
+
+** clEsperanto
+   :PROPERTIES:
+   :CUSTOM_ID: clesperanto
+   :END:
+
+#+begin_src python
+# transpose with pyclesperanto
+result_image = None
+
+test_image_gpu = cle.push_zyx(test_image)
+
+for i in range(0, 10):
+    start_time = time.time()
+    result_image = cle.transpose_xz(test_image_gpu, result_image)
+    print("pyclesperanto transpose duration: " + str(time.time() - start_time))
+print(result_image.shape)
+#+end_src
+
+#+begin_example
+pyclesperanto transpose duration: 0.06201291084289551
+pyclesperanto transpose duration: 0.04100918769836426
+pyclesperanto transpose duration: 0.040008544921875
+pyclesperanto transpose duration: 0.040008544921875
+pyclesperanto transpose duration: 0.0400090217590332
+pyclesperanto transpose duration: 0.04129624366760254
+pyclesperanto transpose duration: 0.042009592056274414
+pyclesperanto transpose duration: 0.04128861427307129
+pyclesperanto transpose duration: 0.04102063179016113
+pyclesperanto transpose duration: 0.04099869728088379
+(1024, 512, 100)
+#+end_example
+
+** cupy
+   :PROPERTIES:
+   :CUSTOM_ID: cupy
+   :END:
+
+#+begin_src python
+# transpose with numpy
+result_image = None
+cu_test_image = cp.asarray(test_image)
+
+for i in range(0, 10):
+    start_time = time.time()
+    result_image = cp.transpose(cu_test_image, (2, 1, 0))
+    cp.cuda.stream.get_current_stream().synchronize() # we need to wait here to measure time properly
+    print("cupy transpose duration: " + str(time.time() - start_time))
+print(result_image.shape)
+#+end_src
+
+#+begin_example
+cupy transpose duration: 0.06301379203796387
+cupy transpose duration: 0.0009999275207519531
+cupy transpose duration: 0.0
+cupy transpose duration: 0.0
+cupy transpose duration: 0.0
+cupy transpose duration: 0.0
+cupy transpose duration: 0.0
+cupy transpose duration: 0.0
+cupy transpose duration: 0.0
+cupy transpose duration: 0.0
+(1024, 512, 100)
+#+end_example
+
+** numpy
+   :PROPERTIES:
+   :CUSTOM_ID: numpy
+   :END:
+
+#+begin_src python
+# transpose with numpy
+result_image = None
+
+for i in range(0, 10):
+    start_time = time.time()
+    result_image = np.transpose(test_image, (2, 1, 0))
+    print("numpy transpose duration: " + str(time.time() - start_time))
+print(result_image.shape)
+#+end_src
+
+#+begin_example
+numpy transpose duration: 0.0
+numpy transpose duration: 0.0
+numpy transpose duration: 0.0
+numpy transpose duration: 0.0
+numpy transpose duration: 0.0
+numpy transpose duration: 0.0
+numpy transpose duration: 0.0
+numpy transpose duration: 0.0
+numpy transpose duration: 0.0
+numpy transpose duration: 0.0
+(1024, 512, 100)
+#+end_example
+
+#+begin_src python
+#+end_src

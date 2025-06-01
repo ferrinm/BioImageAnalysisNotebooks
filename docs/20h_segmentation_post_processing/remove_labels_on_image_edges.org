@@ -1,0 +1,142 @@
+* Remove labels on image edges
+  :PROPERTIES:
+  :CUSTOM_ID: remove-labels-on-image-edges
+  :END:
+When analysing image scientifically, it is often relevant that only
+object in the image are analyzed that are fully captured.
+
+#+begin_src python
+import pyclesperanto_prototype as cle
+from skimage.segmentation import clear_border, relabel_sequential
+from skimage.io import imread
+import stackview
+import numpy as np
+#+end_src
+
+Our starting point shall be a label image; for example derived from
+blobs.tif through thresholding and connected component labeling:
+
+#+begin_src python
+# load data
+image = imread('../../data/blobs.tif')
+
+# process the image
+blurred = cle.gaussian_blur(image, sigma_x=1, sigma_y=1)
+binary = cle.threshold_otsu(blurred)
+labeled = cle.connected_components_labeling_box(binary)
+
+# show result
+labeled
+#+end_src
+
+#+begin_example
+c:\structure\code\pyclesperanto_prototype\pyclesperanto_prototype\_tier9\_imshow.py:34: UserWarning: cle.imshow is deprecated, use stackview.imshow instead.
+  warnings.warn("cle.imshow is deprecated, use stackview.imshow instead.")
+#+end_example
+
+#+begin_example
+cl.OCLArray([[ 0,  0,  0, ..., 59, 59, 59],
+       [ 0,  0,  0, ..., 59, 59, 59],
+       [ 0,  0,  0, ..., 59, 59, 59],
+       ...,
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0]], dtype=uint32)
+#+end_example
+
+#+begin_src python
+num_labels = len(np.unique(labeled)) - 1
+print("Number of objects in the image: " + str(num_labels))
+#+end_src
+
+#+begin_example
+Number of objects in the image: 62
+#+end_example
+
+In case the size of the objects is relevant, one should exclude the
+object which were not fully imaged and thus, touch the image border.
+
+#+begin_src python
+labels_excl_edges = clear_border(np.asarray(labeled))
+
+stackview.insight(labels_excl_edges)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+Note that the maximum intensity in the label image above is 55 and the
+number of objects is 44 (see below). Thus, this is a label image where
+not all labels between 1 and 44 are present.
+
+#+begin_src python
+num_labels = len(np.unique(labels_excl_edges)) - 1
+print("Number of objects in the image: " + str(num_labels))
+#+end_src
+
+#+begin_example
+Number of objects in the image: 44
+#+end_example
+
+** Subsequently labeling
+   :PROPERTIES:
+   :CUSTOM_ID: subsequently-labeling
+   :END:
+Many algorithms for further processing of label images required that
+labels are subsequently labeled. Thus, we need to fix this with the
+image above.
+
+#+begin_src python
+relabeled, _, _ = relabel_sequential(labels_excl_edges)
+
+stackview.insight(relabeled)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+Other implementations for removing objects on image edges do not require
+this step:
+
+#+begin_src python
+# Exclude Labels On Edges
+labels_excl_edges = cle.exclude_labels_on_edges(labeled)
+
+labels_excl_edges
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+#+begin_src python
+num_labels = len(np.unique(labels_excl_edges)) - 1
+print("Number of objects in the image: " + str(num_labels))
+#+end_src
+
+#+begin_example
+Number of objects in the image: 44
+#+end_example
+
+#+begin_src python
+#+end_src

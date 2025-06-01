@@ -1,0 +1,138 @@
+<<50401389>>
+** =zip= for Processing Paired Folders
+   :PROPERTIES:
+   :CUSTOM_ID: zip-for-processing-paired-folders
+   :END:
+In this notebook, we will use the Python built-in function =zip= to
+iterate over paired folders of images and label masks. Specifically, we
+will process images and their corresponding masks from the following
+directories:
+
+- =data/BBBC007/images=
+- =data/BBBC007/masks=
+
+We'll calculate the average intensity of labeled objects and the number
+of objects in each pair of image and mask files, and store the results
+in a pandas DataFrame.
+
+<<4077ca2f-f34a-4efe-bb4f-4c07fa782b60>>
+#+begin_src python
+import os
+import pandas as pd
+from skimage import io, measure
+import numpy as np
+#+end_src
+
+<<59d71bed-929e-4c7c-ae21-4352c41d1f28>>
+#+begin_src python
+# Define paths
+image_folder = '../../data/BBBC007/images'
+mask_folder = '../../data/BBBC007/masks'
+#+end_src
+
+<<09904b87-503b-470f-be5e-1db462d31951>>
+Before starting, we just have a look at the folder contents to see if
+there are indeed paired files.
+
+<<99b7a708-80bc-4e60-bf2f-c7c6fcb22ae2>>
+#+begin_src python
+image_files = sorted(os.listdir(image_folder))
+image_files
+#+end_src
+
+#+begin_example
+['A9 p5d (cropped 1).tif',
+ 'A9 p5d (cropped 2).tif',
+ 'A9 p5d (cropped 3).tif',
+ 'A9 p5d (cropped 4).tif']
+#+end_example
+
+<<ca9a595b-4864-461d-b76c-ed2d529facb4>>
+#+begin_src python
+mask_files = sorted(os.listdir(mask_folder))
+mask_files
+#+end_src
+
+#+begin_example
+['A9 p5d (cropped 1).tif',
+ 'A9 p5d (cropped 2).tif',
+ 'A9 p5d (cropped 3).tif',
+ 'A9 p5d (cropped 4).tif']
+#+end_example
+
+<<3fb862a7-29f4-420c-9a78-bcc9648ae744>>
+#+begin_src python
+df = pd.DataFrame(columns=['Image', 'Average Intensity', 'Number of Objects'])
+#+end_src
+
+<<861bf937-9c8b-45c8-9ebc-9d7b991b3b5f>>
+To demonstrate how =zip()= allows iterate over image and mask files in
+parallel, we just print out file names in a short for-loop:
+
+<<ca5635ff-51a8-4d67-ab52-d64b60f89608>>
+#+begin_src python
+for image_file, mask_file in zip(image_files, mask_files):
+    image_path = os.path.join(image_folder, image_file)
+    mask_path = os.path.join(mask_folder, mask_file)
+    
+    print(image_path, mask_path, "\n\n")
+#+end_src
+
+#+begin_example
+../../data/BBBC007/images\A9 p5d (cropped 1).tif ../../data/BBBC007/masks\A9 p5d (cropped 1).tif 
+
+
+../../data/BBBC007/images\A9 p5d (cropped 2).tif ../../data/BBBC007/masks\A9 p5d (cropped 2).tif 
+
+
+../../data/BBBC007/images\A9 p5d (cropped 3).tif ../../data/BBBC007/masks\A9 p5d (cropped 3).tif 
+
+
+../../data/BBBC007/images\A9 p5d (cropped 4).tif ../../data/BBBC007/masks\A9 p5d (cropped 4).tif 
+
+
+#+end_example
+
+<<443218ba-f193-4ad1-8e41-737bec3974eb>>
+The same code can be used to go through both folders in parallel and
+analyse intensity images paired with given label images.
+
+<<3a07e9a4-f89f-4afa-bd9f-04e38b4a1576>>
+#+begin_src python
+for image_file, mask_file in zip(image_files, mask_files):
+    image_path = os.path.join(image_folder, image_file)
+    mask_path = os.path.join(mask_folder, mask_file)
+    
+    # Read the image and its mask
+    image = io.imread(image_path)
+    mask = io.imread(mask_path).astype(np.uint32)
+
+    # Measure labeled regions
+    labeled_regions = measure.regionprops(mask, intensity_image=image)
+
+    # Calculate average intensity and number of objects
+    num_objects = len(labeled_regions)
+    avg_intensity = sum(region.mean_intensity for region in labeled_regions) / num_objects
+
+    # Append results for the current pair
+    df.loc[len(df)] = {
+        'Image': image_file,
+        'Average Intensity': avg_intensity,
+        'Number of Objects': num_objects
+    }
+
+# Display the result
+df
+#+end_src
+
+#+begin_example
+                    Image  Average Intensity  Number of Objects
+0  A9 p5d (cropped 1).tif          26.269523                  2
+1  A9 p5d (cropped 2).tif          16.698528                  2
+2  A9 p5d (cropped 3).tif          34.847166                  2
+3  A9 p5d (cropped 4).tif          28.707185                  2
+#+end_example
+
+<<88625c82-99b1-4190-b3ab-cff9539938d6>>
+#+begin_src python
+#+end_src

@@ -1,0 +1,262 @@
+<<about-current>>
+* 3D Image Segmentation
+  :PROPERTIES:
+  :CUSTOM_ID: 3d-image-segmentation
+  :END:
+Image segmentation in 3D is challenging for several reasons: In many
+microscopy imaging techniques, image quality varies in space: For
+example intensity and/or contrast degrades the deeper you image inside a
+sample. Furthermore, touching nuclei are hard to differentiate in an
+automated way. Last but not least, anisotropy is difficult to handle
+depending on the applied algorithms and respective given parameters.
+Some algorithms, like the
+[[https://github.com/clEsperanto/pyclesperanto_prototype/blob/master/demo/segmentation/voronoi_otsu_labeling.ipynb][Voronoi-Otsu-Labeling]]
+approach demonstrated here, only work for isotropic data.
+
+<<dirty-sheep>>
+#+begin_src python
+from skimage.io import imread
+from pyclesperanto_prototype import imshow
+import pyclesperanto_prototype as cle
+import matplotlib.pyplot as plt
+
+import napari
+from napari.utils import nbscreenshot
+
+# For 3D processing, powerful graphics
+# processing units might be necessary
+cle.select_device('TX')
+#+end_src
+
+#+begin_example
+<NVIDIA GeForce GTX 1650 with Max-Q Design on Platform: NVIDIA CUDA (1 refs)>
+#+end_example
+
+<<368b4e6f-ab08-4391-ac01-8b19ddfd9cc5>>
+To demonstrate the workflow, we're using cropped and resampled image
+data from the [[https://bbbc.broadinstitute.org/BBBC032][Broad Bio Image
+Challenge]]: Ljosa V, Sokolnicki KL, Carpenter AE (2012). Annotated
+high-throughput microscopy image sets for validation. Nature Methods
+9(7):637 / doi. PMID: 22743765 PMCID: PMC3627348. Available at
+[[http://dx.doi.org/10.1038/nmeth.2083]]
+
+<<3159831f-0b95-4ddb-8dc5-b48b58a9d124>>
+#+begin_src python
+input_image = imread("../../data/BMP4blastocystC3-cropped_resampled_8bit.tif")
+
+voxel_size_x = 0.202
+voxel_size_y = 0.202
+voxel_size_z = 1
+#+end_src
+
+<<agreed-spectrum>>
+For visualisation purposes we show intensity projections along X, Y and
+Z.
+
+<<academic-mediterranean>>
+#+begin_src python
+def show(image_to_show, labels=False):
+    """
+    This function generates three projections: in X-, Y- and Z-direction and shows them.
+    """
+    projection_x = cle.maximum_x_projection(image_to_show)
+    projection_y = cle.maximum_y_projection(image_to_show)
+    projection_z = cle.maximum_z_projection(image_to_show)
+
+    fig, axs = plt.subplots(1, 3, figsize=(15, 15))
+    cle.imshow(projection_x, plot=axs[0], labels=labels)
+    cle.imshow(projection_y, plot=axs[1], labels=labels)
+    cle.imshow(projection_z, plot=axs[2], labels=labels)
+    plt.show()
+
+show(input_image)
+print(input_image.shape)
+#+end_src
+
+[[file:51b153ce17e409592451ec8c95c6bc6a4d0ad0a2.png]]
+
+#+begin_example
+(86, 396, 393)
+#+end_example
+
+<<naval-gauge>>
+Obviously, voxel size is not isotropic. Thus, we scale the image with
+the voxel size used as scaling factor to get an image stack with
+isotropic voxels.
+
+<<leading-breast>>
+#+begin_src python
+resampled = cle.scale(input_image, factor_x=voxel_size_x, factor_y=voxel_size_y, factor_z=voxel_size_z, auto_size=True)
+
+show(resampled)
+print(resampled.shape)
+#+end_src
+
+[[file:bc83a6b95abe0c9695d9bfc322cb27134b4ab472.png]]
+
+#+begin_example
+(86, 79, 79)
+#+end_example
+
+<<olympic-landing>>
+** Intensity and background correction
+   :PROPERTIES:
+   :CUSTOM_ID: intensity-and-background-correction
+   :END:
+As we can see, intensity is decreasing in Z-direction (from slice to
+slice) and contrast as well. At least the intensity decay can be
+corrected. In [[https://github.com/clij/clijx][CLIJx]], this method is
+known as
+[[https://clij.github.io/clij2-docs/reference_equalizeMeanIntensitiesOfSlices][equalize_mean_intensities_of_slices.]]
+
+<<honey-candle>>
+#+begin_src python
+equalized_intensities_stack = cle.create_like(resampled)
+a_slice = cle.create([resampled.shape[1], resampled.shape[0]])
+
+num_slices = resampled.shape[0]
+mean_intensity_stack = cle.mean_of_all_pixels(resampled)
+
+corrected_slice = None
+for z in range(0, num_slices):
+    # get a single slice out of the stack
+    cle.copy_slice(resampled, a_slice, z)
+    # measure its intensity
+    mean_intensity_slice = cle.mean_of_all_pixels(a_slice)
+    # correct the intensity
+    correction_factor = mean_intensity_slice/mean_intensity_stack
+    corrected_slice = cle.multiply_image_and_scalar(a_slice, corrected_slice, correction_factor)
+    # copy slice back in a stack
+    cle.copy_slice(corrected_slice, equalized_intensities_stack, z)
+
+show(equalized_intensities_stack)
+#+end_src
+
+[[file:dd680547c32170a93a8ebe98f85b6400d0817039.png]]
+
+<<commercial-stopping>>
+Furthermore, background intensity appears to increase, potentially a
+result if more scattering deep in the sample. We can compensate for that
+by using a background subtraction technique:
+
+<<empty-quest>>
+#+begin_src python
+backgrund_subtracted = cle.top_hat_box(equalized_intensities_stack, radius_x=5, radius_y=5, radius_z=5)
+show(backgrund_subtracted)
+#+end_src
+
+[[file:8228cfafbbeba5ed4d3c0555436a05ca5b650775.png]]
+
+<<broad-folks>>
+** Segmentation
+   :PROPERTIES:
+   :CUSTOM_ID: segmentation
+   :END:
+
+<<every-springer>>
+#+begin_src python
+segmented = cle.voronoi_otsu_labeling(backgrund_subtracted, spot_sigma=3, outline_sigma=1)
+show(segmented, labels=True)
+#+end_src
+
+[[file:10557c57b3c79d23d5b91996ed866f3357f156e6.png]]
+
+<<assumed-inventory>>
+As segmentation results are hard to inspect in 3D, we generate an image
+stack with the original intensities + outlines of the segmentation. We
+show this stack for a couple of slices.
+
+<<distant-above>>
+#+begin_src python
+a_slice = cle.create([resampled.shape[1], resampled.shape[0]])
+segmented_slice = cle.create([resampled.shape[1], resampled.shape[0]])
+
+for z in range(0, resampled.shape[2], 20):
+    label_outlines = None
+    combined = None
+
+    # get a single slice from the intensity image and the segmented label image
+    cle.copy_slice(resampled, a_slice, z)
+    cle.copy_slice(segmented, segmented_slice, z)
+
+    # determine outlines around labeled objects
+    label_outlines = cle.detect_label_edges(segmented_slice, label_outlines)
+
+    # combine both images
+    outline_intensity_factor = cle.maximum_of_all_pixels(a_slice)
+    combined = cle.add_images_weighted(a_slice, label_outlines, combined, 1.0, outline_intensity_factor)
+
+    # visualisation
+    fig, axs = plt.subplots(1, 3, figsize=(15, 15))
+    cle.imshow(a_slice, plot=axs[0])
+    cle.imshow(segmented_slice, plot=axs[1], labels=True)
+    cle.imshow(combined, plot=axs[2])
+#+end_src
+
+[[file:2f19992f96ee42d3586837d92500926456441ebc.png]]
+
+[[file:f7d99366b2cd8393e72801ed8c0660008533686e.png]]
+
+[[file:b60d3f5ef2f4b2d5ff628d05d996cfdaec891e6b.png]]
+
+[[file:416626879015e1fc7c21602d32586acf7f8082be.png]]
+
+<<suspended-representative>>
+** Visualization in 3D
+   :PROPERTIES:
+   :CUSTOM_ID: visualization-in-3d
+   :END:
+For actual visualization in 3D you can also use
+[[https://napari.org/][napari]].
+
+<<advisory-missouri>>
+#+begin_src python
+# start napari
+viewer = napari.Viewer()
+
+# show images
+viewer.add_image(cle.pull(resampled))
+viewer.add_image(cle.pull(equalized_intensities_stack))
+viewer.add_labels(cle.pull(segmented))
+#+end_src
+
+#+begin_example
+INFO:xmlschema:Resource 'XMLSchema.xsd' is already loaded
+#+end_example
+
+#+begin_example
+<Labels layer 'Labels' at 0x1eba6d51dc0>
+#+end_example
+
+<<given-smart>>
+#+begin_src python
+viewer.dims.current_step = (40, 0, 0)
+nbscreenshot(viewer)
+#+end_src
+
+[[file:2b008f2af0d4d632363789f6df57d8f85c3c78b4.png]]
+
+#+begin_example
+INFO:OpenGL.acceleratesupport:No OpenGL_accelerate module loaded: No module named 'OpenGL_accelerate'
+#+end_example
+
+<<523ec1fa-7354-4daf-9e0a-0288bdd91ecf>>
+We can switch to a 3D view by clicking on the 3D button in the bottom
+left corner.
+
+<<cooked-mirror>>
+#+begin_src python
+nbscreenshot(viewer)
+#+end_src
+
+[[file:624f8c244e3bb5f16b160afc81d2df6372372f42.png]]
+
+<<3b715d18-3173-4b2e-a5b1-bb9a381890bf>>
+We can then also tip and tilt the view.
+
+<<entire-timber>>
+#+begin_src python
+nbscreenshot(viewer)
+#+end_src
+
+[[file:c1460dc1dc4ccdcf0d805db822c10a7d63bce5dd.png]]

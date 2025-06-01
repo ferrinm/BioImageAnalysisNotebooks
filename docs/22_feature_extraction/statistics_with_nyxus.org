@@ -1,0 +1,285 @@
+<<2e3ef9ca-39d2-4c2b-b742-6d287698ccb9>>
+* Statistics using Nyxus
+  :PROPERTIES:
+  :CUSTOM_ID: statistics-using-nyxus
+  :END:
+
+<<72e582f6-d043-46f9-84c7-043817d71c58>>
+The [[https://github.com/PolusAI/nyxus][Nyxus]] library contains a large
+number of features that can be extracted from image data. It can be
+installed using pip:
+
+#+begin_html
+  <!--
+  ```
+  mamba install nyxus -c conda-forge
+  ```
+  -->
+#+end_html
+
+#+begin_example
+pip install nyxus==0.5.0
+#+end_example
+
+See also
+
+- [[https://nyxus.readthedocs.io/en/latest/][Nyxus documentation]]
+- [[https://nyxus.readthedocs.io/en/latest/featurelist.html][Nyxus list
+  of features]]
+
+<<1c6ba347-663f-42f8-b42a-e7b03a4e5de6>>
+Before we can do measurements, we need an =image= and a corresponding
+=label_image=. Therefore, we recapitulate filtering, thresholding and
+labeling:
+
+<<9c73c156-0d06-4321-98d6-e1c49fafb596>>
+#+begin_src python
+from skimage.io import imread
+import stackview
+
+from nyxus import Nyxus
+#+end_src
+
+<<e51a3e5e-494c-4220-b277-f6688442bb5c>>
+#+begin_src python
+intensity_image = imread("../../data/blobs.tif")
+
+stackview.insight(intensity_image)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[ 40,  32,  24, ..., 216, 200, 200],
+                  [ 56,  40,  24, ..., 232, 216, 216],
+                  [ 64,  48,  24, ..., 240, 232, 232],
+                  ...,
+                  [ 72,  80,  80, ...,  48,  48,  48],
+                  [ 80,  80,  80, ...,  48,  48,  48],
+                  [ 96,  88,  80, ...,  48,  48,  48]], dtype=uint8)
+#+end_example
+
+<<3f36e8d5-15b7-4949-860d-758ee6b36c3e>>
+#+begin_src python
+label_image = imread("../../data/blobs_labeled.tif")
+
+# visualization
+stackview.insight(label_image)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 5, 5, 5],
+                  [0, 0, 0, ..., 5, 5, 5],
+                  [0, 0, 0, ..., 5, 5, 5],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<6854864d-4a5b-4360-ac2a-6372c4a3e985>>
+** Measurements
+   :PROPERTIES:
+   :CUSTOM_ID: measurements
+   :END:
+
+<<2a635e37-dc47-4db8-bced-1548818da3f6>>
+We now use nyxus' function
+[[https://nyxus.readthedocs.io/en/latest/References/stubs/nyxus.Nyxus.html#nyxus.Nyxus.featurize][featurize]]
+to extract quantitative measurements. For the beginning, we just use
+=ALL= features.
+
+<<8d70c8cf-a622-4c78-ac13-85851dead81b>>
+#+begin_src python
+nyx = Nyxus(["*ALL*"])
+features = nyx.featurize(intensity_image, label_image)
+features
+#+end_src
+
+#+begin_example
+       mask_image intensity_image  label  INTEGRATED_INTENSITY        MEAN  \
+0   Segmentation0      Intensity0      1               98336.0  159.119741   
+1   Segmentation0      Intensity0      2               41104.0  148.389892   
+2   Segmentation0      Intensity0      3              151632.0  178.180964   
+3   Segmentation0      Intensity0      4              106800.0  181.942078   
+4   Segmentation0      Intensity0      5              110136.0  188.266667   
+..            ...             ...    ...                   ...         ...   
+58  Segmentation0      Intensity0     59                2752.0  105.846154   
+59  Segmentation0      Intensity0     60               22632.0  136.337349   
+60  Segmentation0      Intensity0     61               20040.0  137.260274   
+61  Segmentation0      Intensity0     62               14320.0  132.592593   
+62  Segmentation0      Intensity0     63               12880.0  125.048544   
+
+    MEDIAN   MIN    MAX  RANGE  STANDARD_DEVIATION  ...  WEIGHTED_HU_M5  \
+0    176.0  40.0  232.0  192.0           56.038438  ...    2.775224e-31   
+1    168.0  48.0  224.0  176.0           48.834751  ...    1.865947e-12   
+2    200.0  40.0  248.0  208.0           57.811867  ...    5.235402e-13   
+3    208.0  24.0  248.0  224.0           68.344166  ...   -2.119980e-10   
+4    216.0  40.0  248.0  208.0           57.713131  ...    9.503623e-06   
+..     ...   ...    ...    ...                 ...  ...             ...   
+58   104.0  88.0  136.0   48.0           14.004834  ...             NaN   
+59   140.0  48.0  216.0  168.0           54.780505  ...             NaN   
+60   132.0  40.0  248.0  208.0           59.842097  ...             NaN   
+61   120.0  40.0  248.0  208.0           63.382099  ...             NaN   
+62   120.0  48.0  224.0  176.0           51.894195  ...             NaN   
+
+    WEIGHTED_HU_M6  WEIGHTED_HU_M7   GABOR_0  GABOR_1  GABOR_2   GABOR_3  \
+0     4.901126e-10    2.447020e-32  0.227322      0.0      0.0  0.800000   
+1     1.094818e-03   -2.652105e-12  0.375358      0.0      0.0  0.922636   
+2     3.374755e-04   -9.289798e-13  0.064581      0.0      0.0  0.957619   
+3     3.721221e-03    7.231199e-10  0.018598      0.0      0.0  0.932761   
+4    -5.115360e-03    4.167152e-06  0.000000      0.0      0.0  0.976923   
+..             ...             ...       ...      ...      ...       ...   
+58             NaN             NaN       inf      inf      inf       inf   
+59             NaN             NaN  0.754808      0.0      0.0  0.966346   
+60             NaN             NaN  0.812500      0.0      0.0  0.988636   
+61             NaN             NaN  0.812030      0.0      0.0  0.977444   
+62             NaN             NaN  0.866667      0.0      0.0  1.000000   
+
+     GABOR_4   GABOR_5   GABOR_6  
+0   0.755191  0.726776  0.710383  
+1   0.899713  0.888252  0.856734  
+2   0.945510  0.926337  0.913219  
+3   0.925608  0.907010  0.879828  
+4   0.972308  0.953846  0.940000  
+..       ...       ...       ...  
+58       inf       inf       inf  
+59  0.956731  0.927885  0.889423  
+60  0.977273  0.954545  0.914773  
+61  0.969925  0.932331  0.894737  
+62  1.000000  0.966667  0.950000  
+
+[63 rows x 417 columns]
+#+end_example
+
+<<f6e8376a-602a-4d88-9dd0-39d3449a05a6>>
+This table has a huge number of columns.
+
+<<28677bed-e8a8-4288-81d7-ba1378203713>>
+#+begin_src python
+print([f for f in features.columns])
+#+end_src
+
+#+begin_example
+['mask_image', 'intensity_image', 'label', 'INTEGRATED_INTENSITY', 'MEAN', 'MEDIAN', 'MIN', 'MAX', 'RANGE', 'STANDARD_DEVIATION', 'STANDARD_ERROR', 'SKEWNESS', 'KURTOSIS', 'HYPERSKEWNESS', 'HYPERFLATNESS', 'MEAN_ABSOLUTE_DEVIATION', 'ENERGY', 'ROOT_MEAN_SQUARED', 'ENTROPY', 'MODE', 'UNIFORMITY', 'UNIFORMITY_PIU', 'P01', 'P10', 'P25', 'P75', 'P90', 'P99', 'INTERQUARTILE_RANGE', 'ROBUST_MEAN_ABSOLUTE_DEVIATION', 'AREA_PIXELS_COUNT', 'AREA_UM2', 'CENTROID_X', 'CENTROID_Y', 'WEIGHTED_CENTROID_Y', 'WEIGHTED_CENTROID_X', 'MASS_DISPLACEMENT', 'COMPACTNESS', 'BBOX_YMIN', 'BBOX_XMIN', 'BBOX_HEIGHT', 'BBOX_WIDTH', 'DIAMETER_EQUAL_AREA', 'EXTENT', 'ASPECT_RATIO', 'MAJOR_AXIS_LENGTH', 'MINOR_AXIS_LENGTH', 'ECCENTRICITY', 'ELONGATION', 'ORIENTATION', 'ROUNDNESS', 'PERIMETER', 'DIAMETER_EQUAL_PERIMETER', 'EDGE_MEAN_INTENSITY', 'EDGE_STDDEV_INTENSITY', 'EDGE_MAX_INTENSITY', 'EDGE_MIN_INTENSITY', 'EDGE_INTEGRATED_INTENSITY', 'CIRCULARITY', 'CONVEX_HULL_AREA', 'SOLIDITY', 'EROSIONS_2_VANISH', 'EROSIONS_2_VANISH_COMPLEMENT', 'FRACT_DIM_BOXCOUNT', 'FRACT_DIM_PERIMETER', 'MIN_FERET_DIAMETER', 'MAX_FERET_DIAMETER', 'MIN_FERET_ANGLE', 'MAX_FERET_ANGLE', 'STAT_FERET_DIAM_MIN', 'STAT_FERET_DIAM_MAX', 'STAT_FERET_DIAM_MEAN', 'STAT_FERET_DIAM_MEDIAN', 'STAT_FERET_DIAM_STDDEV', 'STAT_FERET_DIAM_MODE', 'STAT_MARTIN_DIAM_MIN', 'STAT_MARTIN_DIAM_MAX', 'STAT_MARTIN_DIAM_MEAN', 'STAT_MARTIN_DIAM_MEDIAN', 'STAT_MARTIN_DIAM_STDDEV', 'STAT_MARTIN_DIAM_MODE', 'STAT_NASSENSTEIN_DIAM_MIN', 'STAT_NASSENSTEIN_DIAM_MAX', 'STAT_NASSENSTEIN_DIAM_MEAN', 'STAT_NASSENSTEIN_DIAM_MEDIAN', 'STAT_NASSENSTEIN_DIAM_STDDEV', 'STAT_NASSENSTEIN_DIAM_MODE', 'MAXCHORDS_MAX', 'MAXCHORDS_MAX_ANG', 'MAXCHORDS_MIN', 'MAXCHORDS_MIN_ANG', 'MAXCHORDS_MEDIAN', 'MAXCHORDS_MEAN', 'MAXCHORDS_MODE', 'MAXCHORDS_STDDEV', 'ALLCHORDS_MAX', 'ALLCHORDS_MAX_ANG', 'ALLCHORDS_MIN', 'ALLCHORDS_MIN_ANG', 'ALLCHORDS_MEDIAN', 'ALLCHORDS_MEAN', 'ALLCHORDS_MODE', 'ALLCHORDS_STDDEV', 'EULER_NUMBER', 'EXTREMA_P1_X', 'EXTREMA_P1_Y', 'EXTREMA_P2_X', 'EXTREMA_P2_Y', 'EXTREMA_P3_X', 'EXTREMA_P3_Y', 'EXTREMA_P4_X', 'EXTREMA_P4_Y', 'EXTREMA_P5_X', 'EXTREMA_P5_Y', 'EXTREMA_P6_X', 'EXTREMA_P6_Y', 'EXTREMA_P7_X', 'EXTREMA_P7_Y', 'EXTREMA_P8_X', 'EXTREMA_P8_Y', 'POLYGONALITY_AVE', 'HEXAGONALITY_AVE', 'HEXAGONALITY_STDDEV', 'DIAMETER_MIN_ENCLOSING_CIRCLE', 'DIAMETER_CIRCUMSCRIBING_CIRCLE', 'DIAMETER_INSCRIBING_CIRCLE', 'GEODETIC_LENGTH', 'THICKNESS', 'ROI_RADIUS_MEAN', 'ROI_RADIUS_MAX', 'ROI_RADIUS_MEDIAN', 'NUM_NEIGHBORS', 'PERCENT_TOUCHING', 'CLOSEST_NEIGHBOR1_DIST', 'CLOSEST_NEIGHBOR1_ANG', 'CLOSEST_NEIGHBOR2_DIST', 'CLOSEST_NEIGHBOR2_ANG', 'ANG_BW_NEIGHBORS_MEAN', 'ANG_BW_NEIGHBORS_STDDEV', 'ANG_BW_NEIGHBORS_MODE', 'GLCM_ANGULAR2NDMOMENT_0', 'GLCM_ANGULAR2NDMOMENT_45', 'GLCM_ANGULAR2NDMOMENT_90', 'GLCM_ANGULAR2NDMOMENT_135', 'GLCM_CONTRAST_0', 'GLCM_CONTRAST_45', 'GLCM_CONTRAST_90', 'GLCM_CONTRAST_135', 'GLCM_CORRELATION_0', 'GLCM_CORRELATION_45', 'GLCM_CORRELATION_90', 'GLCM_CORRELATION_135', 'GLCM_DIFFERENCEAVERAGE', 'GLCM_DIFFERENCEENTROPY_0', 'GLCM_DIFFERENCEENTROPY_45', 'GLCM_DIFFERENCEENTROPY_90', 'GLCM_DIFFERENCEENTROPY_135', 'GLCM_DIFFERENCEVARIANCE_0', 'GLCM_DIFFERENCEVARIANCE_45', 'GLCM_DIFFERENCEVARIANCE_90', 'GLCM_DIFFERENCEVARIANCE_135', 'GLCM_ENERGY', 'GLCM_ENTROPY_0', 'GLCM_ENTROPY_45', 'GLCM_ENTROPY_90', 'GLCM_ENTROPY_135', 'GLCM_HOMOGENEITY', 'GLCM_INFOMEAS1_0', 'GLCM_INFOMEAS1_45', 'GLCM_INFOMEAS1_90', 'GLCM_INFOMEAS1_135', 'GLCM_INFOMEAS2_0', 'GLCM_INFOMEAS2_45', 'GLCM_INFOMEAS2_90', 'GLCM_INFOMEAS2_135', 'GLCM_INVERSEDIFFERENCEMOMENT_0', 'GLCM_INVERSEDIFFERENCEMOMENT_45', 'GLCM_INVERSEDIFFERENCEMOMENT_90', 'GLCM_INVERSEDIFFERENCEMOMENT_135', 'GLCM_SUMAVERAGE_0', 'GLCM_SUMAVERAGE_45', 'GLCM_SUMAVERAGE_90', 'GLCM_SUMAVERAGE_135', 'GLCM_SUMENTROPY_0', 'GLCM_SUMENTROPY_45', 'GLCM_SUMENTROPY_90', 'GLCM_SUMENTROPY_135', 'GLCM_SUMVARIANCE_0', 'GLCM_SUMVARIANCE_45', 'GLCM_SUMVARIANCE_90', 'GLCM_SUMVARIANCE_135', 'GLCM_VARIANCE_0', 'GLCM_VARIANCE_45', 'GLCM_VARIANCE_90', 'GLCM_VARIANCE_135', 'GLRLM_SRE_0', 'GLRLM_SRE_45', 'GLRLM_SRE_90', 'GLRLM_SRE_135', 'GLRLM_LRE_0', 'GLRLM_LRE_45', 'GLRLM_LRE_90', 'GLRLM_LRE_135', 'GLRLM_GLN_0', 'GLRLM_GLN_45', 'GLRLM_GLN_90', 'GLRLM_GLN_135', 'GLRLM_GLNN_0', 'GLRLM_GLNN_45', 'GLRLM_GLNN_90', 'GLRLM_GLNN_135', 'GLRLM_RLN_0', 'GLRLM_RLN_45', 'GLRLM_RLN_90', 'GLRLM_RLN_135', 'GLRLM_RLNN_0', 'GLRLM_RLNN_45', 'GLRLM_RLNN_90', 'GLRLM_RLNN_135', 'GLRLM_RP_0', 'GLRLM_RP_45', 'GLRLM_RP_90', 'GLRLM_RP_135', 'GLRLM_GLV_0', 'GLRLM_GLV_45', 'GLRLM_GLV_90', 'GLRLM_GLV_135', 'GLRLM_RV_0', 'GLRLM_RV_45', 'GLRLM_RV_90', 'GLRLM_RV_135', 'GLRLM_RE_0', 'GLRLM_RE_45', 'GLRLM_RE_90', 'GLRLM_RE_135', 'GLRLM_LGLRE_0', 'GLRLM_LGLRE_45', 'GLRLM_LGLRE_90', 'GLRLM_LGLRE_135', 'GLRLM_HGLRE_0', 'GLRLM_HGLRE_45', 'GLRLM_HGLRE_90', 'GLRLM_HGLRE_135', 'GLRLM_SRLGLE_0', 'GLRLM_SRLGLE_45', 'GLRLM_SRLGLE_90', 'GLRLM_SRLGLE_135', 'GLRLM_SRHGLE_0', 'GLRLM_SRHGLE_45', 'GLRLM_SRHGLE_90', 'GLRLM_SRHGLE_135', 'GLRLM_LRLGLE_0', 'GLRLM_LRLGLE_45', 'GLRLM_LRLGLE_90', 'GLRLM_LRLGLE_135', 'GLRLM_LRHGLE_0', 'GLRLM_LRHGLE_45', 'GLRLM_LRHGLE_90', 'GLRLM_LRHGLE_135', 'GLSZM_SAE', 'GLSZM_LAE', 'GLSZM_GLN', 'GLSZM_GLNN', 'GLSZM_SZN', 'GLSZM_SZNN', 'GLSZM_ZP', 'GLSZM_GLV', 'GLSZM_ZV', 'GLSZM_ZE', 'GLSZM_LGLZE', 'GLSZM_HGLZE', 'GLSZM_SALGLE', 'GLSZM_SAHGLE', 'GLSZM_LALGLE', 'GLSZM_LAHGLE', 'GLDM_SDE', 'GLDM_LDE', 'GLDM_GLN', 'GLDM_DN', 'GLDM_DNN', 'GLDM_GLV', 'GLDM_DV', 'GLDM_DE', 'GLDM_LGLE', 'GLDM_HGLE', 'GLDM_SDLGLE', 'GLDM_SDHGLE', 'GLDM_LDLGLE', 'GLDM_LDHGLE', 'NGTDM_COARSENESS', 'NGTDM_CONTRAST', 'NGTDM_BUSYNESS', 'NGTDM_COMPLEXITY', 'NGTDM_STRENGTH', 'ZERNIKE2D_0', 'ZERNIKE2D_1', 'ZERNIKE2D_2', 'ZERNIKE2D_3', 'ZERNIKE2D_4', 'ZERNIKE2D_5', 'ZERNIKE2D_6', 'ZERNIKE2D_7', 'ZERNIKE2D_8', 'ZERNIKE2D_9', 'ZERNIKE2D_10', 'ZERNIKE2D_11', 'ZERNIKE2D_12', 'ZERNIKE2D_13', 'ZERNIKE2D_14', 'ZERNIKE2D_15', 'ZERNIKE2D_16', 'ZERNIKE2D_17', 'ZERNIKE2D_18', 'ZERNIKE2D_19', 'ZERNIKE2D_20', 'ZERNIKE2D_21', 'ZERNIKE2D_22', 'ZERNIKE2D_23', 'ZERNIKE2D_24', 'ZERNIKE2D_25', 'ZERNIKE2D_26', 'ZERNIKE2D_27', 'ZERNIKE2D_28', 'ZERNIKE2D_29', 'FRAC_AT_D_0', 'FRAC_AT_D_1', 'FRAC_AT_D_2', 'FRAC_AT_D_3', 'FRAC_AT_D_4', 'FRAC_AT_D_5', 'FRAC_AT_D_6', 'FRAC_AT_D_7', 'MEAN_FRAC_0', 'MEAN_FRAC_1', 'MEAN_FRAC_2', 'MEAN_FRAC_3', 'MEAN_FRAC_4', 'MEAN_FRAC_5', 'MEAN_FRAC_6', 'MEAN_FRAC_7', 'RADIAL_CV_0', 'RADIAL_CV_1', 'RADIAL_CV_2', 'RADIAL_CV_3', 'RADIAL_CV_4', 'RADIAL_CV_5', 'RADIAL_CV_6', 'RADIAL_CV_7', 'SPAT_MOMENT_00', 'SPAT_MOMENT_01', 'SPAT_MOMENT_02', 'SPAT_MOMENT_03', 'SPAT_MOMENT_10', 'SPAT_MOMENT_11', 'SPAT_MOMENT_12', 'SPAT_MOMENT_20', 'SPAT_MOMENT_21', 'SPAT_MOMENT_30', 'WEIGHTED_SPAT_MOMENT_00', 'WEIGHTED_SPAT_MOMENT_01', 'WEIGHTED_SPAT_MOMENT_02', 'WEIGHTED_SPAT_MOMENT_03', 'WEIGHTED_SPAT_MOMENT_10', 'WEIGHTED_SPAT_MOMENT_11', 'WEIGHTED_SPAT_MOMENT_12', 'WEIGHTED_SPAT_MOMENT_20', 'WEIGHTED_SPAT_MOMENT_21', 'WEIGHTED_SPAT_MOMENT_30', 'CENTRAL_MOMENT_02', 'CENTRAL_MOMENT_03', 'CENTRAL_MOMENT_11', 'CENTRAL_MOMENT_12', 'CENTRAL_MOMENT_20', 'CENTRAL_MOMENT_21', 'CENTRAL_MOMENT_30', 'WEIGHTED_CENTRAL_MOMENT_02', 'WEIGHTED_CENTRAL_MOMENT_03', 'WEIGHTED_CENTRAL_MOMENT_11', 'WEIGHTED_CENTRAL_MOMENT_12', 'WEIGHTED_CENTRAL_MOMENT_20', 'WEIGHTED_CENTRAL_MOMENT_21', 'WEIGHTED_CENTRAL_MOMENT_30', 'NORM_CENTRAL_MOMENT_02', 'NORM_CENTRAL_MOMENT_03', 'NORM_CENTRAL_MOMENT_11', 'NORM_CENTRAL_MOMENT_12', 'NORM_CENTRAL_MOMENT_20', 'NORM_CENTRAL_MOMENT_21', 'NORM_CENTRAL_MOMENT_30', 'NORM_SPAT_MOMENT_00', 'NORM_SPAT_MOMENT_01', 'NORM_SPAT_MOMENT_02', 'NORM_SPAT_MOMENT_03', 'NORM_SPAT_MOMENT_10', 'NORM_SPAT_MOMENT_20', 'NORM_SPAT_MOMENT_30', 'HU_M1', 'HU_M2', 'HU_M3', 'HU_M4', 'HU_M5', 'HU_M6', 'HU_M7', 'WEIGHTED_HU_M1', 'WEIGHTED_HU_M2', 'WEIGHTED_HU_M3', 'WEIGHTED_HU_M4', 'WEIGHTED_HU_M5', 'WEIGHTED_HU_M6', 'WEIGHTED_HU_M7', 'GABOR_0', 'GABOR_1', 'GABOR_2', 'GABOR_3', 'GABOR_4', 'GABOR_5', 'GABOR_6']
+#+end_example
+
+<<b361745b-0222-4192-b7f0-1bb0c8cf4a94>>
+Thus, one can also request only specific columns, which should also be
+faster.
+
+<<551c04f8-e692-47a6-930f-9f49adddfae3>>
+#+begin_src python
+nyx = Nyxus(['ORIENTATION', 'PERIMETER'])
+features = nyx.featurize(intensity_image, label_image)
+features
+#+end_src
+
+#+begin_example
+       mask_image intensity_image  label  ORIENTATION  PERIMETER
+0   Segmentation0      Intensity0      1    54.267520       90.0
+1   Segmentation0      Intensity0      2    85.152921       60.0
+2   Segmentation0      Intensity0      3    82.808942      101.0
+3   Segmentation0      Intensity0      4    86.016115       83.0
+4   Segmentation0      Intensity0      5    86.626543       86.0
+..            ...             ...    ...          ...        ...
+58  Segmentation0      Intensity0     59    17.474954       14.0
+59  Segmentation0      Intensity0     60    27.004816       55.0
+60  Segmentation0      Intensity0     61    35.594028       48.0
+61  Segmentation0      Intensity0     62    43.113311       40.0
+62  Segmentation0      Intensity0     63    16.436543       43.0
+
+[63 rows x 5 columns]
+#+end_example
+
+<<dcf375b9-e6c7-41ca-bc85-874f35143030>>
+Nyxus also defines
+[[https://github.com/PolusAI/nyxus#feature-groups][feature groups]] in
+case one is interested in all shape parameters for example:
+
+<<e9acf23a-2f91-453e-8449-f1799d5df09f>>
+#+begin_src python
+nyx = Nyxus(['*ALL_MORPHOLOGY*'])
+features = nyx.featurize(intensity_image, label_image)
+features
+#+end_src
+
+#+begin_example
+       mask_image intensity_image  label  AREA_PIXELS_COUNT  AREA_UM2  \
+0   Segmentation0      Intensity0      1              618.0     618.0   
+1   Segmentation0      Intensity0      2              277.0     277.0   
+2   Segmentation0      Intensity0      3              851.0     851.0   
+3   Segmentation0      Intensity0      4              587.0     587.0   
+4   Segmentation0      Intensity0      5              585.0     585.0   
+..            ...             ...    ...                ...       ...   
+58  Segmentation0      Intensity0     59               26.0      26.0   
+59  Segmentation0      Intensity0     60              166.0     166.0   
+60  Segmentation0      Intensity0     61              146.0     146.0   
+61  Segmentation0      Intensity0     62              108.0     108.0   
+62  Segmentation0      Intensity0     63              103.0     103.0   
+
+    CENTROID_X  CENTROID_Y  WEIGHTED_CENTROID_Y  WEIGHTED_CENTROID_X  \
+0    13.996764   19.925566            20.964692            14.569964   
+1     5.386282   62.841155            64.028221             5.826781   
+2    13.683901  108.360752           109.423605            14.046006   
+3    10.768313  154.402044           155.352659            11.091610   
+4    14.471795  245.709402           247.626062            14.553933   
+..         ...         ...                  ...                  ...   
+58  243.000000   76.500000            77.497093           243.941860   
+59  250.192771  127.439759           128.530223           251.759279   
+60  250.089041  178.952055           179.750499           251.684232   
+61  250.518519  234.500000           235.496648           252.100559   
+62  250.912621   73.990291            74.896894           252.377640   
+
+    MASS_DISPLACEMENT  ...  ROUNDNESS  PERIMETER  DIAMETER_EQUAL_PERIMETER  \
+0            1.186736  ...   0.556444       90.0                 28.647890   
+1            1.266162  ...   0.538386       60.0                 19.098593   
+2            1.122842  ...   0.955491      101.0                 32.149299   
+3            1.004086  ...   0.897266       83.0                 26.419721   
+4            1.918420  ...   0.652867       86.0                 27.374650   
+..                ...  ...        ...        ...                       ...   
+58           1.371603  ...   0.831872       14.0                  4.456338   
+59           1.908680  ...   0.285586       55.0                 17.507044   
+60           1.783857  ...   0.346108       48.0                 15.278875   
+61           1.869802  ...   0.360323       40.0                 12.732395   
+62           1.722849  ...   0.274059       43.0                 13.687325   
+
+    EDGE_MEAN_INTENSITY  EDGE_STDDEV_INTENSITY  EDGE_MAX_INTENSITY  \
+0             89.511111              54.640242               232.0   
+1            108.400000              56.037276               200.0   
+2             99.881188              67.339036               240.0   
+3             95.807229              66.335154               248.0   
+4            133.209302              77.210349               240.0   
+..                  ...                    ...                 ...   
+58            95.428571               7.334998               112.0   
+59           119.127273              66.571892               216.0   
+60           115.166667              71.587273               248.0   
+61           119.600000              75.242105               248.0   
+62           117.395349              64.420545               224.0   
+
+    EDGE_MIN_INTENSITY  CIRCULARITY  CONVEX_HULL_AREA  SOLIDITY  
+0                 40.0     0.979167             723.0  0.854772  
+1                 48.0     0.983317             404.5  0.684796  
+2                 40.0     1.023878            1007.5  0.844665  
+3                 24.0     1.034775             699.0  0.839771  
+4                 40.0     0.996975            1265.0  0.462451  
+..                 ...          ...               ...       ...  
+58                88.0     1.291111             334.0  0.077844  
+59                48.0     0.830417            1251.5  0.132641  
+60                40.0     0.892360            1038.0  0.140655  
+61                40.0     0.920994             813.0  0.132841  
+62                48.0     0.836672            1347.5  0.076438  
+
+[63 rows x 32 columns]
+#+end_example
+
+<<8f9062ac-9397-4542-8847-18ef303bccf1>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+
+<<f8ea0021-8273-4b38-af0a-afea8ccace53>>
+Make a table with only =solidity=, =circularity= and =roundness=.
+
+<<32856292-6fea-49e2-a024-a71a320291c8>>
+#+begin_src python
+#+end_src

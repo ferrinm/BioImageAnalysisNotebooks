@@ -1,0 +1,95 @@
+<<legitimate-reynolds>>
+* Gauss-Otsu-labeling
+  :PROPERTIES:
+  :CUSTOM_ID: gauss-otsu-labeling
+  :END:
+We have so far processed images using filters such as Gaussian blurring,
+threshold algorithms such as Otsu's method and we labeled objects using
+connected component labeling. The combination of these three algorithms
+in particular is so common, that there are convenience functions
+available to exectue those three operations in one shot. This workflow
+for image segmentation is a very simple approach, e.g. for detecting and
+segmenting nuclei in fluorescence micropscopy images. It will work if
+the objects are not too dense.
+
+<<0c74d868-7457-42a0-b309-e399ef428e55>>
+#+begin_src python
+from skimage.io import imread
+import matplotlib.pyplot as plt
+import pyclesperanto_prototype as cle
+#+end_src
+
+<<62d19bb6-e24d-4211-8ac3-2816cae251b1>>
+To demonstrate the workflow, we're using image data from the
+[[https://bbbc.broadinstitute.org/BBBC022][Broad Bio Image Challenge]]:
+We used image set BBBC022v1
+[[http://dx.doi.org/10.1371/journal.pone.0080999][Gustafsdottir et al.,
+PLOS ONE, 2013]], available from the Broad Bioimage Benchmark Collection
+[[http://dx.doi.org/10.1038/nmeth.2083][Ljosa et al., Nature Methods,
+2012]].
+
+<<simplified-minutes>>
+We load the image and for visualisation purposes we crop out a
+sub-region:
+
+<<aboriginal-medline>>
+#+begin_src python
+input_image = imread("../../data/BBBC022/IXMtest_A02_s9.tif")[:,:,0]
+
+input_crop = input_image[0:200, 200:400]
+
+fig, axs = plt.subplots(1, 2, figsize=(15, 15))
+cle.imshow(input_image, plot=axs[0])
+cle.imshow(input_crop, plot=axs[1])
+#+end_src
+
+[[file:8b92fbee83a98e8a3c011b4876d2508f44b4fa3b.png]]
+
+<<broke-northwest>>
+** Applying the algorithm
+   :PROPERTIES:
+   :CUSTOM_ID: applying-the-algorithm
+   :END:
+Gauss-Otsu-labeling is a command in
+[[https://github.com/clesperanto/pyclesperanto_prototype/][pyclesperanto]]
+and the scriptable napari plugin
+[[https://github.com/haesleinhuepf/napari-segment-blobs-and-things-with-membranes][napari-segment-blobs-and-things-with-membranes]].
+The operation has a =outline_sigma= parameter for controlling how
+precise segmented objects are outlined.
+
+<<functional-mercy>>
+#+begin_src python
+sigma_outline = 1
+
+segmented = cle.gauss_otsu_labeling(input_image, outline_sigma=sigma_outline)
+segmented_crop = segmented[0:200, 200:400]
+
+fig, axs = plt.subplots(1, 2, figsize=(15, 15))
+cle.imshow(segmented, labels=True, plot=axs[0])
+cle.imshow(segmented_crop, labels=True, plot=axs[1])
+#+end_src
+
+[[file:ff933a4f7dcd90445ee56060966778e3148352e6.png]]
+
+<<2cbb1faa-2e52-4d2d-8827-bc4dc9c19d71>>
+#+begin_src python
+sigma_outline = 7
+
+segmented = cle.gauss_otsu_labeling(input_image, outline_sigma=sigma_outline)
+segmented_crop = segmented[0:200, 200:400]
+
+fig, axs = plt.subplots(1, 2, figsize=(15, 15))
+cle.imshow(segmented, labels=True, plot=axs[0])
+cle.imshow(segmented_crop, labels=True, plot=axs[1])
+#+end_src
+
+[[file:a930c65191e2520c03ab814e6a5d82b30b18bfc4.png]]
+
+<<0e31e6a1-60c5-44e8-bc8b-8b6e389989c2>>
+As you can see, if objects are too close, they will be segmented
+together. In these cases it is recommended to try
+[[https://github.com/clEsperanto/pyclesperanto_prototype/blob/master/demo/segmentation/voronoi_otsu_labeling.ipynb][Voronoi-Otsu-Labeling]].
+
+<<628c87a9-a9b0-49ea-8389-aea347f43613>>
+#+begin_src python
+#+end_src

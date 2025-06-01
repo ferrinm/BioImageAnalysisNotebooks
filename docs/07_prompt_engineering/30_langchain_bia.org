@@ -1,0 +1,260 @@
+<<b97b3b00-8ff4-4e1b-b7c7-709f87aabc37>>
+** Prompting bio-image analysis tasks using LangChain
+   :PROPERTIES:
+   :CUSTOM_ID: prompting-bio-image-analysis-tasks-using-langchain
+   :END:
+In this notebook we demonstrate how to prompt for executing bio-image
+analysis tasks using chatGPT and
+[[https://github.com/hwchase17/langchain][LangChain]].
+
+<<f4ae3a80-b6ea-4409-95b7-caecd4e4211c>>
+#+begin_src python
+from langchain.memory import ConversationBufferMemory
+from langchain.chat_models import ChatOpenAI
+from langchain.agents import initialize_agent
+from langchain.agents import AgentType
+from langchain.tools import tool
+
+from skimage.io import imread
+from napari_segment_blobs_and_things_with_membranes import voronoi_otsu_labeling
+
+import stackview
+#+end_src
+
+<<6b78c8e5-58d1-4750-b659-e639a2b99d2f>>
+For accomplishing this, we need an image storage. To keep it simple, we
+use a dictionary.
+
+<<8f8158b6-5a36-4cad-a28f-42cd375a0d4f>>
+#+begin_src python
+image_storage = {}
+#+end_src
+
+<<a68ae717-2f4d-4327-b7f1-a4cf13e874d3>>
+To demonstrate bio-image analysis using English language, we define
+common bio-image analysis functions for loading images, segmenting and
+counting objects and showing results.
+
+<<a9a8ad4d-7328-465c-8887-cf3fde3d42f1>>
+#+begin_src python
+tools = []
+#+end_src
+
+<<bc5b05a7-8ef6-458f-acbf-1c79e26cf9fb>>
+#+begin_src python
+@tools.append
+@tool
+def load_image(filename:str):
+    """Useful for loading an image file and storing it."""
+    print("loading", filename)
+    image = imread(filename)
+    image_storage[filename] = image
+    return "The image is now stored as " + filename
+#+end_src
+
+<<993a17aa-57b2-4e72-b546-0ec7199c40c6>>
+#+begin_src python
+@tools.append
+@tool
+def segment_bright_objects(image_name):
+    """Useful for segmenting bright objects in an image that has been loaded and stored before."""
+    print("segmenting", image_name)
+    
+    image = image_storage[image_name]
+    label_image = voronoi_otsu_labeling(image, spot_sigma=4)
+    
+    label_image_name = "segmented_" + image_name
+    image_storage[label_image_name] = label_image
+    
+    return "The segmented image has been stored as " + label_image_name
+#+end_src
+
+<<a11fe914-4162-4ca3-b067-e5278711e3f3>>
+#+begin_src python
+@tools.append
+@tool
+def show_image(image_name):
+    """Useful for showing an image that has been loaded and stored before."""
+    print("showing", image_name)
+    
+    image = image_storage[image_name]
+    display(stackview.insight(image))
+    
+    return "The image " + image_name + " is shown above."
+#+end_src
+
+<<877a4c52-cea0-4a18-b1f4-7a88709713bd>>
+#+begin_src python
+@tools.append
+@tool
+def count_objects(image_name):
+    """Useful for counting objects in a segmented image that has been loaded and stored before."""
+    label_image = image_storage[image_name]
+    
+    num_labels = label_image.max()
+    print("counting labels in ", image_name, ":", num_labels)
+
+    return f"The label image {image_name} contains {num_labels} labels."
+#+end_src
+
+<<c0524eb1-7633-45e7-982b-1c2cc5af0b16>>
+We create some memory and a large language model based on OpenAI's
+chatGPT.
+
+<<5d032bf0-49d1-42d4-9654-394a9e660996>>
+#+begin_src python
+memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+llm=ChatOpenAI(temperature=0)
+#+end_src
+
+<<7bda4152-8cd8-4257-8e7a-e31fca49ffad>>
+Given the list of tools, the large language model and the memory, we can
+create an agent.
+
+<<28afdf8e-87f2-44a7-9f8d-ef188e0f13b5>>
+#+begin_src python
+agent = initialize_agent(
+    tools, 
+    llm, 
+    agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION, 
+    memory=memory
+)
+#+end_src
+
+<<23e3065d-8d55-46dc-b160-ff4349ee3beb>>
+This agent can then respond to prompts.
+
+<<5bf8d165-de48-4052-8121-d0bedac8a3e2>>
+#+begin_src python
+agent.run("Please load the image ../../data/blobs.tif and show it.")
+#+end_src
+
+#+begin_example
+loading ../../data/blobs.tif
+showing ../../data/blobs.tif
+#+end_example
+
+#+begin_example
+StackViewNDArray([[ 40,  32,  24, ..., 216, 200, 200],
+                  [ 56,  40,  24, ..., 232, 216, 216],
+                  [ 64,  48,  24, ..., 240, 232, 232],
+                  ...,
+                  [ 72,  80,  80, ...,  48,  48,  48],
+                  [ 80,  80,  80, ...,  48,  48,  48],
+                  [ 96,  88,  80, ...,  48,  48,  48]], dtype=uint8)
+#+end_example
+
+#+begin_example
+'The image ../../data/blobs.tif is shown above.'
+#+end_example
+
+<<3a78de42-7960-43f0-a62b-98106e57e75a>>
+#+begin_src python
+agent.run("Please segment the image ../../data/blobs.tif .")
+#+end_src
+
+#+begin_example
+segmenting ../../data/blobs.tif
+#+end_example
+
+#+begin_example
+'The segmented image has been stored as segmented_../../data/blobs.tif'
+#+end_example
+
+<<ae00622c-0d17-4d73-adfc-3a0622024ea4>>
+#+begin_src python
+agent.run("Please show the segmented ../../data/blobs.tif image.")
+#+end_src
+
+#+begin_example
+showing segmented_../../data/blobs.tif
+#+end_example
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 4, 4, 4],
+                  [0, 0, 0, ..., 4, 4, 4],
+                  [0, 0, 0, ..., 4, 4, 4],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]])
+#+end_example
+
+#+begin_example
+'The segmented image ../../data/blobs.tif is shown above.'
+#+end_example
+
+<<a24ce242-2e1d-4f62-9dc4-c86fc5a7cd07>>
+#+begin_src python
+agent.run("How many objects are there in the segmented ../../data/blobs.tif image?")
+#+end_src
+
+#+begin_example
+counting labels in  segmented_../../data/blobs.tif : 64
+#+end_example
+
+#+begin_example
+'The segmented ../../data/blobs.tif image contains 64 objects.'
+#+end_example
+
+<<d7fb9cc5-d363-4c00-adb2-c9ad6c034329>>
+** Chaining operations
+   :PROPERTIES:
+   :CUSTOM_ID: chaining-operations
+   :END:
+We can also chain these operations in a single sentence and the =agent=
+will figure out on it's own how to do this.
+
+<<58777103-f702-4e10-a01d-a98dc367d760>>
+#+begin_src python
+# empty memory and start from scratch
+image_memory = {}
+#+end_src
+
+<<13826a98-69ec-4772-b74e-308b29752e41>>
+#+begin_src python
+agent.run("""
+Please load the image ../../data/blobs.tif, 
+segment bright objects in it, 
+count them and 
+show the segmentation result.
+""")
+#+end_src
+
+#+begin_example
+loading ../../data/blobs.tif
+segmenting ../../data/blobs.tif
+counting labels in  segmented_../../data/blobs.tif : 64
+showing segmented_../../data/blobs.tif
+#+end_example
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 4, 4, 4],
+                  [0, 0, 0, ..., 4, 4, 4],
+                  [0, 0, 0, ..., 4, 4, 4],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]])
+#+end_example
+
+#+begin_example
+'The segmented image has been shown.'
+#+end_example
+
+<<3285fc66-aa9f-481d-86ef-816378314887>>
+#+begin_src python
+agent.run("How many objects were there?")
+#+end_src
+
+#+begin_example
+counting labels in  segmented_../../data/blobs.tif : 64
+#+end_example
+
+#+begin_example
+'The segmented image contains 64 objects.'
+#+end_example
+
+<<b67756af-d608-4a24-a202-586425087e60>>
+#+begin_src python
+#+end_src

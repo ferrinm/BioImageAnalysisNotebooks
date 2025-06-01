@@ -1,0 +1,155 @@
+<<0532bcef-9980-4ab7-b8d0-c331a4949cbf>>
+* Prompting for text
+  :PROPERTIES:
+  :CUSTOM_ID: prompting-for-text
+  :END:
+In this notebook we collect a few use-cases for prompting chatGPT. We
+will also see some not so useful cases.
+
+<<9e2b9c11-0382-412e-a777-8609148757fd>>
+#+begin_src python
+from openai import OpenAI
+from IPython.core.magic import register_line_cell_magic
+from IPython.display import display, Markdown
+#+end_src
+
+<<ca746212-7688-4e08-8a5f-b5edca583386>>
+#+begin_src python
+@register_line_cell_magic
+def prompt(line:str, cell:str, model="gpt-3.5-turbo"):
+    """A prompt helper function that sends a message to openAI
+    and prints out the text response.
+    """
+    message = line + "\n" + cell
+    client = OpenAI()
+    response = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": message}]
+    )
+    text = response.choices[0].message.content
+    display(Markdown(text))
+#+end_src
+
+<<71fe797b-fb56-422f-b0c8-eedda41b70ca>>
+** Translation
+   :PROPERTIES:
+   :CUSTOM_ID: translation
+   :END:
+chatGPT works very well for translating text.
+
+<<6d86a1a5-a4c8-4d8d-b762-884882eb819a>>
+#+begin_src python
+%%prompt
+Translate the following joke to German:
+
+What is every parent's favorite Christmas song? Silent Night!
+#+end_src
+
+#+begin_example
+<IPython.core.display.Markdown object>
+#+end_example
+
+<<70043127-9ef4-4854-8531-2d511a03db1d>>
+** Restructuring data
+   :PROPERTIES:
+   :CUSTOM_ID: restructuring-data
+   :END:
+It also works well for extracting data from text.
+
+<<f57c6027-c1f5-46fb-986a-abd5e083f3f0>>
+#+begin_src python
+%%prompt
+Given a story, please restructure the contained data.
+
+Story:
+The compute center of the university recently conducted a study to figure 
+out needs of students for computational resources. After interviewing 100 
+students they concluded that most of them were happy with 250 GB of cloud
+storage.
+
+Restructure the story above to extract these numbers:
+* Number of students asked:
+* Cloud storage size:
+#+end_src
+
+#+begin_example
+<IPython.core.display.Markdown object>
+#+end_example
+
+<<726bad09-214e-498e-8b4a-3dad6b54ec8b>>
+** Knowledge
+   :PROPERTIES:
+   :CUSTOM_ID: knowledge
+   :END:
+chatGPT has some weak sides when it comes to quering for data. It may,
+or may not tell the truth. Also note that the used model is trained on
+the internet from the past.
+
+<<b6fc5028-a4b7-4ee4-b52b-757332775ee2>>
+#+begin_src python
+%%prompt
+What's Robert Haase's (Uni Leipzig) research field ?
+#+end_src
+
+#+begin_example
+<IPython.core.display.Markdown object>
+#+end_example
+
+<<63d62b2d-7482-4963-98bd-ddce6bc26541>>
+#+begin_src python
+%%prompt
+What's Robert Haase's (TU Dresden) research field ?
+#+end_src
+
+#+begin_example
+<IPython.core.display.Markdown object>
+#+end_example
+
+<<676d13f0-6ab9-4c52-9698-0c5508fc4a94>>
+** Math
+   :PROPERTIES:
+   :CUSTOM_ID: math
+   :END:
+
+<<2b6752d1-4642-4da2-845d-1c50a6055bd7>>
+#+begin_src python
+%%prompt
+If there are 100 students who each require 250 GB of cloud storage, how much storage do we need in total ? 
+#+end_src
+
+#+begin_example
+<IPython.core.display.Markdown object>
+#+end_example
+
+<<8e4958e9-3268-4a7f-94fc-a92ee13500c1>>
+#+begin_src python
+%%prompt
+I have 5 apples, 6 oranges and 4 potatoes. How many fruits to I have?
+#+end_src
+
+#+begin_example
+<IPython.core.display.Markdown object>
+#+end_example
+
+<<70367746-455d-4d0e-94b6-5e9133089b32>>
+#+begin_src python
+%%prompt
+How many o are in Woolloomooloo ?
+#+end_src
+
+#+begin_example
+<IPython.core.display.Markdown object>
+#+end_example
+
+<<7e98bbe0-ed42-41a9-8230-97fff380f78a>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Come up with two more examples: One where chatGPT works reproducibly,
+and one where it reproducibly answers wrong information or denies
+answering.
+
+<<5827d332-7c95-4a38-8cec-717ac8d6d9b0>>
+#+begin_src python
+#+end_src

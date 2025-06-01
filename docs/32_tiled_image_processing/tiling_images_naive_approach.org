@@ -1,0 +1,165 @@
+<<ad93ffe5-30c3-48a5-97e0-325f1115e87e>>
+* Tiling images - the naive approach
+  :PROPERTIES:
+  :CUSTOM_ID: tiling-images---the-naive-approach
+  :END:
+In tiled image processing, the first step is cutting the image into
+tiles. While this could be done with numpy, we will use
+[[https://docs.dask.org/en/stable/][dask]] because it comes with
+multiple very useful features in this context.
+
+<<2b3cec13-b530-4fe3-9bcf-d21442119bff>>
+#+begin_src python
+import dask
+import dask.array as da
+from skimage.filters import gaussian
+from skimage.data import cells3d
+from pyclesperanto_prototype import imshow
+#+end_src
+
+<<272c907a-1edf-493e-a3f4-4745dfffe119>>
+In the first example we will use an image showing nuclei from
+fluorescence microscopy and just denoise the image using a Gaussian
+blur. We will do this tile-by-tile. For that, we first define the
+=procedure= that should be applied to all tiles. We build in a print
+statement into this function to when it's executed and how large the
+image is that is being processed.
+
+<<271d74cd-79ff-4af1-8ef9-df350943e41b>>
+#+begin_src python
+def procedure(image):
+    print("proceduring", image.shape)
+    return gaussian(image, sigma=5)
+#+end_src
+
+<<aabf7efe-a856-4fc8-97f3-0862214a0ceb>>
+#+begin_src python
+image = cells3d()[30,1]
+imshow(image)
+#+end_src
+
+[[file:eeb11d9eba11150741a860b3062318495a761646.png]]
+
+<<87719d45-2cf8-4c2b-b74c-c8c7562ee105>>
+After loading the image, it can be tiled like that. In dask, tiles are
+also called /chunks/.
+
+<<57e9b0d8-930e-44b5-b2a6-3b6e15addbb9>>
+#+begin_src python
+tiles = da.from_array(image, chunks=(128, 128))
+tiles
+#+end_src
+
+#+begin_example
+dask.array<array, shape=(256, 256), dtype=uint16, chunksize=(128, 128), chunktype=numpy.ndarray>
+#+end_example
+
+<<f48fa77d-eb57-434c-9521-b9f8d2ea5e4f>>
+Next, we tell dask what to do with our tiles. We want to /map/ the
+function =procedure= on all individual tiles. Note, this does not
+process the whole image yet.
+
+<<d88ff9f3-fd1a-40d0-9449-9e75966e83dc>>
+#+begin_src python
+tile_map = da.map_blocks(procedure, tiles)
+#+end_src
+
+#+begin_example
+proceduring (0, 0)
+proceduring (1, 1)
+#+end_example
+
+<<c012e7e1-ec02-448a-ae0e-0ae734b605ee>>
+As we can read, the function was executed twice with very small images
+(0x0 and 1x1 pixels). Dask does that in principle to explore if the
+function works. Next, we will actually execute our =procedure= on the
+tiles of the image.
+
+<<dbb25b86-8838-4182-960b-4e41ab7f01a9>>
+#+begin_src python
+result = tile_map.compute() # Warning: This loads all image data into memory
+#+end_src
+
+#+begin_example
+proceduringproceduring (128, 128)
+ (128, 128)
+proceduring (128, 128)
+proceduring (128, 128)
+#+end_example
+
+<<3a12f60e-1532-4b05-a552-3eeb7c4d0507>>
+The printed output looks a bit chaotic because dask executed the
+=procedure= on multiple tiles in parallel. If we inspect the result, we
+will see it is again an image.
+
+<<a3de836f-58d9-4264-9ccf-b30566140c22>>
+#+begin_src python
+result.shape
+#+end_src
+
+#+begin_example
+(256, 256)
+#+end_example
+
+<<2d8718e1-c1c9-4470-a759-7dd75afac42e>>
+#+begin_src python
+type(result)
+#+end_src
+
+#+begin_example
+numpy.ndarray
+#+end_example
+
+<<de3a693b-e740-4e62-8afc-3a87a51352d7>>
+*Note:* The =imshow= function may not work on big datasets. We are using
+it here for demonstration purposes.
+
+<<8b1b2253-f8d7-4ccf-afb1-a19d7d832bd6>>
+#+begin_src python
+imshow(result)
+#+end_src
+
+[[file:92a40d237b305669fb7e0f7a91e2d1f88fe5a9ad.png]]
+
+<<ec5fe4fc-9a1b-4a86-b4a6-9ded08680f1e>>
+** Border effects
+   :PROPERTIES:
+   :CUSTOM_ID: border-effects
+   :END:
+When processing images tile-by-tile we always must assume that along the
+border artifacts appear that result from cutting the image into tiles.
+As our example image fits in memory, we can apply =procedure= to it and
+compare it to the result from the tiled image processing
+
+<<acba23de-f12d-4d25-8d02-e174c12c67da>>
+#+begin_src python
+untiled_result = procedure(image)
+imshow(untiled_result)
+#+end_src
+
+#+begin_example
+proceduring (256, 256)
+#+end_example
+
+[[file:37bf618b3b3cdcde6671b8932d85cfce3ea2bda5.png]]
+
+<<995c3072-d8a8-4e5f-989b-e3e66a63bef1>>
+The differences are not obvious, but we can visualize them.
+
+<<ac4d28c8-aed0-4980-8b75-3a37c95adf18>>
+#+begin_src python
+difference = result - untiled_result
+imshow(difference)
+#+end_src
+
+[[file:374cc7c23fa90469f1b21650c4e05bc355b8d7a4.png]]
+
+<<b7bf21fc-8364-488e-a40e-e6d18c6ff869>>
+When applying a Gaussian blur with a small sigma, these effects may be
+negligible. In case the effects cause severe issues in our image
+processing workflow, we may want to reduce or even prevent those
+artifacts.
+
+<<8ed2f58a-529b-4924-9fc6-eb74e0c53487>>
+#+begin_src python
+#+end_src

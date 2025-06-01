@@ -1,0 +1,232 @@
+<<99c606f8-037f-4258-81e7-a9f4ac511242>>
+* Introduction to working with DataFrames
+  :PROPERTIES:
+  :CUSTOM_ID: introduction-to-working-with-dataframes
+  :END:
+In basic python, we often use dictionaries containing our measurements
+as vectors. While these basic structures are handy for collecting data,
+they are suboptimal for further data processing. For that we introduce
+[[https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html][panda
+DataFrames]] which are more handy in the next steps. In Python,
+scientists often call tables "DataFrames".
+
+<<0cfceb6c-1acc-4632-b084-8b0871a7c50a>>
+#+begin_src python
+import pandas as pd
+#+end_src
+
+<<8b77888b-c9a8-4a67-a4eb-f7df46eda970>>
+** Creating DataFrames from a dictionary of lists
+   :PROPERTIES:
+   :CUSTOM_ID: creating-dataframes-from-a-dictionary-of-lists
+   :END:
+Assume we did some image processing and have some results available in a
+dictionary that contains lists of numbers:
+
+<<ff80484f-657b-4231-8d8f-cdc26577542b>>
+#+begin_src python
+measurements = {
+    "labels":      [1, 2, 3],
+    "area":       [45, 23, 68],
+    "minor_axis": [2, 4, 4],
+    "major_axis": [3, 4, 5],
+}
+#+end_src
+
+<<b2afa6a9-e15c-4147-bdd4-ec4d4f87fb36>>
+This data structure can be nicely visualized using a DataFrame:
+
+<<8bf4e4b5-ef72-4f63-84d2-48cc3a77c297>>
+#+begin_src python
+df = pd.DataFrame(measurements)
+df
+#+end_src
+
+#+begin_example
+   labels  area  minor_axis  major_axis
+0       1    45           2           3
+1       2    23           4           4
+2       3    68           4           5
+#+end_example
+
+<<930c082b-8f16-4711-b3e0-e56a7ec6d272>>
+Using these DataFrames, data modification is straighforward. For example
+one can append a new column and compute its values from existing
+columns:
+
+<<a34866ff-a2cb-4a7c-a4e8-4544559b634c>>
+#+begin_src python
+df["aspect_ratio"] = df["major_axis"] / df["minor_axis"]
+df
+#+end_src
+
+#+begin_example
+   labels  area  minor_axis  major_axis  aspect_ratio
+0       1    45           2           3          1.50
+1       2    23           4           4          1.00
+2       3    68           4           5          1.25
+#+end_example
+
+<<201a2142-22c7-4607-bc2d-f1dfce4c7e26>>
+** Saving data frames
+   :PROPERTIES:
+   :CUSTOM_ID: saving-data-frames
+   :END:
+We can also save this table for continuing to work with it.
+
+<<fb01d2d9-4d8b-4b6a-b158-9516a581e000>>
+#+begin_src python
+df.to_csv("../../data/short_table.csv")
+#+end_src
+
+<<ccf08662-fccf-4dc1-91c2-3365fa85a96b>>
+** Loading data frames
+   :PROPERTIES:
+   :CUSTOM_ID: loading-data-frames
+   :END:
+Tables can also be read from CSV files.
+
+<<aa7c74db-68ab-4004-aa5e-01ba1ad88c79>>
+#+begin_src python
+df_csv = pd.read_csv('../../data/blobs_statistics.csv')
+df_csv
+#+end_src
+
+#+begin_example
+    Unnamed: 0  area  mean_intensity  minor_axis_length  major_axis_length   
+0            0   422      192.379147          16.488550          34.566789  \
+1            1   182      180.131868          11.736074          20.802697   
+2            2   661      205.216339          28.409502          30.208433   
+3            3   437      216.585812          23.143996          24.606130   
+4            4   476      212.302521          19.852882          31.075106   
+..         ...   ...             ...                ...                ...   
+56          56   211      185.061611          14.522762          18.489138   
+57          57    78      185.230769           6.028638          17.579799   
+58          58    86      183.720930           5.426871          21.261427   
+59          59    51      190.431373           5.032414          13.742079   
+60          60    46      175.304348           3.803982          15.948714   
+
+    eccentricity    extent  feret_diameter_max  equivalent_diameter_area   
+0       0.878900  0.586111           35.227830                 23.179885  \
+1       0.825665  0.787879           21.377558                 15.222667   
+2       0.339934  0.874339           32.756679                 29.010538   
+3       0.339576  0.826087           26.925824                 23.588253   
+4       0.769317  0.863884           31.384710                 24.618327   
+..           ...       ...                 ...                       ...   
+56      0.618893  0.781481           18.973666                 16.390654   
+57      0.939361  0.722222           18.027756                  9.965575   
+58      0.966876  0.781818           22.000000                 10.464158   
+59      0.930534  0.728571           14.035669                  8.058239   
+60      0.971139  0.766667           15.033296                  7.653040   
+
+    bbox-0  bbox-1  bbox-2  bbox-3  
+0        0      11      30      35  
+1        0      53      11      74  
+2        0      95      28     122  
+3        0     144      23     167  
+4        0     237      29     256  
+..     ...     ...     ...     ...  
+56     232      39     250      54  
+57     248     170     254     188  
+58     249     117     254     139  
+59     249     228     254     242  
+60     250      67     254      82  
+
+[61 rows x 13 columns]
+#+end_example
+
+<<01732b57-35d9-4b25-9c1b-d322487d2757>>
+Typically, we don't need all the information in these tables and thus,
+it makes sense to reduce the table. For that, we print out the column
+names first.
+
+<<cc7d6cbe-6487-49a6-84b2-e837f7070f25>>
+#+begin_src python
+df_csv.keys()
+#+end_src
+
+#+begin_example
+Index(['Unnamed: 0', 'area', 'mean_intensity', 'minor_axis_length',
+       'major_axis_length', 'eccentricity', 'extent', 'feret_diameter_max',
+       'equivalent_diameter_area', 'bbox-0', 'bbox-1', 'bbox-2', 'bbox-3'],
+      dtype='object')
+#+end_example
+
+<<ff187a52-9fc0-4f6f-b143-f872dfe620c2>>
+We can then copy&paste the column names we're interested in and create a
+new data frame.
+
+<<b1f03533-e9d0-4880-af3f-c9766df56f29>>
+#+begin_src python
+df_analysis = df_csv[['area', 'mean_intensity']]
+df_analysis
+#+end_src
+
+#+begin_example
+    area  mean_intensity
+0    422      192.379147
+1    182      180.131868
+2    661      205.216339
+3    437      216.585812
+4    476      212.302521
+..   ...             ...
+56   211      185.061611
+57    78      185.230769
+58    86      183.720930
+59    51      190.431373
+60    46      175.304348
+
+[61 rows x 2 columns]
+#+end_example
+
+<<64eb1086-ebc8-4905-afc2-ed0dc01620b9>>
+You can then access columns and add new columns.
+
+<<402892eb-b1ea-4f11-b272-9c44207f7991>>
+#+begin_src python
+df_analysis['total_intensity'] = df_analysis['area'] * df_analysis['mean_intensity']
+df_analysis
+#+end_src
+
+#+begin_example
+C:\Users\haase\AppData\Local\Temp\ipykernel_3576\206920941.py:1: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  df_analysis['total_intensity'] = df_analysis['area'] * df_analysis['mean_intensity']
+#+end_example
+
+#+begin_example
+    area  mean_intensity  total_intensity
+0    422      192.379147          81184.0
+1    182      180.131868          32784.0
+2    661      205.216339         135648.0
+3    437      216.585812          94648.0
+4    476      212.302521         101056.0
+..   ...             ...              ...
+56   211      185.061611          39048.0
+57    78      185.230769          14448.0
+58    86      183.720930          15800.0
+59    51      190.431373           9712.0
+60    46      175.304348           8064.0
+
+[61 rows x 3 columns]
+#+end_example
+
+<<9db24255-2290-4e83-ac74-93d780378175>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+For the loaded CSV file, create a table that only contains these
+columns:
+
+- =minor_axis_length=
+- =major_axis_length=
+- =aspect_ratio=
+
+<<87f226cd-721b-43e3-a31a-faed5e8a6733>>
+#+begin_src python
+df_shape = pd.read_csv('../../data/blobs_statistics.csv')
+#+end_src

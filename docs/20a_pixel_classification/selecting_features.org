@@ -1,0 +1,192 @@
+<<ce720e69>>
+* Selecting features
+  :PROPERTIES:
+  :CUSTOM_ID: selecting-features
+  :END:
+When selecting the right features, there are some rules of thumb one can
+take into account. For example if one wants to segment objects very
+precisely, small radius / sigma values should be used. If a rough
+outline is enough, or if single individual pixels on borders of objects
+should be eliminated, it makes sense to use larger radius and sigma
+values. However, this topic can also be approached using statistics.
+
+<<030613f9>>
+#+begin_src python
+from skimage.io import imread, imsave
+import pyclesperanto_prototype as cle
+import numpy as np
+import apoc
+import matplotlib.pyplot as plt
+import pandas as pd
+#+end_src
+
+<<4384e011-ad91-4c63-b8bc-f60b1f3c80ee>>
+#+begin_src python
+image = imread('../../data/blobs.tif')
+
+manual_annotation = imread('../../data/blobs_annotations.tif')
+
+fig, axs = plt.subplots(1,2)
+
+cle.imshow(image, plot=axs[0])
+cle.imshow(manual_annotation, labels=True, plot=axs[1])
+#+end_src
+
+[[file:44d874f274427d4127a3b91d801185c6537aeca3.png]]
+
+<<f0299779>>
+** Training - with too many features
+   :PROPERTIES:
+   :CUSTOM_ID: training---with-too-many-features
+   :END:
+We now train a object segmenter and provide many features. We also need
+to provide parameters to configure deep decision trees and many trees.
+This is necessary so that the next steps, deriving statistics, has
+enough statistical power. Afterwards, we take a look at the result for a
+quick sanity check.
+
+<<8c162a7f>>
+#+begin_src python
+# define features
+features = apoc.PredefinedFeatureSet.small_dog_log.value + " " + \
+           apoc.PredefinedFeatureSet.medium_dog_log.value + " " + \
+           apoc.PredefinedFeatureSet.large_dog_log.value
+
+# this is where the model will be saved
+cl_filename = '../../data/blobs_object_segmenter2.cl'
+
+apoc.erase_classifier(cl_filename)
+classifier = apoc.ObjectSegmenter(opencl_filename=cl_filename, 
+                           positive_class_identifier=2, 
+                           max_depth=5,
+                           num_ensembles=1000)
+classifier.train(features, manual_annotation, image)
+
+segmentation_result = classifier.predict(features=features, image=image)
+cle.imshow(segmentation_result, labels=True)
+#+end_src
+
+[[file:28266759305895c2c4c2651c231f9fa130b43a1a.png]]
+
+<<3e44ce73-caac-4dc9-b47d-99fac1c3cd8b>>
+** Classifier statistics
+   :PROPERTIES:
+   :CUSTOM_ID: classifier-statistics
+   :END:
+After training, we can print out some statistics from the classifier. It
+gives us a table of used features and how important the features were
+for making the pixel classification decision.
+
+<<d23985a4-ef78-4704-9c72-2f725d00ed47>>
+#+begin_src python
+shares, counts = classifier.statistics()
+
+def colorize(styler):
+    styler.background_gradient(axis=None, cmap="rainbow")
+    return styler
+
+df = pd.DataFrame(shares).T
+df.style.pipe(colorize)
+#+end_src
+
+#+begin_example
+<pandas.io.formats.style.Styler at 0x7f802a103a30>
+#+end_example
+
+<<1209a182-5138-4d8e-bd34-ba7701a3f381>>
+In this visualization you can see that the features =gaussian_blur=1=,
+=difference_of_gaussian=5= and =laplace_box_of_gaussian_blur=5= make
+about 65% of the decision. On the first level (level =0=). If these
+three features are crucial, we can train another classifier that only
+takes these features into account. Furthermore, we see that the share
+the features are used on the higher three depth levels is more uniformly
+distributed. These levels may not make a big difference when classifying
+pixels. The next classifier we train, we can train with lower
+=max_depth=.
+
+<<2a4215f8-5db2-4a56-9346-3a95588fb658>>
+#+begin_src python
+# define features
+features = "gaussian_blur=1 difference_of_gaussian=5 laplace_box_of_gaussian_blur=5"
+
+# this is where the model will be saved
+cl_filename = '../../data/blobs_object_segmenter3.cl'
+
+apoc.erase_classifier(cl_filename)
+classifier = apoc.ObjectSegmenter(opencl_filename=cl_filename, 
+                           positive_class_identifier=2, 
+                           max_depth=3,
+                           num_ensembles=1000)
+classifier.train(features, manual_annotation, image)
+
+segmentation_result = classifier.predict(features=features, image=image)
+cle.imshow(segmentation_result, labels=True)
+#+end_src
+
+[[file:73ee28a8a8a5c7fe6cd145e1f71a2472de70ef33.png]]
+
+<<7df89f01-2655-487a-9d52-0fca965e4bc3>>
+The new classifier still produces a very similar result. It takes less
+features into account, which makes it faster, but potentially also less
+robust against differences between images and imaging conditions. We
+just take another look at the classifier statistics:
+
+<<ba060799-1f73-4e70-9172-937e39799998>>
+#+begin_src python
+shares, counts = classifier.statistics()
+df = pd.DataFrame(shares).T
+df.style.pipe(colorize)
+#+end_src
+
+#+begin_example
+<pandas.io.formats.style.Styler at 0x7f8048262940>
+#+end_example
+
+<<9fc4f444-629c-4b29-a134-34b50d11a0f9>>
+For demonstration purposes, we will now train another classifier with
+very similar features.
+
+<<be88560b-9eda-41cf-8683-f4e1c2a8087c>>
+#+begin_src python
+# define features
+features = "gaussian_blur=1 difference_of_gaussian=2 difference_of_gaussian=3 difference_of_gaussian=4 difference_of_gaussian=5 difference_of_gaussian=6 laplace_box_of_gaussian_blur=5"
+
+# this is where the model will be saved
+cl_filename = '../../data/blobs_object_segmenter3.cl'
+
+apoc.erase_classifier(cl_filename)
+classifier = apoc.ObjectSegmenter(opencl_filename=cl_filename, 
+                           positive_class_identifier=2, 
+                           max_depth=3,
+                           num_ensembles=1000)
+classifier.train(features, manual_annotation, image)
+
+segmentation_result = classifier.predict(features=features, image=image)
+cle.imshow(segmentation_result, labels=True)
+#+end_src
+
+[[file:15cd045aae36475337909190c6a49b5164392c55.png]]
+
+<<81309bcf-3415-447e-91a4-d684cfdb95a5>>
+Again, the segmentation result looks very similar, but the classifier
+statistic is different.
+
+<<39e7c5d5-ec56-4984-95ab-0de4aa6d0522>>
+#+begin_src python
+shares, counts = classifier.statistics()
+df = pd.DataFrame(shares).T
+df.style.pipe(colorize)
+#+end_src
+
+#+begin_example
+<pandas.io.formats.style.Styler at 0x7f802ce10790>
+#+end_example
+
+<<f08d9494-126a-4eec-8d1f-49ff05bfce17>>
+In that way one can also fine-tune the radius and sigma parameters one
+needs to use for the specified features.
+
+The hints given here in this section are no solid rules for selecting
+the right features. The provided tools may help though for looking a bit
+behind the features and for measuring the influence provided feature
+lists and parameters have.

@@ -1,0 +1,147 @@
+<<bdddcc9c-1542-4a75-8e79-3a001858b5ed>>
+* Regional properties of label
+  :PROPERTIES:
+  :CUSTOM_ID: regional-properties-of-label
+  :END:
+In this notebook we charcterize labels according to the mean and
+standard deviation of their propteries, such as size. If similarly sized
+objects are neighbors, the standard deviation of their size is low. If
+labels of different size are neighbors the standard deviation of their
+size is higher. This could be used to identify regions in tissues where
+cells of different size meet.
+
+<<99d59c92-609e-417b-8918-a48b731087e3>>
+#+begin_src python
+from skimage.io import imread
+import pyclesperanto_prototype as cle
+import stackview
+#+end_src
+
+<<e764b9c5-bfba-4e17-8bb3-10ee4b3697f2>>
+The data we use here was derived from maize_clsm.tif was taken from
+[[https://github.com/dlegland/mathematical_morphology_with_MorphoLibJ/blob/master/sampleImages/maize_clsm.tif][here]],
+an image shared by David Legland under
+[[https://github.com/dlegland/mathematical_morphology_with_MorphoLibJ/blob/master/LICENSE][CC-BY
+4.0 license]]
+
+<<3257c9f4-3794-4615-9c3f-cf29fc5a6df4>>
+#+begin_src python
+image = imread("../../data/maize_clsm.tif")
+
+stackview.insight(image)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[50, 27, 27, ..., 26, 26, 26],
+                  [26,  1,  2, ...,  1,  1,  1],
+                  [27,  1,  1, ...,  1,  1,  1],
+                  ...,
+                  [33,  5,  4, ...,  1,  1,  1],
+                  [36,  9,  7, ...,  1,  1,  1],
+                  [57, 34, 34, ..., 25, 24, 25]], dtype=uint8)
+#+end_example
+
+<<22f5a387-1934-4d57-b683-9914444285e0>>
+A corresponding label image looks like this:
+
+<<db05867f-95a8-4758-813d-69c5f2a5622a>>
+#+begin_src python
+labels = imread("../../data/maize_clsm_labels.tif")
+labels = cle.exclude_small_labels(labels, maximum_size=200)
+labels = cle.extend_labeling_via_voronoi(labels)
+labels
+#+end_src
+
+#+begin_example
+cl.OCLArray([[  1,   1,   1, ..., 244, 244, 244],
+       [  1,   1,   1, ..., 244, 244, 244],
+       [  1,   1,   1, ..., 244, 244, 244],
+       ...,
+       [  6,   6,   6, ..., 234, 234, 234],
+       [  6,   6,   6, ..., 234, 234, 234],
+       [  6,   6,   6, ..., 234, 234, 234]], dtype=uint32)
+#+end_example
+
+<<d9d80ea3-0b90-4d60-9d0e-d5558e4e32f5>>
+** Measuring size
+   :PROPERTIES:
+   :CUSTOM_ID: measuring-size
+   :END:
+First we need to quantify size of the objects. We can immediately
+visualize these measurements as parametric image.
+
+<<8c2449b4-8093-4af8-ad29-cceed245c391>>
+#+begin_src python
+size_map_image = cle.pixel_count_map(labels)
+
+size_map_image
+#+end_src
+
+#+begin_example
+cl.OCLArray([[10411., 10411., 10411., ...,  5352.,  5352.,  5352.],
+       [10411., 10411., 10411., ...,  5352.,  5352.,  5352.],
+       [10411., 10411., 10411., ...,  5352.,  5352.,  5352.],
+       ...,
+       [14283., 14283., 14283., ..., 12378., 12378., 12378.],
+       [14283., 14283., 14283., ..., 12378., 12378., 12378.],
+       [14283., 14283., 14283., ..., 12378., 12378., 12378.]],
+      dtype=float32)
+#+end_example
+
+<<18204045-8f50-4a19-85ca-697aa46f5eca>>
+** Regional properties
+   :PROPERTIES:
+   :CUSTOM_ID: regional-properties
+   :END:
+We can now summarize those measurments locally, e.g. by measuring the
+mean size of every cell an its corresponding touching neighbors.
+
+<<034f080c-4578-4b0b-953a-926701b61596>>
+#+begin_src python
+cle.mean_of_touching_neighbors_map(size_map_image, labels)
+#+end_src
+
+#+begin_example
+cl.OCLArray([[6178.3335, 6178.3335, 6178.3335, ..., 3341.2   , 3341.2   ,
+        3341.2   ],
+       [6178.3335, 6178.3335, 6178.3335, ..., 3341.2   , 3341.2   ,
+        3341.2   ],
+       [6178.3335, 6178.3335, 6178.3335, ..., 3341.2   , 3341.2   ,
+        3341.2   ],
+       ...,
+       [4809.5   , 4809.5   , 4809.5   , ..., 5657.    , 5657.    ,
+        5657.    ],
+       [4809.5   , 4809.5   , 4809.5   , ..., 5657.    , 5657.    ,
+        5657.    ],
+       [4809.5   , 4809.5   , 4809.5   , ..., 5657.    , 5657.    ,
+        5657.    ]], dtype=float32)
+#+end_example
+
+<<041a720a-12cf-4a80-b4b2-9ef99b0d4719>>
+We can also compute the standard deviation of size, which highlights the
+borders between the regions with cells of different size.
+
+<<333a86d3-2917-4df9-bf69-5b42fa5bd7a5>>
+#+begin_src python
+cle.standard_deviation_of_touching_neighbors_map(size_map_image, labels)
+#+end_src
+
+#+begin_example
+cl.OCLArray([[3169.5137, 3169.5137, 3169.5137, ..., 2035.8579, 2035.8579,
+        2035.8579],
+       [3169.5137, 3169.5137, 3169.5137, ..., 2035.8579, 2035.8579,
+        2035.8579],
+       [3169.5137, 3169.5137, 3169.5137, ..., 2035.8579, 2035.8579,
+        2035.8579],
+       ...,
+       [3431.5947, 3431.5947, 3431.5947, ..., 3472.4436, 3472.4436,
+        3472.4436],
+       [3431.5947, 3431.5947, 3431.5947, ..., 3472.4436, 3472.4436,
+        3472.4436],
+       [3431.5947, 3431.5947, 3431.5947, ..., 3472.4436, 3472.4436,
+        3472.4436]], dtype=float32)
+#+end_example
+
+<<fde3eb53-81dd-4738-b5bb-344d1bbc7dce>>
+#+begin_src python
+#+end_src

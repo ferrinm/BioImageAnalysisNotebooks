@@ -1,0 +1,121 @@
+<<a326bb5d-0d7f-4e82-9813-6d84ec14fdeb>>
+* The mode filter for correcting semantic segmentation results
+  :PROPERTIES:
+  :CUSTOM_ID: the-mode-filter-for-correcting-semantic-segmentation-results
+  :END:
+In descriptive statistics there exist multiple summary measures. The
+mean and the median filter for example allows locally averaging an image
+in different ways. The
+[[https://en.wikipedia.org/wiki/Mode_(statistics)][mode]] filter is less
+common but still useful in some scenarios. The mode of a pixel in its
+neighborhood corresponds to the most popular intensity among existing
+intensities. Thus, it can be used to get rid of indivdual pixels being
+wrongly classified in a
+[[https://en.wikipedia.org/wiki/Image_segmentation#Groups_of_image_segmentation][semantic
+segmentation]] result.
+
+<<c901239c-ef6b-4ed7-ae9e-50cda4cc08da>>
+#+begin_src python
+import numpy as np
+import pyclesperanto_prototype as cle
+import stackview
+#+end_src
+
+<<87d6429a-4b83-45da-8e5a-dec6205d2e31>>
+For demonstrating the filter, we create a semantic segmentation of
+blobs.
+
+<<bc8fc582-5b5f-4366-90d5-6e8001700dcb>>
+#+begin_src python
+blobs = cle.imread("../../data/blobs.tif")
+#+end_src
+
+<<34bc0cbd-d3b5-4fe5-afda-bc463ed33f30>>
+#+begin_src python
+semantic_segmentation = (blobs > 70) + \
+                        (blobs > 200) + 1
+
+semantic_segmentation.astype(np.uint32)
+#+end_src
+
+#+begin_example
+cl.OCLArray([[1, 1, 1, ..., 3, 2, 2],
+       [1, 1, 1, ..., 3, 3, 3],
+       [1, 1, 1, ..., 3, 3, 3],
+       ...,
+       [2, 2, 2, ..., 1, 1, 1],
+       [2, 2, 2, ..., 1, 1, 1],
+       [2, 2, 2, ..., 1, 1, 1]], dtype=uint32)
+#+end_example
+
+<<5a05a5cf-3885-4008-b6d5-e88154b6abe4>>
+Using the functions =mode_sphere= and =mode_box= we can make the result
+less noisy.
+
+<<b666d7d6-ea7d-4802-9ec4-d13814567071>>
+#+begin_src python
+cle.mode_sphere(semantic_segmentation, radius_x=2, radius_y=2).astype(np.uint32)
+#+end_src
+
+#+begin_example
+cl.OCLArray([[1, 1, 1, ..., 3, 3, 3],
+       [1, 1, 1, ..., 3, 3, 3],
+       [1, 1, 1, ..., 3, 3, 3],
+       ...,
+       [2, 2, 2, ..., 1, 1, 1],
+       [2, 2, 2, ..., 1, 1, 1],
+       [2, 2, 2, ..., 1, 1, 1]], dtype=uint32)
+#+end_example
+
+<<cc69d6e0-1989-4ffa-b7b7-25f8aee0af8e>>
+#+begin_src python
+cle.mode_sphere(semantic_segmentation, radius_x=4, radius_y=4).astype(np.uint32)
+#+end_src
+
+#+begin_example
+cl.OCLArray([[1, 1, 1, ..., 3, 3, 3],
+       [1, 1, 1, ..., 3, 3, 3],
+       [1, 1, 1, ..., 3, 3, 3],
+       ...,
+       [2, 2, 2, ..., 1, 1, 1],
+       [2, 2, 2, ..., 1, 1, 1],
+       [2, 2, 2, ..., 1, 1, 1]], dtype=uint32)
+#+end_example
+
+<<de18f21b-5e46-4240-90ad-6d38985f7898>>
+When the radius becomes wider and wider, the result contains less and
+less local information.
+
+<<a4a00b9c-eb1c-4ecd-b462-7fbbff5356c0>>
+#+begin_src python
+cle.mode_sphere(semantic_segmentation, radius_x=10, radius_y=10).astype(np.uint32)
+#+end_src
+
+#+begin_example
+cl.OCLArray([[1, 1, 1, ..., 3, 3, 3],
+       [1, 1, 1, ..., 3, 3, 3],
+       [1, 1, 1, ..., 3, 3, 3],
+       ...,
+       [1, 1, 1, ..., 1, 1, 1],
+       [1, 1, 1, ..., 1, 1, 1],
+       [1, 1, 1, ..., 1, 1, 1]], dtype=uint32)
+#+end_example
+
+<<6485201b-184d-40db-a68c-87a1ae624a1a>>
+Tuning the radius manually may help finding a good configuration.
+
+<<a4e143f9-57d2-497d-b5ba-dccb9d38d38d>>
+#+begin_src python
+def mode_sphere(image, radius:float = 1):
+    return cle.mode_sphere(image, radius_x=radius, radius_y=radius).astype(np.uint32)
+
+stackview.interact(mode_sphere, semantic_segmentation, zoom_factor=1.5)
+#+end_src
+
+#+begin_example
+{"model_id":"29760847e4dd421190ee3ae2666768d4","version_major":2,"version_minor":0}
+#+end_example
+
+<<6d02a820-d624-446a-b0b2-7b7421eee8c1>>
+#+begin_src python
+#+end_src

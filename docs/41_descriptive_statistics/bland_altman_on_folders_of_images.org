@@ -1,0 +1,252 @@
+<<6c6ded2d-2213-4594-8f6f-91fff22d7fba>>
+* Bland-Altman analysis to compare segmentation algorithms
+  :PROPERTIES:
+  :CUSTOM_ID: bland-altman-analysis-to-compare-segmentation-algorithms
+  :END:
+Assume we used a segmentation algorithm for many years and we are now
+considering to replace it by a newer, faster version. We need to make
+sure that we can compare results between these two. As segmentation
+algorithms typically do not label objects in the same order and even the
+number of objects might differ, we cannot easily compare objects
+pair-wise. It is recommended to summarize segmented objects per image
+and then compare results produced on folders of images.
+
+In this notebook we will compare statistics derived from segmentation
+results produced by two algorithms on a folder of images.
+
+<<dbe79181-9f68-48ef-9e15-5813075adac4>>
+#+begin_src python
+folder = '../../data/BBBC007_batch/' 
+#+end_src
+
+<<dcfd3ec8-5aa2-4658-b11b-258807f9c70f>>
+#+begin_src python
+from skimage.io import imread
+from skimage.measure import regionprops
+from utils import bland_altman_plot
+import napari_segment_blobs_and_things_with_membranes as nsbatwm
+import pyclesperanto_prototype as cle
+import os
+import numpy as np
+import pandas as pd
+import stackview
+#+end_src
+
+<<c30b1464-6e2c-465d-ba90-76856da27fcc>>
+* Segmentation algorithms to compare
+  :PROPERTIES:
+  :CUSTOM_ID: segmentation-algorithms-to-compare
+  :END:
+Here we write the two segmentation algorithms as Python functions and
+test them on an image.
+
+<<7b147983-ea3c-4906-80ee-4394a28ec11f>>
+#+begin_src python
+test_image = imread(folder + "17P1_POS0013_D_1UL.tif")
+stackview.insight(test_image)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[3, 3, 3, ..., 2, 3, 3],
+                  [5, 4, 4, ..., 3, 3, 2],
+                  [6, 5, 4, ..., 2, 3, 2],
+                  ...,
+                  [2, 1, 1, ..., 1, 1, 1],
+                  [1, 2, 2, ..., 2, 1, 1],
+                  [2, 2, 1, ..., 1, 1, 1]], dtype=uint16)
+#+end_example
+
+<<f284cfe9-fce1-4b0b-978d-177358b1ef8a>>
+#+begin_src python
+def segmentation_1(image):
+    return nsbatwm.voronoi_otsu_labeling(image)
+#+end_src
+
+<<638815da-a1e4-4546-ace4-83de276e9ae8>>
+#+begin_src python
+segmentation_1(test_image)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]])
+#+end_example
+
+<<6650ec55-46ab-442f-a7ca-3a4294f93f47>>
+#+begin_src python
+def segmentation_2(image):
+    return nsbatwm.gauss_otsu_labeling(image)
+#+end_src
+
+<<dd2a44fa-8888-482b-aabd-4decdbc51e9d>>
+#+begin_src python
+test_labels = segmentation_2(test_image)
+test_labels
+#+end_src
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]])
+#+end_example
+
+<<93ce89da-fabb-4951-b69a-6a517bae935e>>
+** Quantiative measurements
+   :PROPERTIES:
+   :CUSTOM_ID: quantiative-measurements
+   :END:
+Later, we want to compare measurements. Thus, we write a Python function
+that determines these measurements. In this example, we will compute the
+mean area of segmented nuclei.
+
+<<266c5a5d-e498-44e5-80bf-531a50a6afe5>>
+#+begin_src python
+def mean_metric(image, label_image, metric):
+    
+    properties = regionprops(label_image, image)
+    
+    values = [p[metric] for p in properties]
+    
+    return np.mean(values)
+#+end_src
+
+<<53a01e25-a416-41e1-b511-5c33ca40988c>>
+#+begin_src python
+mean_metric(test_image, test_labels, "area")
+#+end_src
+
+#+begin_example
+235.70731707317074
+#+end_example
+
+<<63dfe5c9-5145-44fe-848d-d62a0954e77d>>
+** Collecting measurements from folders
+   :PROPERTIES:
+   :CUSTOM_ID: collecting-measurements-from-folders
+   :END:
+We now apply these two algorithms and the measurements in a folder of
+images.
+
+<<81e92138-56d9-4827-b0c2-5347200ba387>>
+#+begin_src python
+def compare_measurements_from_algorithms(algorithm_1, algorithm_2, folder, metric):
+    measurements = {
+        metric + '_1':[],
+        metric + '_2':[]
+    }
+
+    # Iterate over all files in the folder
+    for filename in os.listdir(folder):
+        file_path = os.path.join(folder, filename)
+
+        # Check if the current item is a file
+        if os.path.isfile(file_path) and filename.endswith(".tif"):
+            # load image
+            image = imread(file_path)
+
+            # segment it using both algorithms
+            labels_1 = algorithm_1(image)
+            labels_2 = algorithm_2(image)
+
+            # determine mean area and store it
+            measurements[metric + '_1'].append(mean_metric(image, labels_1, metric))
+            measurements[metric + '_2'].append(mean_metric(image, labels_2, metric))
+    
+    return measurements
+#+end_src
+
+<<d212a937-39fe-4fdb-af7a-cf7069da8214>>
+#+begin_src python
+measurements = compare_measurements_from_algorithms(segmentation_1, 
+                                                    segmentation_2, 
+                                                    folder, 
+                                                    'area')
+
+pd.DataFrame(measurements)
+#+end_src
+
+#+begin_example
+       area_1      area_2
+0  210.086957  235.707317
+1  206.866667  244.973684
+2  203.023256  268.615385
+3  185.103448  214.720000
+4  184.147059  362.956522
+5  267.057692  730.894737
+#+end_example
+
+<<ba5fe7c9-2e12-416f-a994-52d07079dc2d>>
+** Bland-Altman plots
+   :PROPERTIES:
+   :CUSTOM_ID: bland-altman-plots
+   :END:
+We now use the Bland-Altman plot to visualize differences.
+
+<<2bacd00c-6ff4-42cc-99a1-f09bb263f663>>
+#+begin_src python
+bland_altman_plot(measurements['area_1'], measurements['area_2'], 'area')
+#+end_src
+
+[[file:90c265879ca0354e1d8b929eb815d21834f7101e.png]]
+
+<<b967ab80-4680-40fe-8580-48e85ee9b452>>
+In the case shown above, the average difference of the area measurement
+is about -100, which means that the first algorithm produces on average
+smaller area measurements than the second.
+
+For demonstration purposes we will now compare the same algorithm in a
+CPU and a GPU variant.
+
+<<367da703-3adb-412c-b3e7-2e7d30edf353>>
+#+begin_src python
+def segmentation_1_gpu(image):
+    return cle.voronoi_otsu_labeling(image)
+#+end_src
+
+<<af44eb00-73b9-4227-922f-c3559bb47c2f>>
+#+begin_src python
+measurements_cpu_vs_gpu = compare_measurements_from_algorithms(segmentation_1, 
+                                                    segmentation_1_gpu, 
+                                                    folder, 
+                                                    'area')
+bland_altman_plot(measurements_cpu_vs_gpu['area_1'], measurements_cpu_vs_gpu['area_2'], 'area')
+#+end_src
+
+[[file:d30d5f9af10c6cec1b08d71eabb551c898a57180.png]]
+
+<<5440def7-a4f3-47c7-8cfa-2359763bb185>>
+In this case, we see the average difference is about 0. Furthermore, the
+confidence interval is much smaller compared to before.
+
+<<fc636fa5-537c-4b24-94c8-d00a8ded1c4c>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Also compare the second segmentation algorithm with its GPU-variant.
+
+<<86642f3e-e22b-46e8-bfe5-24da94fc49e2>>
+#+begin_src python
+#+end_src
+
+<<8278d15a-eb1d-4fa7-a396-3716a22a7aa5>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Compare mean intensity measurements of two algorithms where the area
+seems quite different. Can you predict how the Bland-Altman plot looks
+like?
+
+<<053ece57-f468-4ff8-ad7b-dc2648d97e72>>
+#+begin_src python
+#+end_src

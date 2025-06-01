@@ -1,0 +1,240 @@
+* Affine transforms using clesperanto
+  :PROPERTIES:
+  :CUSTOM_ID: affine-transforms-using-clesperanto
+  :END:
+This notebook demonstrates how to apply affine transforms to 3D images.
+
+#+begin_src python
+import pyclesperanto_prototype as cle
+
+cle.select_device('TX')
+#+end_src
+
+#+begin_example
+<NVIDIA GeForce GTX 1650 with Max-Q Design on Platform: NVIDIA CUDA (1 refs)>
+#+end_example
+
+#+begin_src python
+import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
+from skimage.io import imread
+#+end_src
+
+#+begin_src python
+# Laod example data
+np_array = imread('../../data/Haase_MRT_tfl3d1.tif')
+np_array.shape
+#+end_src
+
+#+begin_example
+(192, 256, 256)
+#+end_example
+
+#+begin_src python
+# push it to GPU memory
+input_image = cle.push_zyx(np_array)
+
+cle.imshow(input_image)
+#+end_src
+
+[[file:106d341821fab86e9cea002812bd98496b67a6f5.png]]
+
+** Rotation
+   :PROPERTIES:
+   :CUSTOM_ID: rotation
+   :END:
+For rotating an image, you need to provide angles corresponding to axes.
+
+#+begin_src python
+rotated = cle.rotate(input_image, angle_around_z_in_degrees=45)
+cle.imshow(rotated)
+#+end_src
+
+[[file:9b2e5a25562c70b07121f2da8778fd9b68f04980.png]]
+
+Images are rotated around their center by default. You can change this
+by providing an additional parameter. The image will then be rotated
+around the origin.
+
+#+begin_src python
+rotated = cle.rotate(input_image, angle_around_z_in_degrees=15, rotate_around_center=False)
+cle.imshow(rotated)
+#+end_src
+
+[[file:0fb9540eb3df697b450c3baa58bfba9e83ea59f8.png]]
+
+** Translation
+   :PROPERTIES:
+   :CUSTOM_ID: translation
+   :END:
+Images can be translate by providing translation distances along axes:
+
+#+begin_src python
+translated = cle.translate(input_image, translate_x=50, translate_y=-50)
+cle.imshow(translated)
+#+end_src
+
+[[file:da4340319dcf5d04d822beb0ad476a2444e913eb.png]]
+
+** Scaling
+   :PROPERTIES:
+   :CUSTOM_ID: scaling
+   :END:
+You can scale the image by providing scaling factors.
+
+#+begin_src python
+scaled = cle.scale(input_image, factor_x=0.5, factor_y=2)
+cle.imshow(scaled)
+#+end_src
+
+[[file:4cc1e7a898016965ce4f1a6f785bec52fb21ca5a.png]]
+
+In this context, the =auto_size= parameter might be useful:
+
+#+begin_src python
+scaled_auto_size = cle.scale(input_image, factor_x=0.5, factor_y=2, auto_size=True)
+cle.imshow(scaled_auto_size)
+#+end_src
+
+[[file:668ec9a6ff5e63a0700afe093243bf7e3cbe54ba.png]]
+
+** Rigid transform
+   :PROPERTIES:
+   :CUSTOM_ID: rigid-transform
+   :END:
+Rigid transforms allow to do translations and rotations in one shot
+
+#+begin_src python
+rigid_transformed = cle.rigid_transform(input_image, translate_x=50, angle_around_z_in_degrees=45)
+cle.imshow(rigid_transformed)
+#+end_src
+
+[[file:6878f6d217e5d5641cb08a535a72f549b89fd58c.png]]
+
+** Affine transforms
+   :PROPERTIES:
+   :CUSTOM_ID: affine-transforms
+   :END:
+To do translation, rotation, scaling and shearing in one shot, use
+affine transforms.
+
+To setup an affine transform, you can do this using a 4x4 transform
+matrix:
+
+#+begin_src python
+transform_matrix = np.asarray([
+    [1, 0, 0, 50],
+    [0, 2, 0, 0],
+    [0, 0, 0.5, 0],
+    [0, 0, 0, 1]
+])
+transformed_image = cle.affine_transform(input_image, transform=transform_matrix)
+cle.imshow(transformed_image)
+#+end_src
+
+[[file:dc99a0410c20088fb9ef938355cac6de6a2d5543.png]]
+
+Alternatively, you can configure a transform object and pass it:
+
+#+begin_src python
+transform = cle.AffineTransform3D()
+transform.translate(50)
+transform.scale(1, 2, 0.5)
+
+transformed_image = cle.affine_transform(input_image, transform=transform)
+cle.imshow(transformed_image)
+#+end_src
+
+[[file:dc99a0410c20088fb9ef938355cac6de6a2d5543.png]]
+
+*** Shearing
+    :PROPERTIES:
+    :CUSTOM_ID: shearing
+    :END:
+Providing the shear angle will shear the image in the desired plane
+
+The shear is calculated using the shear angle by the following equation:
+
+1.0/ tan(shear_angle_in_degrees * pi / 180)
+
+#+begin_src python
+#For example, to shear the image in the Y axis along YZ plane using a shear angle of 30 degrees
+
+shear_angle = 30.0
+
+transform = cle.AffineTransform3D()
+shear_transform= transform.shear_in_z_plane(angle_y_in_degrees=shear_angle)
+
+transformed_image = cle.affine_transform(input_image, transform=shear_transform)
+
+##display images in each plane
+print("yz")
+cle.imshow(cle.maximum_x_projection(transformed_image))
+print("xz")
+cle.imshow(cle.maximum_y_projection(transformed_image))
+print("xy")
+cle.imshow(cle.maximum_z_projection(transformed_image))
+#+end_src
+
+#+begin_example
+yz
+#+end_example
+
+[[file:251030ff66e80b15cad95a6efeafc89d10527d46.png]]
+
+#+begin_example
+xz
+#+end_example
+
+[[file:9516543241e6af257f2c5f678bdcf5e6d7b46402.png]]
+
+#+begin_example
+xy
+#+end_example
+
+[[file:aa396bf80f181ff4f89f758a2b96afc21dafa104.png]]
+
+* Linear interpolation versus nearest neighbor interpolation
+  :PROPERTIES:
+  :CUSTOM_ID: linear-interpolation-versus-nearest-neighbor-interpolation
+  :END:
+Let's crop the nose and transform it using different interpolation
+modes.
+
+#+begin_src python
+crop = input_image[50,125:150,45:70]
+
+cle.imshow(crop)
+#+end_src
+
+[[file:6919a1272631ce81f2909ca2bb0d64a0f83fd6eb.png]]
+
+* Nearest neighbor interpolation
+  :PROPERTIES:
+  :CUSTOM_ID: nearest-neighbor-interpolation
+  :END:
+
+#+begin_src python
+# create a larger image
+rescaled = cle.create(np.asarray(crop.shape) * 10)
+
+# fill it with a scaled version of the image; 
+cle.scale(crop, rescaled, factor_x=10, factor_y=10, factor_z=10, linear_interpolation=False)
+cle.imshow(rescaled)
+#+end_src
+
+[[file:3538b689507a249ec2dbd58db6dd4448198b0470.png]]
+
+*** Linear interpolation
+    :PROPERTIES:
+    :CUSTOM_ID: linear-interpolation
+    :END:
+
+#+begin_src python
+# fill it with a scaled version of the image; 
+cle.scale(crop, rescaled, factor_x=10, factor_y=10, factor_z=10, linear_interpolation=True)
+cle.imshow(rescaled)
+#+end_src
+
+[[file:ba5ed8224b6e7cffdede5df28bd8bba2a83a9fff.png]]

@@ -1,0 +1,136 @@
+<<036b787c>>
+* Functional parameters
+  :PROPERTIES:
+  :CUSTOM_ID: functional-parameters
+  :END:
+A core concept of the python language is
+[[https://en.wikipedia.org/wiki/Functional_programming][functional
+programming]]: We define functions and apply them to our data.
+
+<<aa79f8b3>>
+#+begin_src python
+import numpy as np 
+
+values = np.asarray([1, 2, 3, 4, 10])
+#+end_src
+
+<<c78903ad>>
+#+begin_src python
+def double_number(x):
+    return x * 2
+#+end_src
+
+<<6ed20a4f>>
+#+begin_src python
+double_number(values)
+#+end_src
+
+#+begin_example
+array([ 2,  4,  6,  8, 20])
+#+end_example
+
+<<14e5744b>>
+In python you can also have variables that contain a function and can be
+executed:
+
+<<fde42306>>
+#+begin_src python
+my_function = double_number
+
+my_function(values)
+#+end_src
+
+#+begin_example
+array([ 2,  4,  6,  8, 20])
+#+end_example
+
+<<606bc4e7>>
+** Custom functional parameters
+   :PROPERTIES:
+   :CUSTOM_ID: custom-functional-parameters
+   :END:
+You can also define your custom functions taking functional parameters.
+For example, we can define a =count_blobs= function that takes an
+=image= and a =threshold_algorithm=-function as parameter.
+
+<<35cd1b2c>>
+#+begin_src python
+import matplotlib.pyplot as plt
+from skimage.measure import label
+
+def count_blobs(image, threshold_algorithm):
+    # binarize the image using a given 
+    # threshold-algorithm
+    threshold = threshold_algorithm(image)
+    binary = image > threshold
+    
+    # show intermediate result
+    # plt.imshow(binary)
+    
+    # return count blobs
+    labels = label(binary)
+    return labels.max()
+#+end_src
+
+<<c8ccdbee>>
+We now open an image and analyse it twice.
+
+<<ab33a15a>>
+#+begin_src python
+from skimage.io import imread, imshow
+
+blobs_image = imread('../../data/blobs.tif')
+
+imshow(blobs_image)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x17968acd0>
+#+end_example
+
+[[file:b595f1490e1feddd74644d14f8d58ee167a99eb5.png]]
+
+<<584e8e62>>
+We now count the blobs in this image with two different algorithms we
+provide as parameter:
+
+<<837bf3a6>>
+#+begin_src python
+from skimage.filters import threshold_otsu
+
+count_blobs(blobs_image, threshold_otsu)
+#+end_src
+
+#+begin_example
+64
+#+end_example
+
+<<4e91d17e>>
+#+begin_src python
+from skimage.filters import threshold_yen
+
+count_blobs(blobs_image, threshold_yen)
+#+end_src
+
+#+begin_example
+67
+#+end_example
+
+<<2e38d928>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Assume you want to find out which threshold algorithm works best for
+your image. Therefore, you may want to take a look at the image being
+thresholded by multiple algoritms. Define a list of threshold
+algorithms, e.g. from
+[[https://scikit-image.org/docs/dev/search.html?q=threshold_&check_keywords=yes&area=default][this
+list]]. Program a for-loop that applies the threshold algorithms to the
+blobs image and shows the results. The result should look similar to
+[[https://scikit-image.org/docs/dev/auto_examples/segmentation/plot_thresholding.html][this
+example]].
+
+<<50d15141>>
+#+begin_src python
+#+end_src

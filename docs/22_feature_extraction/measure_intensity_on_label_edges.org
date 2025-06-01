@@ -1,0 +1,211 @@
+<<7bca1aed-c40d-4366-b182-df0d26895af0>>
+* Measuring intensity on label borders
+  :PROPERTIES:
+  :CUSTOM_ID: measuring-intensity-on-label-borders
+  :END:
+In some applications it is reasonable to measure the intensity on label
+borders. For example, to measure the signal intensity in an image
+showing the nuclear envelope, one can segment nuclei, identify their
+borders and then measure the intensity there.
+
+<<786c8380-0189-48fa-a85f-0be0f31b34ed>>
+#+begin_src python
+import numpy as np
+from skimage.io import imread, imshow
+import pyclesperanto_prototype as cle
+from cellpose import models, io
+from skimage import measure
+import matplotlib.pyplot as plt
+#+end_src
+
+#+begin_example
+2022-02-24 10:05:10,405 [INFO] WRITING LOG OUTPUT TO C:\Users\rober\.cellpose\run.log
+#+end_example
+
+<<82614b9e-cc81-4023-b329-ec7f35dfc9d7>>
+** The example dataset
+   :PROPERTIES:
+   :CUSTOM_ID: the-example-dataset
+   :END:
+In this example we load an image showing a zebrafish eye, courtesy of
+Mauricio Rocha Martins, Norden lab, MPI CBG Dresden.
+
+<<8b6c2be1-4e87-46fe-80ae-0a6974d8838f>>
+#+begin_src python
+multichannel_image = imread("../../data/zfish_eye.tif")
+multichannel_image.shape
+#+end_src
+
+#+begin_example
+(1024, 1024, 3)
+#+end_example
+
+<<265a6fab-9e4c-43f9-a22b-f8098c02bbee>>
+#+begin_src python
+cropped_image = multichannel_image[200:600, 500:900]
+#+end_src
+
+<<580ca2a3-70b9-49fb-9a8d-c978cf9073f1>>
+#+begin_src python
+nuclei_channel = cropped_image[:,:,0]
+
+cle.imshow(nuclei_channel)
+#+end_src
+
+[[file:51e98753b02b0e9e0eb940c27bfd198183adcd34.png]]
+
+<<798512cc-5346-40ab-885c-c1f43a8e9eb1>>
+** Image segmentation
+   :PROPERTIES:
+   :CUSTOM_ID: image-segmentation
+   :END:
+First, we use cellpose to segment the cells
+
+<<3b8b6c26-e623-445f-bd36-801d626bb63f>>
+#+begin_src python
+# load cellpose model
+model = models.Cellpose(gpu=False, model_type='nuclei')
+
+# apply model
+channels = [0,0] # This means we are processing single channel greyscale images.
+label_image, flows, styles, diams = model.eval(nuclei_channel, diameter=None, channels=channels)
+
+# show result
+cle.imshow(label_image, labels=True)
+#+end_src
+
+#+begin_example
+2022-02-24 10:05:10,623 [INFO] >>>> using CPU
+2022-02-24 10:05:10,675 [INFO] ~~~ ESTIMATING CELL DIAMETER(S) ~~~
+2022-02-24 10:05:13,858 [INFO] estimated cell diameter(s) in 3.18 sec
+2022-02-24 10:05:13,859 [INFO] >>> diameter(s) = 
+2022-02-24 10:05:13,860 [INFO] [ 29.64 ]
+2022-02-24 10:05:13,860 [INFO] ~~~ FINDING MASKS ~~~
+2022-02-24 10:05:18,649 [INFO] >>>> TOTAL TIME 7.97 sec
+#+end_example
+
+[[file:54098b67da34214f74f8809210aadf43a34c2d36.png]]
+
+<<79c91a36-942e-4e58-9118-e37d5034b801>>
+** Labeling pixels on label borders
+   :PROPERTIES:
+   :CUSTOM_ID: labeling-pixels-on-label-borders
+   :END:
+Next, we will extract the outline of the segmented nuclei.
+
+<<855796fe-ec32-4409-9e5b-433cdd15a8b0>>
+#+begin_src python
+binary_borders = cle.detect_label_edges(label_image)
+
+labeled_borders = binary_borders * label_image
+
+cle.imshow(label_image, labels=True)
+cle.imshow(binary_borders)
+cle.imshow(labeled_borders, labels=True)
+#+end_src
+
+[[file:54098b67da34214f74f8809210aadf43a34c2d36.png]]
+
+[[file:fe74d1b21594b49deedd40271328d4621cc3c1b9.png]]
+
+[[file:2fd18269881672531ec1dc36fa9a4280c46b4694.png]]
+
+<<31773d65-028a-40aa-b023-5f55c0788635>>
+** Dilating outlines
+   :PROPERTIES:
+   :CUSTOM_ID: dilating-outlines
+   :END:
+We extend the outlines a bit to have a more robust measurement.
+
+<<6592c402-d498-4e8f-9e58-5cc7e1b15748>>
+#+begin_src python
+extended_outlines = cle.dilate_labels(labeled_borders, radius=2)
+
+cle.imshow(extended_outlines, labels=True)
+#+end_src
+
+[[file:2dede3a3a184d51ac79f71a735963535b9f8338a.png]]
+
+<<3973f1e6-2037-49a4-912d-36b626c6e2dd>>
+** Overlay visualization
+   :PROPERTIES:
+   :CUSTOM_ID: overlay-visualization
+   :END:
+Using this label image of nuclei outlines, we can measure the intensity
+in the nuclear envelope.
+
+<<1447afea-6053-4981-b4c4-be0b4d1a5dfe>>
+#+begin_src python
+nuclear_envelope_channel = cropped_image[:,:,2]
+
+cle.imshow(nuclear_envelope_channel)
+
+cle.imshow(nuclear_envelope_channel, alpha=0.5, continue_drawing=True)
+cle.imshow(extended_outlines, alpha=0.5, labels=True)
+#+end_src
+
+[[file:37290ab11b1b7a09b42ff36188ac1b926b443c0d.png]]
+
+[[file:7afb248989360e9a0a4675240ba2c8c4ccf8fa2d.png]]
+
+<<68a8c221-e6ec-4e03-ae78-cb90cee1061c>>
+** Label intensity statistics
+   :PROPERTIES:
+   :CUSTOM_ID: label-intensity-statistics
+   :END:
+Measuring the intensity in the image works using the right intensty and
+label images.
+
+<<f7ed6482-774a-4dcb-b511-c9ed0391dca9>>
+#+begin_src python
+stats = cle.statistics_of_labelled_pixels(nuclear_envelope_channel, extended_outlines)
+
+stats["mean_intensity"]
+#+end_src
+
+#+begin_example
+array([35529.4  , 32835.07 , 36713.887, 37146.348, 49462.39 , 36392.6  ,
+       37998.375, 48974.945, 31805.87 , 50451.793, 41006.047, 50854.016,
+       36167.547, 41332.32 , 37815.766, 35121.38 , 43859.945, 40292.875,
+       31583.992, 38933.57 , 32297.547, 39140.766, 37072.31 , 45990.57 ,
+       39800.613, 37804.99 , 39092.43 , 39510.848, 40534.81 , 42057.293,
+       44815.844, 42855.754, 38408.246, 41257.594, 37996.895, 38568.465,
+       42331.266, 34748.973, 44219.844, 41986.086, 38606.215, 39008.094,
+       36411.05 , 48155.797, 43781.97 , 38315.12 , 36048.39 , 37739.277,
+       46268.816, 35808.32 , 37388.312, 37682.21 , 42932.72 , 38168.293,
+       40489.73 , 43073.066, 40973.285, 40975.246, 39292.848, 38555.766,
+       38219.785, 40054.242, 37356.87 , 45014.8  , 37211.668, 47025.47 ,
+       30218.678, 33988.027, 37338.41 , 38500.85 , 38546.777, 40611.742,
+       40391.453, 41024.46 , 37840.246, 41342.793, 39329.625, 43311.016,
+       37829.074, 39949.82 , 39316.496, 40966.48 , 34066.7  , 34929.863,
+       40356.445, 31959.607, 39480.855, 39194.027, 46274.582, 31316.648,
+       37623.61 , 40962.016, 39203.37 , 45368.703, 37830.832, 35296.93 ,
+       37756.1  , 39108.93 , 40739.543], dtype=float32)
+#+end_example
+
+<<b80c5d2a-8106-4f09-9f70-e155b11bcaa7>>
+** Parametric maps
+   :PROPERTIES:
+   :CUSTOM_ID: parametric-maps
+   :END:
+These measurements can also be visualized using parametric maps
+
+<<be4761bf-2b8d-4fde-a82b-d82e92209e08>>
+#+begin_src python
+intensity_map = cle.mean_intensity_map(nuclear_envelope_channel, extended_outlines)
+cle.imshow(intensity_map, min_display_intensity=3000, colorbar=True, colormap="jet")
+#+end_src
+
+[[file:33178ab1be00047dae65949a91e375ec5d7a7d05.png]]
+
+<<911d61c7-fe14-4524-a855-e4150400775a>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Measure and visualizae the intensity at the label borders in the nuclei
+channel.
+
+<<7da6b438-f336-4b1d-8f9b-80b53659e62b>>
+#+begin_src python
+#+end_src

@@ -1,0 +1,90 @@
+<<ad2790d4>>
+#+begin_src python
+import numpy as np
+from skimage.io import imsave
+import matplotlib.pyplot as plt
+from matplotlib.pyplot import figure
+import pyclesperanto_prototype as cle
+cle.select_device("RTX")
+#+end_src
+
+#+begin_example
+<NVIDIA GeForce RTX 3050 Ti Laptop GPU on Platform: NVIDIA CUDA (2 refs)>
+#+end_example
+
+<<2d5cd4c3>>
+#+begin_src python
+cells = cle.artificial_tissue_2d()
+#+end_src
+
+<<45791cfd>>
+#+begin_src python
+cle.imshow(cells, labels=True)
+#+end_src
+
+[[file:9c8a886179d5e53ce4fc0671491642f834dd70e4.png]]
+
+<<5eefb7ea>>
+#+begin_src python
+num_cells = int(np.max(cells))
+num_cells
+#+end_src
+
+#+begin_example
+176
+#+end_example
+
+<<c1f26a2d>>
+#+begin_src python
+random_values = np.random.random((num_cells + 1)) * range(num_cells + 1)
+classification = cle.push(random_values > np.max(random_values) / 4)
+classification_image = cle.replace_intensities(cells, classification)
+cle.imshow(classification_image)
+#+end_src
+
+[[file:22ab89e32f87dbf5c0d5b46287701936e484a7b2.png]]
+
+<<7e32ba76>>
+#+begin_src python
+mode_classification_image = cle.mode_of_proximal_neighbors_map(classification_image, cells, max_distance=80)
+cle.imshow(mode_classification_image)
+#+end_src
+
+[[file:b122d33451ff654d2e6d4dbc5a213737fe3e5ff9.png]]
+
+<<b033b42d>>
+#+begin_src python
+fig, axs = plt.subplots(1, 3, figsize=(15,7))
+
+cle.imshow(cells, labels=True, plot=axs[0])
+axs[0].set_title('Cells label image')
+cle.imshow(classification_image, plot=axs[1])
+axs[1].set_title('Noisy cell classification')
+cle.imshow(mode_classification_image, plot=axs[2])
+axs[2].set_title('Corrected cell classification')
+#+end_src
+
+#+begin_example
+Text(0.5, 1.0, 'Corrected cell classification')
+#+end_example
+
+[[file:0b81ad0d0990675e4c6bad243681802fe8c2c06c.png]]
+
+<<bf926369>>
+#+begin_src python
+fig.savefig("mode_cell_classification.png", dpi=400, bbox_inches = 'tight', pad_inches=0.1)
+#+end_src
+
+<<f02b0837>>
+#+begin_src python
+imsave("mode_example_cells.tif", cells)
+#+end_src
+
+<<d76f7665>>
+#+begin_src python
+imsave("mode_example_classification.tif", classification_image)
+#+end_src
+
+<<34d884e2>>
+#+begin_src python
+#+end_src

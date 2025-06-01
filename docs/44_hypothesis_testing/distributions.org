@@ -1,0 +1,395 @@
+#+begin_src python
+import numpy as np
+from numpy import random
+import matplotlib.pyplot as plt
+#+end_src
+
+* Uniform distribution
+  :PROPERTIES:
+  :CUSTOM_ID: uniform-distribution
+  :END:
+
+#+begin_src python
+# get a single random number between 0 and 100
+x = random.uniform(0, 100)
+print(x)
+#+end_src
+
+#+begin_example
+69.3477764428305
+#+end_example
+
+#+begin_src python
+# get 10 random numbers
+x = random.uniform(0, 100, size=10)
+print(x)
+#+end_src
+
+#+begin_example
+[56.84711013 55.34219327 67.14059109 58.00834898 94.01891963 23.84325919
+  8.77782622 37.2162182  70.48293836 34.63782848]
+#+end_example
+
+#+begin_src python
+# improve readability by writing all parameter names
+x = random.uniform(low=0, high=100, size=10000)
+print(x)
+#+end_src
+
+#+begin_example
+[31.7475544  23.77999003 59.3542624  ... 31.11347844 65.49780918
+ 76.55802087]
+#+end_example
+
+#+begin_src python
+plt.hist(x, bins=100)
+plt.show()
+#+end_src
+
+[[file:12f31e6683be1caa530e673c1ca1ff0d596b99ed.png]]
+
+#+begin_src python
+# make a 2 dimensional distribution of random numbers and plot it
+
+x = random.uniform(low=0, high=100, size=100)
+y = random.uniform(low=0, high=100, size=100)
+
+
+plt.plot(x, y, ".")
+plt.show()
+#+end_src
+
+[[file:fa48857527d6c727f0f14e4a5b8e1ac5b5b12edd.png]]
+
+* Gaussian / Normal distribution
+  :PROPERTIES:
+  :CUSTOM_ID: gaussian--normal-distribution
+  :END:
+
+#+begin_src python
+import math
+def normal_distribution(x, mean, standard_deviation):
+    return math.exp(-0.5 * pow( (x - mean) / standard_deviation, 2)) / standard_deviation / math.sqrt(2 * math.pi)
+
+
+
+mean = 0
+standard_deviation = 1
+
+x_array = np.arange(-4, 4, 0.1)
+y_array = []
+for x in x_array:
+    y = normal_distribution(x, mean, standard_deviation)
+    y_array = y_array + [y]
+
+
+fig, ax = plt.subplots()
+ax.plot(x_array, y_array, "-")
+ax.set_xlabel("x")
+ax.set_ylabel("probability")
+plt.show()
+#+end_src
+
+[[file:db1f9273720f3c720fa997bca954d8daa2f06437.png]]
+
+#+begin_src python
+# generate random numbers following a normal distribution
+x = random.normal(loc=0, scale=2, size=10000)
+
+print(x)
+#+end_src
+
+#+begin_example
+[-1.11820545 -0.34614928 -0.42576096 ...  1.57779068 -1.24144681
+  0.76370401]
+#+end_example
+
+#+begin_src python
+plt.hist(x, bins=100)
+plt.show()
+#+end_src
+
+[[file:76dfb9ea242a478b9519c7839edda8f0e623933d.png]]
+
+#+begin_src python
+# make a 2 dimensional distribution of random numbers and plot it
+
+x = random.normal(loc=0, scale=2, size=1000)
+y = random.normal(loc=0, scale=2, size=1000)
+
+plt.plot(x, y, ".")
+plt.show()
+#+end_src
+
+[[file:3fa00be15be2f881e3beee5001d668ba2ed5bf87.png]]
+
+#+begin_src python
+x = random.normal(loc=0, scale=2, size=1000)
+y = random.normal(loc=0, scale=2, size=1000)
+
+data = [x, y]
+
+fig1, ax1 = plt.subplots()
+ax1.set_title('Box Plot')
+ax1.boxplot(data)
+plt.show()
+#+end_src
+
+[[file:da708e931a695b4c6ad15979c56f8df659fe5d32.png]]
+
+* Biomodal distribution
+  :PROPERTIES:
+  :CUSTOM_ID: biomodal-distribution
+  :END:
+
+#+begin_src python
+# generate random numbers following a bi-modal distribution
+a = random.normal(loc=0, scale=2, size=10000) 
+b = random.normal(loc=8, scale=2, size=10000)
+
+x = np.concatenate([a, b])
+print(x)
+#+end_src
+
+#+begin_example
+[-0.83396869  2.46855613  0.18863638 ...  8.72127243 10.24225462
+  7.26607252]
+#+end_example
+
+#+begin_src python
+plt.hist(x, bins=100)
+plt.show()
+#+end_src
+
+[[file:03776a83f8cf25532121779e3b8a6300e71ed3b9.png]]
+
+#+begin_src python
+#+end_src
+
+#+begin_src python
+#+end_src
+
+* Paired/related samples
+  :PROPERTIES:
+  :CUSTOM_ID: pairedrelated-samples
+  :END:
+
+#+begin_src python
+number_of_samples = 100
+x = random.uniform(low=0, high=100, size=number_of_samples)
+
+x1 = x + random.normal(loc=0, scale=2, size=number_of_samples)
+x2 = x + random.normal(loc=0, scale=2, size=number_of_samples)
+
+
+plt.plot(x1, x2, ".")
+plt.show()
+#+end_src
+
+[[file:1b76294b1efe42840c5e4a16518ef7b8964f7ccd.png]]
+
+#+begin_src python
+#+end_src
+
+** Recap: Descriptive statistics
+   :PROPERTIES:
+   :CUSTOM_ID: recap-descriptive-statistics
+   :END:
+
+#+begin_src python
+# we setup an array of normal distributed values and 
+# measure their mean and standard deviation.
+x = random.normal(loc=0, scale=2, size=1000000) # <-- increase and decrease 
+                                                #     the size here!
+
+mean = np.mean(x)
+standard_deviation = np.std(x)
+
+print("Mean: " + str(mean))
+print("standard_deviation: " + str(standard_deviation))
+
+#+end_src
+
+#+begin_example
+Mean: 0.0006667702810900537
+standard_deviation: 1.9981803784765388
+#+end_example
+
+* Central limit theorem
+  :PROPERTIES:
+  :CUSTOM_ID: central-limit-theorem
+  :END:
+
+#+begin_src python
+def normal_random_plots(num_random_numbers):
+    x = random.normal(loc=0, scale=1, size=num_random_numbers)
+
+    data = [x]
+    
+    fig1, ax1 = plt.subplots()
+    ax1.set_title('Probability distribution of ' + str(num_random_numbers) + ' normal distributed random numbers')
+    ax1.set_xlabel("x");
+    ax1.set_ylabel("probability");
+    ax1.hist(data)
+    plt.show()
+
+for i in [1, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]:
+    normal_random_plots(i)
+#+end_src
+
+[[file:a65eb99605b31aaf62def23d1c65198b4e5bafb4.png]]
+
+[[file:8e01bc4316240ef8d9a2c230bf39c3fff98b46b4.png]]
+
+[[file:7dce6920facbdae54200ab32310a07db9bc75cf4.png]]
+
+[[file:5f82c4b1a7c6999b188cba660ec0e9d7a6a9e701.png]]
+
+[[file:1583e3d61be5cd07f1ee5da93df38460c10da1a3.png]]
+
+[[file:84b8872710068e33b83ca8a3a15c5ff8646396a2.png]]
+
+[[file:e0193be4d1b1e10e3ff10dfd542610f2de7689c6.png]]
+
+[[file:0a1e059ac83890d90aeae05f4d0a6a1392f3f9d1.png]]
+
+[[file:5782e01394353e8c25aa8ad304af62328d739ef2.png]]
+
+[[file:c234b4ee26138b08cbeb9f77c60a3505c1022fb4.png]]
+
+[[file:b8b5926ab568cd8f7e17b7fb5307f7ca4bc0a7f8.png]]
+
+[[file:75ff5d2739d9042d25c034e82e6f172543eb5f74.png]]
+
+#+begin_src python
+def normal_random_box_plots(num_random_numbers):
+    x = random.normal(loc=0, scale=1, size=num_random_numbers)
+    y = random.normal(loc=0, scale=1, size=num_random_numbers)
+
+    data = [x, y]
+
+    fig1, ax1 = plt.subplots()
+    ax1.set_title('Box Plot of ' + str(num_random_numbers) + ' normal distributed random numbers')
+    ax1.boxplot(data)
+    plt.show()
+
+for i in [1, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]:
+    normal_random_box_plots(i)
+#+end_src
+
+[[file:fb9f4898ef7e17e3eaf2f5be7963a33d31f24038.png]]
+
+[[file:284822d45648a861784524294f29c13e4f908998.png]]
+
+[[file:b3543ae07c38ad8358334cef894f498afa18928e.png]]
+
+[[file:70373fe51e7c4cf6536f7c73c2b2ef2c23e22f36.png]]
+
+[[file:3e14cb1377bb64d32b63999df827c7d8e6026850.png]]
+
+[[file:e826d3d4ec2d98c5915105f6a0e3f25071d358ea.png]]
+
+[[file:a0f0b16b20d0c8589607a0bf1b6f56ce28e2e023.png]]
+
+[[file:506518bf8046bff290d80ce67199b0fa26a7737a.png]]
+
+[[file:f0f30508ec937a94d236822160ca654cfc477f39.png]]
+
+[[file:f9204ada1fbed561c6b2ed48d9db7acbab8a1a4d.png]]
+
+[[file:86775d077b22feab9d77f3f499c24990e297f827.png]]
+
+[[file:d9d7bd957c80f6dcb355a7d8ea9581c5b94adce9.png]]
+
+#+begin_src python
+def uniform_random_box_plots(num_random_numbers):
+    x = random.uniform(low=0, high=10, size=num_random_numbers)
+    y = random.uniform(low=0, high=10, size=num_random_numbers)
+
+    data = [x, y]
+
+    fig1, ax1 = plt.subplots()
+    ax1.set_title('Box Plot of ' + str(num_random_numbers) + ' normal distributed random numbers')
+    ax1.boxplot(data)
+    plt.show()
+
+for i in [1, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]:
+    uniform_random_box_plots(i)
+#+end_src
+
+[[file:34ad4ad1d6ff23dc75be46898842859a65259b7d.png]]
+
+[[file:5596719ed8c8e20d1ea49d1592b4a006a94245c6.png]]
+
+[[file:6ca4424c95b6d51ca1c61c75ff53bccfafeae4c9.png]]
+
+[[file:44fb508de812c30339a4b738429b3d11534be5a1.png]]
+
+[[file:29ee08b8a2fb74359956e160f0214d3d48424d27.png]]
+
+[[file:95c34fadb61b16c1548d764e8b299ecd71b3b57a.png]]
+
+[[file:4b63dd90e56b0c922f3c50212572bea98e886134.png]]
+
+[[file:e6bffbe9fb04e3ef6d695de3a5a82625fb8e6808.png]]
+
+[[file:a44e65947365fe15ca647c1982c40ed80f86c8a7.png]]
+
+[[file:5c36e60fcd1732acec40e83fe63f0251ef47326a.png]]
+
+[[file:a0aa9bae9ecd9a80bc6d674fb763d163d0720cfe.png]]
+
+[[file:6e0aaaaa0f19b8b493606b7726545506a8b7d7f2.png]]
+
+* Students grades
+  :PROPERTIES:
+  :CUSTOM_ID: students-grades
+  :END:
+
+#+begin_src python
+from numpy import random
+import matplotlib.pyplot as plt
+
+student_count = 60
+grades = random.normal(loc=3, scale=1, size=student_count)
+
+fig1, ax1 = plt.subplots()
+ax1.set_title('Probability distribution grades')
+ax1.set_xlabel("grade");
+ax1.set_ylabel("count");
+ax1.hist(grades, range=(1,6), bins=6)
+plt.show()
+#+end_src
+
+[[file:debc03e87c101acb86f8b130be8bd09174f4f0a0.png]]
+
+#+begin_src python
+student_count = 60
+grades = random.normal(loc=2.5, scale=0.8, size=student_count)
+
+fig1, ax1 = plt.subplots()
+ax1.set_title('Probability distribution grades')
+ax1.set_xlabel("grade");
+ax1.set_ylabel("likelihood");
+ax1.hist(grades, range=(1,6), bins=6, density=True)
+plt.show()
+#+end_src
+
+[[file:1c41c3003aa45ff00202e254fb0b9e72c61f7524.png]]
+
+#+begin_src python
+student_count = 10000
+grades = random.normal(loc=3, scale=1, size=student_count)
+
+fig1, ax1 = plt.subplots()
+ax1.set_title('Probability distribution grades')
+ax1.set_xlabel("grade");
+ax1.set_ylabel("probability");
+ax1.hist(grades, range=(1,6), bins=6, density=True)
+plt.show()
+#+end_src
+
+[[file:842ae71671560086c84153d649c6ed9b20cc6a53.png]]
+
+#+begin_src python
+#+end_src

@@ -1,0 +1,288 @@
+* How process files in a folder
+  :PROPERTIES:
+  :CUSTOM_ID: how-process-files-in-a-folder
+  :END:
+In this notebook we will program a loop which walks over a folder of
+images. Furthermore, the loop will call a python function that analyses
+the images one by one. Hence, we will process all images in that folder
+using the same procedure.
+
+See also
+
+- [[https://realpython.com/working-with-files-in-python/][Working with
+  files in python]]
+- [[https://newbedev.com/how-to-iterate-over-files-in-a-given-directory][Iterate
+  over files in a directory]]
+
+#+begin_src python
+import os
+from skimage.io import imread
+from matplotlib.pyplot import imshow, show
+from skimage.io import imread
+import numpy as np
+#+end_src
+
+For demonstration purposes, we reuse a folder of images showing
+banana-slices imaged using magnetic resonance imaging (Courtesy of
+Nasreddin Abolmaali, OncoRay, TU Dresden)
+
+#+begin_src python
+# define the location of the folder to go through
+directory = '../../data/banana/'
+
+# get a list of files in that folder
+file_list = os.listdir(directory)
+
+file_list
+#+end_src
+
+#+begin_example
+['banana0002.tif',
+ 'banana0003.tif',
+ 'banana0004.tif',
+ 'banana0005.tif',
+ 'banana0006.tif',
+ 'banana0007.tif',
+ 'banana0008.tif',
+ 'banana0009.tif',
+ 'banana0010.tif',
+ 'banana0011.tif',
+ 'banana0012.tif',
+ 'banana0013.tif',
+ 'banana0014.tif',
+ 'banana0015.tif',
+ 'banana0016.tif',
+ 'banana0017.tif',
+ 'banana0018.tif',
+ 'banana0019.tif',
+ 'banana0020.tif',
+ 'banana0021.tif',
+ 'banana0022.tif',
+ 'banana0023.tif',
+ 'banana0024.tif',
+ 'banana0025.tif',
+ 'banana0026.tif',
+ 'image_source.txt']
+#+end_example
+
+Obviously, there are not just images in that folder. We can filter that
+list with a short for-statement:
+
+#+begin_src python
+image_file_list = [file for file in file_list if file.endswith(".tif")]
+
+image_file_list
+#+end_src
+
+#+begin_example
+['banana0002.tif',
+ 'banana0003.tif',
+ 'banana0004.tif',
+ 'banana0005.tif',
+ 'banana0006.tif',
+ 'banana0007.tif',
+ 'banana0008.tif',
+ 'banana0009.tif',
+ 'banana0010.tif',
+ 'banana0011.tif',
+ 'banana0012.tif',
+ 'banana0013.tif',
+ 'banana0014.tif',
+ 'banana0015.tif',
+ 'banana0016.tif',
+ 'banana0017.tif',
+ 'banana0018.tif',
+ 'banana0019.tif',
+ 'banana0020.tif',
+ 'banana0021.tif',
+ 'banana0022.tif',
+ 'banana0023.tif',
+ 'banana0024.tif',
+ 'banana0025.tif',
+ 'banana0026.tif']
+#+end_example
+
+Alternatively, we can also write a longer for-loop and check if files
+are images. This code does exactly the same, it is just written in a
+different way.
+
+#+begin_src python
+# go through all files in the folder
+for file in file_list:
+    # if the filename is of a tif-image, print it out
+    if file.endswith(".tif"):
+        print(file)
+#+end_src
+
+#+begin_example
+banana0002.tif
+banana0003.tif
+banana0004.tif
+banana0005.tif
+banana0006.tif
+banana0007.tif
+banana0008.tif
+banana0009.tif
+banana0010.tif
+banana0011.tif
+banana0012.tif
+banana0013.tif
+banana0014.tif
+banana0015.tif
+banana0016.tif
+banana0017.tif
+banana0018.tif
+banana0019.tif
+banana0020.tif
+banana0021.tif
+banana0022.tif
+banana0023.tif
+banana0024.tif
+banana0025.tif
+banana0026.tif
+#+end_example
+
+As you can see above =image_file_list= is a list of strings. Storing the
+name of the image in a list means way less computational power than
+storing the images themselves in the list. It makes sense to =imread=
+the images at the latest possible point in time, here in the for-loop
+below. If you are interested in folder structures and specifying these
+directories, you can check out these two jupyter notebooks
+[[https://github.com/BiAPoL/Quantitative_Bio_Image_Analysis_with_Python_2022/blob/main/docs/day1x_Folder_Structures/05_Folder_structures.ipynb][here]]
+and
+[[https://github.com/BiAPoL/Quantitative_Bio_Image_Analysis_with_Python_2022/blob/main/docs/day1x_Folder_Structures/06_Folder_structures2.ipynb][here]].
+
+In order to show all images, we need to open them from the correct
+=directory=:
+
+#+begin_src python
+# go through all files in the folder
+for image_file in image_file_list:
+    image = imread(directory + image_file)
+    imshow(image)
+    show()
+#+end_src
+
+[[file:6f4a4c0545bd9f2855b1cf6cbd63ea02321c1c52.png]]
+
+[[file:42dd27307ad4b670d609aa48ea723e5959e1c6e7.png]]
+
+[[file:8b4e845d0019f538c2e01957f347a23a5950f9ae.png]]
+
+[[file:a64b035570cb539d7250264967d48ea5b2d6e516.png]]
+
+[[file:787a3b9cc5ee30d726d6986635a5b4acd0442857.png]]
+
+[[file:c89283a157969c57d73aa81b14585c9bf3a2a62a.png]]
+
+[[file:b5c7f0ba4adb234169f1412cce0452395f9cf9a6.png]]
+
+[[file:a3d135ee4242066e479c1727160cd1dbd519562a.png]]
+
+[[file:64abf001ea266d440b265332220693672041adb9.png]]
+
+[[file:343ac0051a381a57603efd66fb24c7d0821b7ec9.png]]
+
+[[file:b513c2fd92a1bac8a5995dc23692ec801f7fd1e9.png]]
+
+[[file:2a3a5d2a2ecbb6088aff25229afac4da40a8920b.png]]
+
+[[file:2f49e5023ebe1af396606fb330c0256d4268970c.png]]
+
+[[file:339dee8b0daa695ce5bf7eb6e6ebe1662f966a2e.png]]
+
+[[file:d067fac788d6105edf76a535df39ede24d2897a2.png]]
+
+[[file:51df4bb7fc5400a104c44823ebba33bbc2be695d.png]]
+
+[[file:746d08c4cca3ef4c3f46da20d033e225f23c4eb0.png]]
+
+[[file:9b00ab5c1968f3960d37cb6ac833839daae92e4c.png]]
+
+[[file:8a6660ffb4f8b2c12b56478c5780b6d53e1a7ece.png]]
+
+[[file:82c3068ce4f5b2ed16ba266437f2d49d12af0641.png]]
+
+[[file:8a47c840ac7f0f8e93bd18eaf3da6940396a1579.png]]
+
+[[file:c43cd3973a7305b14c0c14eb82f6f9da222e4f8f.png]]
+
+[[file:811e88a92841f8adb9127b114e65ebf197407944.png]]
+
+[[file:ee60b8ac17bfe124483183f771388a4d3f441062.png]]
+
+[[file:9b0926cd05bdaf5c1a7977c675f955300ebf94b4.png]]
+
+[[https://nbviewer.jupyter.org/github/BiAPoL/Bio-image_Analysis_with_Python/blob/main/python_basics/09_custom_functions.ipynb][Custom
+functions]] help us to keep code organized. For example, we can put
+image-analysis code in a function and then just call it:
+
+#+begin_src python
+def load_and_measure(filename):
+    """
+    This function opens an image and returns its mean intensity.
+    """
+    image = imread(filename)
+    
+    # return mean intensity in the image
+    return np.mean(image)
+
+# for testing
+load_and_measure(directory + "banana0010.tif")
+#+end_src
+
+#+begin_example
+69.15106201171875
+#+end_example
+
+With such a custom function, we can also make use of the short form for
+writing for-loops:
+
+#+begin_src python
+mean_intensities_of_all_images = [load_and_measure(directory + file) for file in image_file_list]
+mean_intensities_of_all_images
+#+end_src
+
+#+begin_example
+[12.94198947482639,
+ 25.04678683810764,
+ 39.627543131510414,
+ 49.71319580078125,
+ 56.322109646267364,
+ 60.08679877387153,
+ 63.94538031684028,
+ 66.04618326822917,
+ 69.15106201171875,
+ 70.85603162977431,
+ 74.40909152560764,
+ 77.48423936631944,
+ 81.77360026041667,
+ 85.44072129991319,
+ 91.22532823350694,
+ 94.36199951171875,
+ 98.47229682074652,
+ 99.3980712890625,
+ 102.34300401475694,
+ 101.50947401258681,
+ 97.14067247178819,
+ 80.13118489583333,
+ 49.77497694227431,
+ 28.36090766059028,
+ 18.806070963541668]
+#+end_example
+
+* Exercise
+  :PROPERTIES:
+  :CUSTOM_ID: exercise
+  :END:
+Open all images of the banana dataset, segment the images and measure
+the centroid of the banana slices to a table. Write measurement results
+to "banana.csv".
+
+Hint: Instead of the =imshow= command in the last example, execute your
+image processing workflow. Setup the image processing workflow first,
+e.g. in a custom function. Programm iterating over files in a folder
+last, after the image processing works.
+
+#+begin_src python
+#+end_src

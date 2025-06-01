@@ -1,0 +1,133 @@
+<<bea6da31-a5ef-4b44-b96c-7570e8659b34>>
+* Feature selection
+  :PROPERTIES:
+  :CUSTOM_ID: feature-selection
+  :END:
+Feature selection involves selecting a subset of relevant features for
+use in model construction. It helps improve the performance of machine
+learning models by eliminating redundant and irrelevant data.
+
+<<307300eb-b787-48a7-b7a5-1fbb8b5266e5>>
+#+begin_src python
+from skimage.data import human_mitosis
+from napari_segment_blobs_and_things_with_membranes import voronoi_otsu_labeling
+from napari_simpleitk_image_processing import label_statistics
+from sklearn.preprocessing import StandardScaler
+import numpy as np
+import umap
+import seaborn
+import pyclesperanto_prototype as cle
+import matplotlib.pyplot as plt
+#+end_src
+
+<<61828c9a-b6bc-4623-b391-88a35f112ff9>>
+*** Load data
+    :PROPERTIES:
+    :CUSTOM_ID: load-data
+    :END:
+We first load the image data that will be used for feature extraction.
+
+<<63828c9a-b6bc-4623-b391-88a35f112ff9>>
+#+begin_src python
+# Load data
+image = cle.imread("../../data/Lund-25MB.tif")
+
+# Segment nuclei
+background_subtracted = cle.top_hat_box(image, radius_x=5, radius_y=5)
+labels = cle.voronoi_otsu_labeling(background_subtracted, spot_sigma=1)
+
+# Feature extraction
+nuclei_statistics = label_statistics(image, labels, 
+                                     intensity=True, 
+                                     size=True, 
+                                     shape=True, 
+                                     perimeter=True,
+                                     moments=True)
+
+# Feature selection
+selected_table = nuclei_statistics[
+    [
+       # likely unrelated features
+       'label', 
+        
+       # intensity releated features
+       'maximum', 'mean', 'minimum', 'variance',
+        
+       # shape related features 
+       'elongation', 'feret_diameter', 'flatness', 'roundness',
+
+       # size related features
+       'equivalent_spherical_radius', 'number_of_pixels', 'perimeter'
+    ]
+]
+selected_table
+#+end_src
+
+#+begin_example
+      label  maximum        mean  minimum    variance  elongation  \
+0         1    143.0  117.489451     93.0   90.056032    1.228690   
+1         2    113.0   83.052219     65.0   94.086271    1.325096   
+2         3    130.0  108.930403     92.0   57.109109    1.565911   
+3         4    129.0   94.576991     70.0  130.716136    1.227027   
+4         5    149.0  119.454545     89.0  144.431321    1.429829   
+...     ...      ...         ...      ...         ...         ...   
+1195   1196     60.0   42.118257     29.0   50.270809    1.107046   
+1196   1197     83.0   47.673267     29.0  159.330772    1.046951   
+1197   1198     53.0   41.502890     30.0   28.123180    1.042599   
+1198   1199     72.0   45.091570     29.0  106.316202    1.114285   
+1199   1200     66.0   44.232682     29.0   67.484909    1.203239   
+
+      feret_diameter  flatness  roundness  equivalent_spherical_radius  \
+0           8.774964  1.153618   0.965657                     3.839016   
+1          13.152946  1.215572   0.818905                     4.505089   
+2          12.884099  1.434476   0.807173                     4.024309   
+3          14.352700  1.397276   0.833006                     5.128456   
+4          10.723805  1.269121   0.871680                     4.034113   
+...              ...       ...        ...                          ...   
+1195       11.090537  1.307962   0.976306                     4.863917   
+1196       12.409674  1.236147   0.962602                     5.526416   
+1197        9.643651  1.330995   0.965376                     4.355077   
+1198       12.961481  1.269182   0.962037                     5.476460   
+1199       12.206556  1.381601   0.961668                     5.122397   
+
+      number_of_pixels   perimeter  
+0                  237  191.790349  
+1                  383  311.446414  
+2                  273  252.130963  
+3                  565  396.766310  
+4                  275  234.611278  
+...                ...         ...  
+1195               482  304.506355  
+1196               707  398.703613  
+1197               346  246.890816  
+1198               688  391.758021  
+1199               563  342.871234  
+
+[1200 rows x 12 columns]
+#+end_example
+
+<<1efc67e1-3919-4141-b881-0323cfd6f5cb>>
+*** Feature correlation
+    :PROPERTIES:
+    :CUSTOM_ID: feature-correlation
+    :END:
+We examine the correlation between the selected features to understand
+their relationships.
+
+<<5efc67e1-3919-4141-b881-0323cfd6f5cb>>
+#+begin_src python
+df = selected_table.corr()
+
+def colorize(styler):
+    styler.background_gradient(axis=None, cmap="coolwarm")
+    return styler
+df.style.pipe(colorize)
+#+end_src
+
+#+begin_example
+<pandas.io.formats.style.Styler at 0x16551fe9940>
+#+end_example
+
+<<f3d87b8d-19b5-44cf-986b-20c01a40b217>>
+#+begin_src python
+#+end_src

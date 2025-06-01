@@ -1,0 +1,182 @@
+* Images are arrays of numbers
+  :PROPERTIES:
+  :CUSTOM_ID: images-are-arrays-of-numbers
+  :END:
+[[https://numpy.org][Numpy]] is a library for processing
+multi-dimensional lists of numbers, of which microscopy images (stacks,
+multi-channel, time-lapses etc.) are a prominent example. We give here
+an introduction to this library.
+
+See also
+
+- [[https://scipy-lectures.org/advanced/image_processing/index.html#basic-image][Image
+  manipulation and processing using Numpy and Scipy by Emmanuelle
+  Gouillart and Gaël Varoquaux]]
+
+#+begin_src python
+import numpy as np
+from matplotlib.pyplot import imshow
+#+end_src
+
+** Numpy arrays
+   :PROPERTIES:
+   :CUSTOM_ID: numpy-arrays
+   :END:
+An image is just a two dimensional list of pixels values, in other words
+a matrix, with a certain number of rows and columns. Therefore we can
+define it as a list of lists, each list being a row of pixels:
+
+#+begin_src python
+raw_image_array = [
+    [1, 0, 2, 1, 0, 0, 0],
+    [0, 3, 1, 0, 1, 0, 1],
+    [0, 5, 5, 1, 0, 1, 0],
+    [0, 6, 6, 5, 1, 0, 2],
+    [0, 0, 5, 6, 3, 0, 1],
+    [0, 1, 2, 1, 0, 0, 1],
+    [1, 0, 1, 0, 0, 1, 0]
+]
+raw_image_array
+#+end_src
+
+#+begin_example
+[[1, 0, 2, 1, 0, 0, 0],
+ [0, 3, 1, 0, 1, 0, 1],
+ [0, 5, 5, 1, 0, 1, 0],
+ [0, 6, 6, 5, 1, 0, 2],
+ [0, 0, 5, 6, 3, 0, 1],
+ [0, 1, 2, 1, 0, 0, 1],
+ [1, 0, 1, 0, 0, 1, 0]]
+#+end_example
+
+#+begin_src python
+imshow(raw_image_array)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1f9fbdb4b80>
+#+end_example
+
+[[file:489e92ac9d746f69d1e9f88b0b86325eefe2170d.png]]
+
+This output is almost the same as above with the difference that now it
+is indicated that we are dealing with a Numpy =array=. Such Numpy arrays
+can now be treated as a one entity and we can perform the computation
+that we coudn't before:
+
+#+begin_src python
+image = np.asarray(raw_image_array)
+#+end_src
+
+#+begin_src python
+image - 2
+#+end_src
+
+#+begin_example
+array([[-1, -2,  0, -1, -2, -2, -2],
+       [-2,  1, -1, -2, -1, -2, -1],
+       [-2,  3,  3, -1, -2, -1, -2],
+       [-2,  4,  4,  3, -1, -2,  0],
+       [-2, -2,  3,  4,  1, -2, -1],
+       [-2, -1,  0, -1, -2, -2, -1],
+       [-1, -2, -1, -2, -2, -1, -2]])
+#+end_example
+
+Note that these computations are very efficient because they are
+/vectorized/, i.e. they can in principle be performed in parallel.
+
+** Two important properties
+   :PROPERTIES:
+   :CUSTOM_ID: two-important-properties
+   :END:
+Arrays like =image= have different properties. Two of the most important
+ones are:
+
+- the =shape= of the array, i.e. the number of rows, columns (and
+  channels, planes etc. for multi-dimensional images)
+- the =dtype= of the array, i.e. an image of type =int64= has 2 to the
+  power of 64 different grey values.
+
+#+begin_src python
+image.shape
+#+end_src
+
+#+begin_example
+(7, 7)
+#+end_example
+
+#+begin_src python
+image.dtype
+#+end_src
+
+#+begin_example
+dtype('int32')
+#+end_example
+
+** Other ways of creating arrays
+   :PROPERTIES:
+   :CUSTOM_ID: other-ways-of-creating-arrays
+   :END:
+When working with images, we often create artifical images to see what
+filters do with them. For example, we can create an image where all
+pixels have value =0= but a single one using the Numpy function
+[[https://numpy.org/doc/stable/reference/generated/numpy.zeros.html][=np.zeros=]].
+It requires to specify and image size.
+
+#+begin_src python
+image_size = (6, 5)
+
+image1 = np.zeros(image_size)
+image1
+#+end_src
+
+#+begin_example
+array([[0., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 0.]])
+#+end_example
+
+#+begin_src python
+imshow(image1)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1f9fc000f10>
+#+end_example
+
+[[file:3d00fdcbe390d7b26f3b86ce4911f8a8b63b685a.png]]
+
+As images are just arrays, we just set pixel values as if we were
+accessing arrays. From this you also learn that the first axis
+(coordinate 0) is going from top to bottom while the second axis
+(coordinate 3) goes from left to right.
+
+#+begin_src python
+image1[0,3] = 1
+
+imshow(image1)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1f9fbe7ad90>
+#+end_example
+
+[[file:a4a8b5b4db82209a1faeab03271689311e37749f.png]]
+
+For studying noise, we can for example create an image with random
+values using
+[[https://numpy.org/doc/stable/reference/random/generated/numpy.random.Generator.random.html#numpy.random.Generator.random][=np.random.random=]].
+
+#+begin_src python
+image_random = np.random.random((6, 5))
+imshow(image_random)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1f9fbef72e0>
+#+end_example
+
+[[file:969e920474fce857b4217a0ff0ac8729e2e34286.png]]

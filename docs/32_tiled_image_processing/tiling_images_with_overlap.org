@@ -1,0 +1,219 @@
+<<ad93ffe5-30c3-48a5-97e0-325f1115e87e>>
+* Tiling images with overlap
+  :PROPERTIES:
+  :CUSTOM_ID: tiling-images-with-overlap
+  :END:
+When processing images in tiles, we can observe artifacts on borders of
+the tiles in the resulting image. One strategy to prevent these
+artifacts is to process tiles with some overlap.
+[[https://docs.dask.org/en/stable/][dask]] also supports this. Again,
+for demonstration purposes, we use =imshow= to show the resulting
+images. If these were big data, the =imshow= function would not work.
+
+<<2b3cec13-b530-4fe3-9bcf-d21442119bff>>
+#+begin_src python
+import dask
+import dask.array as da
+from skimage.filters import gaussian
+from skimage.data import cells3d
+from pyclesperanto_prototype import imshow
+#+end_src
+
+<<272c907a-1edf-493e-a3f4-4745dfffe119>>
+Similar to the example in the last lesson, we define a procedure that
+applies a Gaussian blur to an image and prints out the size of the
+image, just so that we know:
+
+<<271d74cd-79ff-4af1-8ef9-df350943e41b>>
+#+begin_src python
+def procedure(image):
+    print("proceduring", image.shape)
+    return gaussian(image, sigma=5)
+#+end_src
+
+<<aabf7efe-a856-4fc8-97f3-0862214a0ceb>>
+#+begin_src python
+image = cells3d()[30,1]
+imshow(image)
+#+end_src
+
+[[file:eeb11d9eba11150741a860b3062318495a761646.png]]
+
+<<87719d45-2cf8-4c2b-b74c-c8c7562ee105>>
+After loading the image, we tile it as usual.
+
+<<57e9b0d8-930e-44b5-b2a6-3b6e15addbb9>>
+#+begin_src python
+tiles = da.from_array(image, chunks=(128, 128))
+tiles
+#+end_src
+
+#+begin_example
+dask.array<array, shape=(256, 256), dtype=uint16, chunksize=(128, 128), chunktype=numpy.ndarray>
+#+end_example
+
+<<f48fa77d-eb57-434c-9521-b9f8d2ea5e4f>>
+Next, we tell dask what to do with our tiles: We want to map the
+function =procedure= to the tiles with a
+[[https://docs.dask.org/en/stable/generated/dask.array.map_overlap.html#dask.array.map_overlap][defined
+overlap]].
+
+<<d88ff9f3-fd1a-40d0-9449-9e75966e83dc>>
+#+begin_src python
+overlap_width = 1
+tile_map = da.map_overlap(procedure, tiles, depth=overlap_width)
+#+end_src
+
+#+begin_example
+proceduring (0, 0)
+proceduring (1, 1)
+#+end_example
+
+#+begin_example
+/Users/haase/opt/anaconda3/envs/bio_39/lib/python3.9/site-packages/dask/array/overlap.py:642: FutureWarning: Default 'boundary' argument value will change from 'reflect' to 'none' in future versions from 2022.03.0 onwards. Use 'boundary="none"' to opt into the future behavior now or set 'boundary="reflect"' to maintain the current behavior going forward.
+  warnings.warn(
+#+end_example
+
+<<c012e7e1-ec02-448a-ae0e-0ae734b605ee>>
+The function was executed twice with very small images (0x0 and 1x1
+pixels) to check if it works. Next, we actually compute the result.
+
+<<dbb25b86-8838-4182-960b-4e41ab7f01a9>>
+#+begin_src python
+result = tile_map.compute() # Warning: This loads all image data into memory
+#+end_src
+
+#+begin_example
+proceduringproceduring (130, 130)
+proceduring (130, 130)
+ (130, 130)
+proceduring (130, 130)
+#+end_example
+
+<<3a12f60e-1532-4b05-a552-3eeb7c4d0507>>
+From the printed image size, we can see that the processed image size is
+2 pixels larger than the tile size. That's the overlap of 1 pixel in all
+directions.
+
+<<ec5fe4fc-9a1b-4a86-b4a6-9ded08680f1e>>
+** Minimizing border effects
+   :PROPERTIES:
+   :CUSTOM_ID: minimizing-border-effects
+   :END:
+Next, we will compare the result when processing the whole image with
+the image processed in tiles with different overlaps. This gives us the
+chance to figure out the minimum necessary overlap width for eliminating
+border effects. First, we compute the result for the full image.
+
+<<acba23de-f12d-4d25-8d02-e174c12c67da>>
+#+begin_src python
+untiled_result = procedure(image)
+#+end_src
+
+#+begin_example
+proceduring (256, 256)
+#+end_example
+
+<<995c3072-d8a8-4e5f-989b-e3e66a63bef1>>
+Then, we run a for-loop with different =border_width=s.
+
+<<ac4d28c8-aed0-4980-8b75-3a37c95adf18>>
+#+begin_src python
+for overlap_width in range(0, 25, 5):
+    print("Overlap width", overlap_width)
+    tile_map = da.map_overlap(procedure, tiles, depth=overlap_width, boundary='nearest')
+    result = tile_map.compute()
+    difference = result - untiled_result
+    imshow(difference)
+    print("sum difference", difference.sum())
+    print("-----------------------------------")
+#+end_src
+
+#+begin_example
+Overlap width 0
+proceduring (0, 0)
+proceduring (1, 1)
+proceduringproceduring (128, 128)
+proceduring (128, 128) (128, 128)
+
+proceduring (128, 128)
+#+end_example
+
+[[file:374cc7c23fa90469f1b21650c4e05bc355b8d7a4.png]]
+
+#+begin_example
+sum difference 1.528818863147824
+-----------------------------------
+Overlap width 5
+proceduring (0, 0)
+proceduring (1, 1)
+proceduring (138, 138)
+proceduring (138, 138)
+proceduring (138, 138)
+proceduring (138, 138)
+#+end_example
+
+[[file:e071bc1839319a1bf6fd0dac05d643064f686e9d.png]]
+
+#+begin_example
+sum difference 2.098167990865754
+-----------------------------------
+Overlap width 10
+proceduring (0, 0)
+proceduring (1, 1)
+proceduringproceduring (148, 148)
+ (148, 148)
+proceduring (148, 148)
+proceduring (148, 148)
+#+end_example
+
+[[file:96a428558748586ca98809b17f0c64f8434bb883.png]]
+
+#+begin_example
+sum difference -0.18132395183423158
+-----------------------------------
+Overlap width 15
+proceduring (0, 0)
+proceduring (1, 1)
+proceduring (158, 158)
+proceduring (158, 158)
+proceduring (158, 158)
+proceduring (158, 158)
+#+end_example
+
+[[file:1f228c32704b6705b91c46a16465697aedeed0d6.png]]
+
+#+begin_example
+sum difference -0.005761703866654207
+-----------------------------------
+Overlap width 20
+proceduring (0, 0)
+proceduring (1, 1)
+proceduring (168, 168)
+proceduring (168, 168)
+proceduring (168, 168)
+proceduring (168, 168)
+#+end_example
+
+[[file:3c5a4a167b88b7311cdce8889176165fec858cc5.png]]
+
+#+begin_example
+sum difference 0.0
+-----------------------------------
+#+end_example
+
+<<b7bf21fc-8364-488e-a40e-e6d18c6ff869>>
+As you can see, for completely eliminating the border effect, we need to
+use an overlap of 25 pixels. This is obviously related to the
+=procedure= we applied. In our case, the Gaussian blur used in
+=procedure= was configured with =sigma=5=. As a rule of thumb we can say
+that in the case of a Gaussian blur, the border width must be at least
+four times the configured sigma. However, when using more complicated
+algorithms, there are no such rules. In general, it is recommended to
+test tiled image processing on small images as demonstrated here and
+figure out if artifacts appear and what error they may cause in a longer
+image processing workflow.
+
+<<8ed2f58a-529b-4924-9fc6-eb74e0c53487>>
+#+begin_src python
+#+end_src

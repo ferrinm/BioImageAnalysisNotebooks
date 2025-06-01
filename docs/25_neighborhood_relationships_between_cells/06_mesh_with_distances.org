@@ -1,0 +1,124 @@
+* Draw distance-meshes between neighbors
+  :PROPERTIES:
+  :CUSTOM_ID: draw-distance-meshes-between-neighbors
+  :END:
+When studying neighborhood-relationships between cells, e.g. to
+determine if cells can communicate with each other, their distances to
+each other are relevant. We can visualize those using distance meshes.
+
+#+begin_src python
+import pyclesperanto_prototype as cle
+from numpy import random
+from skimage.io import imread
+#+end_src
+
+We're using a dataset published by
+[[https://doi.org/10.1091/mbc.E13-04-0221][Heriche et al.]] licensed
+[[https://creativecommons.org/licenses/by/4.0/][CC BY 4.0]] available in
+the [[https://idr.openmicroscopy.org/webclient/img_detail/179719/][Image
+Data Resource]].
+
+#+begin_src python
+raw_image = imread("../../data/plate1_1_013 [Well 5, Field 1 (Spot 5)].png")[:,:,0]
+
+nuclei = cle.voronoi_otsu_labeling(raw_image, spot_sigma=15)
+
+cle.imshow(nuclei, labels=True)
+#+end_src
+
+[[file:d5de53b03071c71d15f8f2d0da1cdfc93dcb666a.png]]
+
+A mesh can for example be drawn between proximal neighbors, nuclei which
+are closer than a given maximum distance.
+
+#+begin_src python
+max_distance = 320
+
+proximal_neighbor_mesh = cle.draw_mesh_between_proximal_labels(nuclei, maximum_distance=max_distance)
+
+# we make the lines a bit thicker for visualization purposes
+proximal_neighbor_mesh = cle.maximum_box(proximal_neighbor_mesh, radius_x=5, radius_y=5)
+
+cle.imshow(proximal_neighbor_mesh)
+#+end_src
+
+[[file:0b3e13c4b3f33de04443c78149cbc512d357b56b.png]]
+
+#+begin_src python
+proximal_distance_mesh = cle.draw_distance_mesh_between_proximal_labels(nuclei, maximum_distance=max_distance)
+
+# we make the lines a bit thicker for visualization purposes
+proximal_distance_mesh = cle.maximum_box(proximal_distance_mesh, radius_x=5, radius_y=5)
+
+cle.imshow(proximal_distance_mesh)
+#+end_src
+
+[[file:64d3f4490cbb0c755b43fcdf88c005f6e51b0cdc.png]]
+
+** Distance meshes in more detail
+   :PROPERTIES:
+   :CUSTOM_ID: distance-meshes-in-more-detail
+   :END:
+For drawing a distance mesh, we need to combine a distance matrix, an
+abstract representation of distances of all objects to each other with a
+neighborhood-matrix, which represents which cells are neighbors.
+
+We start with the distance matrix.
+
+#+begin_src python
+centroids = cle.centroids_of_background_and_labels(nuclei)
+
+distance_matrix = cle.generate_distance_matrix(centroids, centroids)
+
+# we ignor distances to the background object
+cle.set_column(distance_matrix, 0, 0)
+cle.set_row(distance_matrix, 0, 0)
+
+cle.imshow(distance_matrix, colorbar=True)
+#+end_src
+
+[[file:2be252382cb3f2233d520ffe547cc43b78de516e.png]]
+
+Next, we should setup a matrix which represents for each nucleus (from
+the left to the right) which are its n nearest neighbors.
+
+#+begin_src python
+proximal_neighbor_matrix = cle.generate_proximal_neighbors_matrix(distance_matrix, max_distance=max_distance)
+
+cle.imshow(proximal_neighbor_matrix)
+#+end_src
+
+[[file:8d1faa41711bef968706467d67c8415699fbf9c1.png]]
+
+#+begin_src python
+distance_touch_matrix = distance_matrix * proximal_neighbor_matrix
+
+cle.imshow(distance_touch_matrix, colorbar=True)
+#+end_src
+
+[[file:f013c6772d9826ecafd0d73cb9cb50853cd1c4eb.png]]
+
+#+begin_src python
+distance_mesh1 = cle.touch_matrix_to_mesh(centroids, distance_touch_matrix)
+
+# we make the lines a bit thicker for visualization purposes
+distance_mesh1 = cle.maximum_box(distance_mesh1, radius_x=5, radius_y=5)
+
+cle.imshow(distance_mesh1, colorbar=True)
+#+end_src
+
+[[file:9234eef0ad8e25ce5a00d1e7f1b62f16b3312e92.png]]
+
+To check if the nuclei from above are still the centroids of the mesh,
+we put both together in one image.
+
+#+begin_src python
+visualization = cle.maximum_images(nuclei > 0, distance_mesh1 > 0)
+
+cle.imshow(visualization)
+#+end_src
+
+[[file:013d34377c8225ae8f04c52603cc6bd7015605cf.png]]
+
+#+begin_src python
+#+end_src

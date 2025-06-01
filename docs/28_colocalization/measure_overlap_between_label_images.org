@@ -1,0 +1,55 @@
+<<31350cf6-1152-4840-acf4-eaf89b675707>>
+* Measure overlap between two label images
+  :PROPERTIES:
+  :CUSTOM_ID: measure-overlap-between-two-label-images
+  :END:
+
+<<6a12cb8f>>
+#+begin_src python
+import pyclesperanto_prototype as cle
+
+from skimage.io import imread, imsave, imshow
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+
+# initialize GPU
+cle.select_device("GTX")
+#+end_src
+
+#+begin_example
+<gfx90c on Platform: AMD Accelerated Parallel Processing (2 refs)>
+#+end_example
+
+<<ed109168>>
+#+begin_src python
+# load data
+labels = cle.voronoi_otsu_labeling(imread('https://samples.fiji.sc/blobs.png'), spot_sigma=4)
+
+cle.imshow(labels, labels=True)
+#+end_src
+
+[[file:9b4ab32d04b6d16fc4089ca8b29c74c3634ee471.png]]
+
+<<a5d4e595>>
+#+begin_src python
+extended_labels = cle.dilate_labels(labels, radius=5)
+
+cle.imshow(extended_labels, labels=True)
+#+end_src
+
+[[file:1aad297c58c459472dbd3abe4d7d787d3c36fd22.png]]
+
+<<74479b8c>>
+#+begin_src python
+# measure the ratio of overlap
+overlap_ratio = cle.label_nonzero_pixel_count_ratio_map(extended_labels, labels)
+
+cle.imshow(overlap_ratio, colorbar=True)
+#+end_src
+
+[[file:1a7ffed0dfa1b9c60c7a76465ddc43dc4e64a289.png]]
+
+<<f54ca9ab>>
+#+begin_src python
+#+end_src

@@ -1,0 +1,210 @@
+<<fa63f581-f411-4e3c-8a36-255c1c986389>>
+* Querying databases using SQL
+  :PROPERTIES:
+  :CUSTOM_ID: querying-databases-using-sql
+  :END:
+The first step is to load and explore data. We use pandas for loading
+the data and all we do is store it in variables.
+
+<<91c81c85-dce7-4b20-9654-ad52d051743d>>
+#+begin_src python
+import pandas as pd
+from pandasql import sqldf
+#+end_src
+
+<<6cd8dc6b-b640-4c2c-9f0d-82978a08db82>>
+When working with SQL, common practice is to call tables (a.k.a.
+DataFrames) as singluar. This allows to read SQL code better. For
+example in a database containing experiments, we can later use
+=experiment.concentration= to describe the concentration of a drug that
+was used to expose cells.
+
+<<6a98379e-c60d-4ce2-81e7-2ad47c5225e4>>
+#+begin_src python
+experiment = pd.read_csv("../../data/experiments.csv")
+measurement = pd.read_csv("../../data/measurements.csv")
+#+end_src
+
+<<3dfa47bc-7f85-49fb-8a62-57b6b65054ae>>
+Next we combine these tables in a database. Therefore, we define a
+function that can query the database.
+
+<<bdec6f91-22c5-404f-a436-b23a29506e9a>>
+#+begin_src python
+query_database = lambda q: sqldf(q, globals())
+#+end_src
+
+<<ebe7d09c-fe64-4d17-a6f7-00b910980899>>
+* Select From
+  :PROPERTIES:
+  :CUSTOM_ID: select-from
+  :END:
+Next, we define a query in SQL. SQL has a quite nicely human readable
+format. Typically we start by defining what we want to read (=SELECT=)
+and from where (=FROM=).
+
+<<6fb1244e-70a6-4c6c-bb1f-8bfe7e550f2c>>
+#+begin_src python
+query = """
+SELECT * 
+FROM measurement
+"""
+
+query_database(query)
+#+end_src
+
+#+begin_example
+    Unnamed: 0  image_ID  time_after_exposure_in_s  number_of_cells
+0            0         1                         0               99
+1            1         1                         1               52
+2            2         1                         2               33
+3            3         1                         3               25
+4            4         1                         4               21
+..         ...       ...                       ...              ...
+95          95        10                         5               52
+96          96        10                         6               54
+97          97        10                         7               54
+98          98        10                         8               54
+99          99        10                         9               51
+
+[100 rows x 4 columns]
+#+end_example
+
+<<37e59421-2e1e-4ae8-9380-bbed2f0127d7>>
+By the way, SQL is not case-sensitive per-se but you typically find SQL
+command words in capital letters.
+
+<<5d7d7f3a-b3c4-403d-8de1-86d9f9ca9750>>
+#+begin_src python
+query = """
+select * 
+from measurement
+"""
+
+query_database(query)
+#+end_src
+
+#+begin_example
+    Unnamed: 0  image_ID  time_after_exposure_in_s  number_of_cells
+0            0         1                         0               99
+1            1         1                         1               52
+2            2         1                         2               33
+3            3         1                         3               25
+4            4         1                         4               21
+..         ...       ...                       ...              ...
+95          95        10                         5               52
+96          96        10                         6               54
+97          97        10                         7               54
+98          98        10                         8               54
+99          99        10                         9               51
+
+[100 rows x 4 columns]
+#+end_example
+
+<<091108ac-f5fe-474d-b3b1-1a63492f3608>>
+You can also select specific columns by name. Also here, SQL is not
+case-sensitive. The selected column =concentration= shows up as
+=Concentration= because that's its name in the database.
+
+<<c93f5a11-53e7-4318-987c-66cd39b25139>>
+#+begin_src python
+query = """
+select Comment, concentration
+from experiment
+"""
+
+query_database(query)
+#+end_src
+
+#+begin_example
+           Comment  Concentration
+0        High dose             50
+1      Medium dose             20
+2          Control              0
+3  Super high dose           1000
+#+end_example
+
+<<7f18fe8a-1273-40d5-a68c-bd74c02d2eed>>
+** Sorting tables
+   :PROPERTIES:
+   :CUSTOM_ID: sorting-tables
+   :END:
+This table can also be sorted using the =ORDER BY= statement, for
+example to see the highest number of cells. In this case we sort the
+column descending using the =DESC= statement. The ascending order =ASC=
+would be default.
+
+<<9faf21e7-745d-49d7-bf9f-d11420cf5e81>>
+#+begin_src python
+query = """
+SELECT * 
+FROM measurement
+ORDER BY number_of_cells DESC
+"""
+
+query_database(query)
+#+end_src
+
+#+begin_example
+    Unnamed: 0  image_ID  time_after_exposure_in_s  number_of_cells
+0           10         2                         0              201
+1           75         8                         5              161
+2           50         6                         0              158
+3           78         8                         8              158
+4           70         8                         0              157
+..         ...       ...                       ...              ...
+95          47         5                         7                8
+96          38         4                         8                7
+97          48         5                         8                7
+98          39         4                         9                6
+99          49         5                         9                6
+
+[100 rows x 4 columns]
+#+end_example
+
+<<70c7789a-de21-4b14-8126-b256e4f4a4df>>
+** Specifying the number of rows to query
+   :PROPERTIES:
+   :CUSTOM_ID: specifying-the-number-of-rows-to-query
+   :END:
+In case a table is very large, retrieving all rows may take a long time.
+To get insights into the data anyway, it may make sense to =LIMIT= the
+table by the top 10 rows.
+
+<<4c586b76-44a2-4207-a987-b2b4cb0260e6>>
+#+begin_src python
+query = """
+SELECT * 
+FROM measurement
+ORDER BY number_of_cells DESC
+LIMIT 10;
+"""
+
+query_database(query)
+#+end_src
+
+#+begin_example
+   Unnamed: 0  image_ID  time_after_exposure_in_s  number_of_cells
+0          10         2                         0              201
+1          75         8                         5              161
+2          50         6                         0              158
+3          78         8                         8              158
+4          70         8                         0              157
+5          77         8                         7              157
+6          76         8                         6              154
+7          60         7                         0              153
+8          64         7                         4              153
+9          66         7                         6              153
+#+end_example
+
+<<4e71d016-b617-47c2-997f-d8ad9ddeefde>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Determine the longest =time_after_exposure_in_s= applied in any
+experient.
+
+<<d9d6d5e3-b630-4a7b-9741-f9f9f289cb4f>>
+#+begin_src python
+#+end_src

@@ -1,0 +1,181 @@
+<<fb36ae85-92b1-49c0-8e2c-b5087809af4c>>
+* Measurements in objects in tiled images
+  :PROPERTIES:
+  :CUSTOM_ID: measurements-in-objects-in-tiled-images
+  :END:
+For some specific image analysis tasks it might be possible to overcome
+limitations such as when applying connected component labeling.
+
+For example, when measuring the size of objects and if these objects are
+limited in size, it is not necessary to combine intermediate image
+processing results in big images. We could just measure object
+properties for all objects in tiles and then combine the result of the
+quantification.
+
+<<89e9ed87-5d34-4d22-9662-db41534c4c91>>
+#+begin_src python
+import numpy as np
+import dask
+import dask.array as da
+from skimage.data import cells3d
+from skimage.io import imread
+import pyclesperanto_prototype as cle
+from pyclesperanto_prototype import imshow
+#+end_src
+
+<<d182d0ab-1be9-4d0b-b55c-d43152be0678>>
+Our starting point is again a binary image showing segmented objects.
+
+<<a89c88ad-cdea-4dc4-8118-9a8958ccbd44>>
+#+begin_src python
+image = imread("../../data/blobs.tif") > 128
+imshow(image)
+#+end_src
+
+[[file:af12de5ea5ed035722d5cf045f32db9b06d81a02.png]]
+
+<<c0052172-eab5-4338-9d83-c869b4bb6f7c>>
+This time, we would like to measure the size of the objects and
+visualize that in a parametric image. For demonstration purposes, we
+execute that operation first on the whole example image.
+
+<<2ac15ff6-a250-47a4-8bc1-e78c8af66f21>>
+#+begin_src python
+def area_map(image):
+    """
+    Label objects in a binary image and produce a pixel-count-map image.
+    """
+    labels = cle.connected_components_labeling_box(image)
+    result = cle.pixel_count_map(labels)
+    
+    return np.asarray(result)
+    
+#+end_src
+
+<<d0c63643-aa9d-496d-a79e-786cfadbec35>>
+#+begin_src python
+reference = area_map(image)
+
+cle.imshow(reference, colorbar=True)
+#+end_src
+
+[[file:73425a0416c86314beb1d8045be10160203d587a.png]]
+
+<<3434d74a-26d9-49d6-b850-b3fe56984a47>>
+If we process the same in tiles, we will get slightly wrong results
+because of the tiled connected-component-labeling issue demonstated
+earlier.
+
+<<b5044d3f-7684-4e06-a1d7-7186050bedd6>>
+#+begin_src python
+# tile the image
+tiles = da.from_array(image, chunks=(128, 128))
+
+# setup the operation we want to apply
+procedure = area_map
+
+# setup the tiling
+tile_map = da.map_blocks(procedure, tiles)
+
+# compute result
+result = tile_map.compute()
+
+# visualize
+imshow(result, colorbar=True)
+#+end_src
+
+[[file:b389276502003c96ba516ebbc3ae1c7f20061597.png]]
+
+<<3d1279ed-e821-4ff4-944d-d6706af313b0>>
+Again, the errors are visible at the border and we can visualize that by
+direct comparison:
+
+<<b5d2477b-c6d8-46a1-a83f-7d5cd7a1a27e>>
+#+begin_src python
+absolute_error = cle.absolute_difference(result, reference)
+
+cle.imshow(absolute_error, colorbar=True)
+#+end_src
+
+[[file:bdf37e472d24e396ef67c4fb7952d35101bea0a7.png]]
+
+<<139d1c88-6173-4fef-ab05-647f936d49b1>>
+To prevent this error, we need to think again about processing the image
+tiles with an overlap. In this particular example, we are not executing
+any operation that takes neighboring pixels into account. Hence, we
+cannot estimate the necessary overlap from such parameters. We need to
+take the maximum size (diameter) of the objects into account. We could
+also do this emprically, as before. Therefore, let's compute the mean
+squared error, first of the two example results above:
+
+<<a011982e-6283-4895-8a8e-b6ba07d726ec>>
+#+begin_src python
+cle.mean_squared_error(result, reference)
+#+end_src
+
+#+begin_example
+4338.783956692913
+#+end_example
+
+<<a4b2c816-329b-48f4-b751-5beb8b6bf70f>>
+And next, we can compute that error in a loop varying the overlap using
+[[https://docs.dask.org/en/stable/array-overlap.html][dask.array.map_overlay]]
+size while processing the image in tiles. Note that we're setting
+=boundary=0= here, because otherwise objects would extend in the binary
+image and size measurements would be wrong.
+
+<<bf9f38e1-9ee9-4947-9a31-5e411b1131b5>>
+#+begin_src python
+for overlap_width in range(0, 30, 5):
+    print("Overlap width", overlap_width)
+    tile_map = da.map_overlap(procedure, tiles, depth=overlap_width, boundary=0)
+    result = tile_map.compute()
+    print("mean squared error", cle.mean_squared_error(result, reference))
+    print("-----------------------------------")
+#+end_src
+
+#+begin_example
+Overlap width 0
+mean squared error 4338.783956692913
+-----------------------------------
+Overlap width 5
+mean squared error 1702.8293553149606
+-----------------------------------
+Overlap width 10
+mean squared error 460.85811392716533
+-----------------------------------
+Overlap width 15
+mean squared error 70.78670952263779
+-----------------------------------
+Overlap width 20
+mean squared error 1.2793891486220472
+-----------------------------------
+Overlap width 25
+mean squared error 0.0
+-----------------------------------
+#+end_example
+
+<<d4df8b06-c084-4fe4-a956-ae05df92826d>>
+The empirically determined overlap where this error becomes 0 is an
+optimistic estimation. When using this method in you example, make sure
+you apply a overlap that's larger than the determined value.
+
+*Note:* The =compute= and =imshow= functions may not work on big
+datasets as the images may not fit in computer memory. We are using it
+here for demonstration purposes.
+
+<<9298083c-7e87-4337-863e-01ce33138851>>
+#+begin_src python
+overlap_width = 30
+
+tile_map = da.map_overlap(procedure, tiles, depth=overlap_width, boundary=0)
+result = tile_map.compute()
+
+cle.imshow(tile_map, colorbar=True)
+#+end_src
+
+[[file:73425a0416c86314beb1d8045be10160203d587a.png]]
+
+<<64d78f48-c416-4c4f-85fe-4001dc7d3cb1>>
+#+begin_src python
+#+end_src

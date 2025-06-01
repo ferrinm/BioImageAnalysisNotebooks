@@ -1,0 +1,96 @@
+<<3cc09003-1d58-4820-96c1-f09e336b8a88>>
+* Measure the distance to cells in another label image
+  :PROPERTIES:
+  :CUSTOM_ID: measure-the-distance-to-cells-in-another-label-image
+  :END:
+In some projects imaging cells, nuclei and other organelles with
+multiple markers, we are interested in measuring distances between cells
+with different expression patterns. Given a tissue where not all cells
+express a certain marker, we may want to measure the distance of each
+cell to the next cell expressing that marker. Hence, we want to measure
+and visualize that distance in a map.
+
+<<60b8f842>>
+#+begin_src python
+import numpy as np
+import pyclesperanto_prototype as cle
+import pandas as pd
+
+cle.get_device()
+#+end_src
+
+#+begin_example
+<gfx90c on Platform: AMD Accelerated Parallel Processing (2 refs)>
+#+end_example
+
+<<697f14e2>>
+Our starting point is a label image and another label image, where some
+of the labels in the first image are selected from. The first label
+image represents all cells. The second label image represents cells that
+express the marker.
+
+<<4cb1395e>>
+#+begin_src python
+label_image = cle.artificial_tissue_2d()
+cle.imshow(label_image, labels=True)
+#+end_src
+
+[[file:87e99ddab96fafbda9640ce33fa4d209fe0cc173.png]]
+
+<<fe25d549>>
+#+begin_src python
+random_vector = np.random.random((1, int(label_image.max() + 1)))
+sparse_labels = cle.exclude_labels_with_values_out_of_range(random_vector, label_image, minimum_value_range=0, maximum_value_range=0.3)
+cle.imshow(sparse_labels, labels=True)
+#+end_src
+
+[[file:10923962e5d7e76ab0acda6ded91c65df7ea4fda.png]]
+
+<<4fd052a1>>
+We now count for every label in =label_image=, how many labels are
+proximal to it in the =sparse_labels= image. For measuring the distance,
+we use the centroid distance.
+
+<<57c32a73>>
+#+begin_src python
+distance_map = cle.average_distance_to_n_nearest_other_labels_map(label_image, sparse_labels, n=1)
+cle.imshow(distance_map)
+#+end_src
+
+[[file:9af9f86e83eb565bc72e00cf8374b93282818fde.png]]
+
+<<34ff6da4-d88f-47bb-8333-795d360af242>>
+We can also read out these values.
+
+<<9fbd8fc3-9165-4768-9101-cdb1ad2f3996>>
+#+begin_src python
+statistics = cle.statistics_of_labelled_pixels(distance_map, label_image)
+
+table = pd.DataFrame(statistics)
+
+# The table above contains too much information.
+# Hence, we rename a column and remove most others
+table = table.rename(columns={"mean_intensity": "centroid_distance"})
+table[['label', 'centroid_distance']]
+#+end_src
+
+#+begin_example
+     label  centroid_distance
+0        1          13.957838
+1        2           0.000000
+2        3          15.516336
+3        4          17.409723
+4        5          16.673353
+..     ...                ...
+170    171          20.870539
+171    172           0.000000
+172    173          24.419371
+173    174           0.000000
+174    175          32.159912
+
+[175 rows x 2 columns]
+#+end_example
+
+<<34d73c16-8a40-4a1d-bd55-c6bea56ef7ea>>
+#+begin_src python
+#+end_src

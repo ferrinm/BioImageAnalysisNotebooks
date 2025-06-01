@@ -1,0 +1,370 @@
+<<ff11395c-5b0c-4df8-8b20-a5ab712d31ff>>
+* Creating surfaces
+  :PROPERTIES:
+  :CUSTOM_ID: creating-surfaces
+  :END:
+In this notebook we create a surface (mesh) from a simulated 3D binary
+image dataset.
+
+<<a43114eb-755f-485d-b602-4d0b6f5330da>>
+#+begin_src python
+import napari_process_points_and_surfaces as nppas
+import pyclesperanto_prototype as cle
+import vedo
+
+from branchoid import branchoid
+#+end_src
+
+<<0bec9a3c-4553-40e9-b51e-3a4d666cb855>>
+#+begin_src python
+binary_image = branchoid()
+binary_image
+#+end_src
+
+#+begin_example
+StackViewNDArray([[[0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   ...,
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0]],
+
+                  [[0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   ...,
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0]],
+
+                  [[0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   ...,
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0]],
+
+                  ...,
+
+                  [[0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   ...,
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0]],
+
+                  [[0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   ...,
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0]],
+
+                  [[0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   ...,
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0]]], dtype=uint8)
+#+end_example
+
+<<e2491f7f-9650-4797-ae2e-7ee2bd64dfb7>>
+** Generating surfaces
+   :PROPERTIES:
+   :CUSTOM_ID: generating-surfaces
+   :END:
+We first generate a surface from the binary image. In this case, we take
+/all/ non-zero labeled pixels and turn them into a surface.
+
+<<8fb1ee00-5458-407b-addf-fc79297d9143>>
+#+begin_src python
+surface = nppas.all_labels_to_surface(binary_image)
+#+end_src
+
+<<7affb339-e0a8-48d8-949c-f16083e0c154>>
+The resulting object is visualized in Jupyter notebooks like this:
+
+<<286341c1-8d10-4554-a709-68288eaa0f28>>
+#+begin_src python
+surface
+#+end_src
+
+#+begin_example
+(array([[25.5, 44. , 47. ],
+        [26. , 43.5, 47. ],
+        [26. , 44. , 46.5],
+        ...,
+        [74.5, 56. , 51. ],
+        [74.5, 56. , 52. ],
+        [74.5, 56. , 53. ]], dtype=float32),
+ array([[    2,     1,     0],
+        [    4,     3,     0],
+        [    4,     0,     1],
+        ...,
+        [19038, 18870, 18872],
+        [19038, 18872, 19039],
+        [19039, 18872, 18852]], dtype=int64))
+#+end_example
+
+<<3e55e713-e535-4f11-b19b-589b84505889>>
+Technically, it is a tuple.
+
+<<ec3216dc-2ff6-460f-97c9-397eeff4c2e2>>
+#+begin_src python
+isinstance(surface, tuple)
+#+end_src
+
+#+begin_example
+True
+#+end_example
+
+<<46a04221-c759-45be-a69f-90d738f92297>>
+The tuple contains vertices and faces.
+
+<<9dbbb259-d444-428b-84b7-ed471dbaa9e3>>
+#+begin_src python
+vertices, faces = surface
+#+end_src
+
+<<f7cbfd62-c8c4-4f90-96a0-e09084396021>>
+Vertices are lists of lists of Z/Y/X coordinates in 3D space.
+
+<<9af4fe17-5988-4006-8aa5-588eaef129d6>>
+#+begin_src python
+vertices
+#+end_src
+
+#+begin_example
+array([[25.5, 44. , 47. ],
+       [26. , 43.5, 47. ],
+       [26. , 44. , 46.5],
+       ...,
+       [74.5, 56. , 51. ],
+       [74.5, 56. , 52. ],
+       [74.5, 56. , 53. ]], dtype=float32)
+#+end_example
+
+<<b2c9e671-f65f-441f-93f7-8e31077dc98f>>
+Faces are lists of lists of indices. Every triangle has three point
+coordinates indexed like this:
+
+<<02561534-d60b-4d78-855d-515acdf7d9a5>>
+#+begin_src python
+faces
+#+end_src
+
+#+begin_example
+array([[    2,     1,     0],
+       [    4,     3,     0],
+       [    4,     0,     1],
+       ...,
+       [19038, 18870, 18872],
+       [19038, 18872, 19039],
+       [19039, 18872, 18852]], dtype=int64)
+#+end_example
+
+<<2de7d766-c833-4775-8cf2-c8757dd0c434>>
+** Surfaces from individual labels
+   :PROPERTIES:
+   :CUSTOM_ID: surfaces-from-individual-labels
+   :END:
+If we have a label image as starting point, we can also turn individual
+objects into surfaces.
+
+<<6932814b-452e-4d71-8038-2ec78c928f56>>
+#+begin_src python
+labels = cle.voronoi_otsu_labeling(binary_image, spot_sigma=6)
+labels
+#+end_src
+
+#+begin_example
+cl.OCLArray([[[0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        ...,
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0]],
+
+       [[0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        ...,
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0]],
+
+       [[0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        ...,
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0]],
+
+       ...,
+
+       [[0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        ...,
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0]],
+
+       [[0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        ...,
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0]],
+
+       [[0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        ...,
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0]]], dtype=uint32)
+#+end_example
+
+<<79e8ca48-ecc9-435f-9edf-862c636aa0a0>>
+#+begin_src python
+nppas.largest_label_to_surface(labels)
+#+end_src
+
+#+begin_example
+(array([[26., 42., 49.],
+        [26., 43., 48.],
+        [25., 43., 49.],
+        ...,
+        [75., 57., 49.],
+        [75., 57., 50.],
+        [75., 57., 51.]], dtype=float32),
+ array([[   0,    1,    2],
+        [   3,    4,    2],
+        [   2,    4,    0],
+        ...,
+        [8094, 8276, 8095],
+        [8095, 8276, 8277],
+        [8095, 8277, 8083]], dtype=int64))
+#+end_example
+
+<<31beeea3-9184-4fad-8910-595794f34db9>>
+#+begin_src python
+nppas.label_to_surface(labels, label_id=1)
+#+end_src
+
+#+begin_example
+(array([[37., 10., 15.],
+        [37., 11., 14.],
+        [36., 11., 15.],
+        ...,
+        [64., 21., 15.],
+        [64., 21., 16.],
+        [64., 21., 17.]], dtype=float32),
+ array([[   0,    1,    2],
+        [   3,    4,    2],
+        [   2,    4,    0],
+        ...,
+        [2375, 2470, 2376],
+        [2376, 2470, 2471],
+        [2376, 2471, 2367]], dtype=int64))
+#+end_example
+
+<<5a797ea5-1e25-4449-90df-7270a3e9aa85>>
+#+begin_src python
+nppas.label_to_surface(labels, label_id=2)
+#+end_src
+
+#+begin_example
+(array([[26., 42., 49.],
+        [26., 43., 48.],
+        [25., 43., 49.],
+        ...,
+        [75., 57., 49.],
+        [75., 57., 50.],
+        [75., 57., 51.]], dtype=float32),
+ array([[   0,    1,    2],
+        [   3,    4,    2],
+        [   2,    4,    0],
+        ...,
+        [8094, 8276, 8095],
+        [8095, 8276, 8277],
+        [8095, 8277, 8083]], dtype=int64))
+#+end_example
+
+<<402d4776-697d-4fa9-8956-352176d878a8>>
+** Creating surfaces using vedo
+   :PROPERTIES:
+   :CUSTOM_ID: creating-surfaces-using-vedo
+   :END:
+Vedo also offers functions for creating surfaces such as
+=iso_surface()=.
+
+<<9dad1e20-9d4f-4967-8b3c-6fbab650b810>>
+#+begin_src python
+volume = vedo.Volume(binary_image)
+
+iso_surface = volume.isosurface()
+iso_surface
+#+end_src
+
+#+begin_example
+<Mesh(0x00000222F6B23EB0) at 0x00000222F821A280>
+#+end_example
+
+<<0c910826-35c3-4b2f-baf2-e93e117d5207>>
+The resulting data structure is a vedo Mesh. You can access its points
+and faces as well.
+
+<<59f05510-b48a-41d8-b58b-4298cabcb0ea>>
+#+begin_src python
+iso_surface.points()
+#+end_src
+
+#+begin_example
+array([[49.       , 11.       ,  2.3333333],
+       [50.       , 11.       ,  2.3333333],
+       [51.       , 11.       ,  2.3333333],
+       ...,
+       [50.       , 55.       , 83.666664 ],
+       [51.       , 55.       , 83.666664 ],
+       [52.       , 55.       , 83.666664 ]], dtype=float32)
+#+end_example
+
+<<2adc890b-3599-4f7a-a685-e173725d6842>>
+#+begin_src python
+iso_surface.faces()[:10]
+#+end_src
+
+#+begin_example
+[[0, 92, 104],
+ [0, 1, 93],
+ [92, 0, 93],
+ [1, 2, 94],
+ [93, 1, 94],
+ [94, 2, 105],
+ [3, 106, 118],
+ [3, 4, 107],
+ [106, 3, 107],
+ [104, 107, 4]]
+#+end_example
+
+<<d05b6220-a4fc-40ae-b306-5c08b9a84405>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Load the =skimage.data.cells3d= dataset, extract the second channel and
+create a surface mesh from the nuclei.
+
+<<5ddae3fa-21d0-45f0-92e8-8a38f8ec1bd1>>
+#+begin_src python
+#+end_src

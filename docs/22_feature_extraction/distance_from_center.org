@@ -1,0 +1,210 @@
+<<e9f9be63-1543-4808-872b-7a8e3ad6ea45>>
+* Measure distance to a center line
+  :PROPERTIES:
+  :CUSTOM_ID: measure-distance-to-a-center-line
+  :END:
+A common question is how to determine distances of points to the center
+of a segmented object. For this we can skeletonize the object, produce a
+distance map and read out intensities from the distance map at the given
+points to determine their distance to the skeleton / center line.
+
+See also:
+
+- [[https://scikit-image.org/docs/stable/auto_examples/edges/plot_skeleton.html]]
+- [[https://examples.itk.org/src/filtering/distancemap/maurerdistancemapofbinary/documentation]]
+- [[https://docs.scipy.org/doc/scipy-0.14.0/reference/generated/scipy.ndimage.morphology.distance_transform_edt.html]]
+
+<<d1d23dfa>>
+#+begin_src python
+from skimage.io import imread
+import napari_segment_blobs_and_things_with_membranes as nsbatwm
+import napari_simpleitk_image_processing as nsitk
+import numpy as np
+import stackview
+import pyclesperanto_prototype as cle
+#+end_src
+
+<<c7ee349b>>
+** Starting point: a binary image
+   :PROPERTIES:
+   :CUSTOM_ID: starting-point-a-binary-image
+   :END:
+We start using a binary image that looks like an arm.
+
+<<435b72bd>>
+#+begin_src python
+binary_arm = imread("../../data/binary_arm.tif")
+stackview.insight(binary_arm)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]], dtype=uint16)
+#+end_example
+
+<<fbaed36b-f7c5-40a7-bef2-6ddad8747269>>
+Furthermore, we continue with a list of coordinates in X/Y format:
+
+<<81cbd0ce-d30e-4a73-b6a6-b2d41f521ffc>>
+#+begin_src python
+coordinates_xy = np.asarray([
+                  [70, 80],
+                  [70, 70],
+                  [70, 60]]).T
+#+end_src
+
+<<3a8b1fd9-c9b7-4533-814b-bef2de93c8a6>>
+We next produce a label image where the given coordinates are labeled.
+The first coordinate (index=0 in the list) will be labeled with 1, the
+second with 2, and so on. Background pixels are 0. We use this label
+image for visualization and further down, we will also use this image to
+do the measurement.
+
+<<95a916e7-21ba-402b-9335-d55e167f39ec>>
+#+begin_src python
+# draw the coordinates into an image; for visualization purposes
+blank_image = cle.create((binary_arm.shape))
+labeled_spots = coordinate_visualization = cle.pointlist_to_labelled_spots(coordinates_xy, blank_image)
+
+# show the labeled pixels on top of the binary image
+cle.imshow(binary_arm, continue_drawing=True, max_display_intensity=1)
+cle.imshow(labeled_spots, labels=True, alpha=0.6)
+#+end_src
+
+[[file:9a57930aa471090549201ebc32d412e567f6f5f5.png]]
+
+<<0ba19ff9-2c9e-4636-8c97-6d23b69c475c>>
+** Pre-processing
+   :PROPERTIES:
+   :CUSTOM_ID: pre-processing
+   :END:
+Before we can skeletonize the image, we need to fill the black holes in
+the white area.
+
+<<fdd7664a-96b4-456f-9131-fce331a9fa08>>
+#+begin_src python
+filled_holes = nsitk.binary_fill_holes(binary_arm)
+filled_holes
+#+end_src
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]], dtype=uint16)
+#+end_example
+
+<<16008b80>>
+** Skeletonization
+   :PROPERTIES:
+   :CUSTOM_ID: skeletonization
+   :END:
+The
+[[https://scikit-image.org/docs/stable/auto_examples/edges/plot_skeleton.html][skeleton
+of a binary image]] is a thin line in the center of white areas.
+
+<<7c410305>>
+#+begin_src python
+skeleton = nsbatwm.skeletonize(filled_holes)
+skeleton
+#+end_src
+
+#+begin_example
+<__array_function__ internals>:200: RuntimeWarning: Converting input from bool to <class 'numpy.uint8'> for compatibility.
+#+end_example
+
+#+begin_example
+StackViewNDArray([[False, False, False, ..., False, False, False],
+                  [False, False, False, ..., False, False, False],
+                  [False, False, False, ..., False, False, False],
+                  ...,
+                  [False, False, False, ..., False, False, False],
+                  [False, False, False, ..., False, False, False],
+                  [False, False, False, ..., False, False, False]])
+#+end_example
+
+<<41180a6e>>
+** Distance map
+   :PROPERTIES:
+   :CUSTOM_ID: distance-map
+   :END:
+We next draw a Signed Maurer Distance Map. Distance maps are images
+where the intensity represents the distance of a pixel to the next white
+pixel in the binary image from which the distance map was generated
+from.
+
+<<bff43d39>>
+#+begin_src python
+distance_map = nsitk.signed_maurer_distance_map(skeleton)
+distance_map
+#+end_src
+
+#+begin_example
+StackViewNDArray([[-34.928497, -34.539833, -34.176014, ..., -67.6757  ,
+                   -68.007355, -68.35203 ],
+                  [-34.0147  , -33.61547 , -33.24154 , ..., -66.730804,
+                   -67.06713 , -67.41662 ],
+                  [-33.105892, -32.695564, -32.31099 , ..., -65.78754 ,
+                   -66.12866 , -66.48308 ],
+                  ...,
+                  [-57.280014, -56.568542, -55.86591 , ..., -39.40812 ,
+                   -40.      , -40.60788 ],
+                  [-57.982758, -57.280014, -56.568542, ..., -40.22437 ,
+                   -40.804413, -41.400482],
+                  [-58.694122, -57.982758, -57.280014, ..., -41.04875 ,
+                   -41.617306, -42.201897]], dtype=float32)
+#+end_example
+
+<<fae17153-d909-4528-b3c4-9a8792584426>>
+Using
+[[https://github.com/haesleinhuepf/stackview#pick-intensities][=stackview.picker=]]
+we can hover with the mouse over the image and read out intensities.
+This only works in a Jupyter-like environment.
+
+<<b5cb29f5-ff9c-4cd6-b91c-24383e3db133>>
+#+begin_src python
+stackview.picker(distance_map, zoom_factor=3)
+#+end_src
+
+#+begin_example
+{"model_id":"84404693b55247a5bb0292b7148bcbbd","version_major":2,"version_minor":0}
+#+end_example
+
+<<ec227d30-f875-4e56-a67c-0ed987c4a290>>
+** Measurements
+   :PROPERTIES:
+   :CUSTOM_ID: measurements
+   :END:
+We now can read out the intesity in the distance map at the given
+locations of the labeled spots.
+
+<<f249fb1b-2df8-4382-a1f1-2ce75a7d9a9e>>
+#+begin_src python
+values_at_positions = cle.read_intensities_from_positions(coordinates_xy, distance_map)
+np.asarray(values_at_positions)
+#+end_src
+
+#+begin_example
+array([[-15.033297 ,  -5.0990195,  -4.       ]], dtype=float32)
+#+end_example
+
+<<ef1c86a0-7f1e-49c0-bc94-596c5cc36605>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Use the distance map on the =binary_arm= image to determine the distance
+of the three points from the edge of the arm, instead of the center
+line.
+
+<<644f59f7-4881-4e32-80a2-e13e1b4073b4>>
+#+begin_src python
+#+end_src

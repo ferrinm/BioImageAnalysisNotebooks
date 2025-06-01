@@ -1,0 +1,562 @@
+<<4dfe3e0e-c43e-4606-b007-fe1e28fedbea>>
+** Clustering with UMAPs
+   :PROPERTIES:
+   :CUSTOM_ID: clustering-with-umaps
+   :END:
+Clustering objects can be challenging when working with many parameters,
+in particular when interacting with data manually. To reduce the number
+of parameters, dimensionality reduction techniques such as the Uniform
+Manifold Approximation Projection (UMAP) have been developed. In this
+notebook we use the technique to differentiate nuclei in an image which
+are mitotic from those which are not mitotic.
+
+See also
+
+- [[https://umap-learn.readthedocs.io/][UMAP Documentation]]
+- [[https://arxiv.org/abs/1802.03426][McInnes, L, Healy, J, UMAP:
+  Uniform Manifold Approximation and Projection for Dimension Reduction,
+  ArXiv e-prints 1802.03426, 2018]]
+
+<<406bb25d-3828-4eff-ac79-6279df50618a>>
+#+begin_src python
+from skimage.data import human_mitosis
+from napari_segment_blobs_and_things_with_membranes import voronoi_otsu_labeling
+from napari_simpleitk_image_processing import label_statistics
+from sklearn.preprocessing import StandardScaler
+import numpy as np
+import umap
+import seaborn
+import pyclesperanto_prototype as cle
+import matplotlib.pyplot as plt
+#+end_src
+
+<<10101f47-9d5f-4e03-bea6-3f9c2b7b15bf>>
+** Example data
+   :PROPERTIES:
+   :CUSTOM_ID: example-data
+   :END:
+First, we load the example image (taken from the
+[[https://scikit-image.org/docs/stable/auto_examples/applications/plot_human_mitosis.html][scikit-image
+examples]]) showing human cell nuclei.
+
+<<65b18c0e-dc03-453e-bff6-35bbdba94e61>>
+#+begin_src python
+image = cle.asarray(human_mitosis())
+image
+#+end_src
+
+#+begin_example
+Downloading file 'data/mitosis.tif' from 'https://gitlab.com/scikit-image/data/-/raw/2cdc5ce89b334d28f06a58c9f0ca21aa6992a5ba/AS_09125_050116030001_D03f00d0.tif' to 'C:\Users\haase\AppData\Local\scikit-image\scikit-image\Cache\0.20.0'.
+#+end_example
+
+#+begin_example
+cl.OCLArray([[ 8.,  8.,  8., ..., 63., 78., 75.],
+       [ 8.,  8.,  7., ..., 67., 71., 71.],
+       [ 9.,  8.,  8., ..., 53., 64., 66.],
+       ...,
+       [ 8.,  9.,  8., ..., 17., 24., 59.],
+       [ 8.,  8.,  8., ..., 17., 22., 55.],
+       [ 8.,  8.,  8., ..., 16., 18., 38.]], dtype=float32)
+#+end_example
+
+<<f5c65cf1-5871-4d4f-89b2-e148dc3e530e>>
+#+begin_src python
+labels = cle.voronoi_otsu_labeling(image, spot_sigma=2.5, outline_sigma=0)
+labels
+#+end_src
+
+#+begin_example
+cl.OCLArray([[  0,   0,   0, ..., 314, 314, 314],
+       [  0,   0,   0, ..., 314, 314, 314],
+       [  0,   0,   0, ..., 314, 314, 314],
+       ...,
+       [  0,   0,   0, ...,   0,   0, 320],
+       [  0,   0,   0, ...,   0,   0, 320],
+       [  0,   0,   0, ...,   0,   0, 320]], dtype=uint32)
+#+end_example
+
+<<d011d8fb-0da3-4170-a80d-fda62f841e3b>>
+** Feature extraction
+   :PROPERTIES:
+   :CUSTOM_ID: feature-extraction
+   :END:
+We then measure properties of the nuclei such as intensity, size, shape,
+perimeter and moments.
+
+<<4d7525cf-1cdd-4e47-a659-24ab381b82e7>>
+#+begin_src python
+nuclei_statistics = label_statistics(image, labels, 
+                                     intensity=True, 
+                                     size=True, 
+                                     shape=True, 
+                                     perimeter=True,
+                                     moments=True)
+nuclei_statistics.head()
+#+end_src
+
+#+begin_example
+   label  maximum       mean     median  minimum      sigma     sum  \
+0      1     83.0  69.886364  73.359375     48.0   9.890601  3075.0   
+1      2     46.0  42.125000  43.328125     38.0   2.748376   337.0   
+2      3     53.0  44.916667  45.265625     38.0   4.461111   539.0   
+3      4     92.0  65.603175  65.609375     38.0  14.475273  4133.0   
+4      5     59.0  46.315068  46.234375     38.0   5.065890  3381.0   
+
+     variance  elongation  feret_diameter  ...  number_of_pixels_on_border  \
+0   97.823996    1.858735        9.486833  ...                          10   
+1    7.553571    0.000000        7.000000  ...                           8   
+2   19.901515    3.609511        6.000000  ...                           7   
+3  209.533538    1.212933       10.000000  ...                           7   
+4   25.663242    1.249507       11.401754  ...                           9   
+
+   perimeter  perimeter_on_border  perimeter_on_border_ratio  principal_axes0  \
+0  25.664982                 10.0                   0.389636         0.998995   
+1  15.954349                  8.0                   0.501431         1.000000   
+2  14.843629                  7.0                   0.471583         1.000000   
+3  29.687257                  7.0                   0.235791         0.914511   
+4  34.264893                  9.0                   0.262660         0.363116   
+
+   principal_axes1  principal_axes2  principal_axes3  principal_moments0  \
+0        -0.044825         0.044825         0.998995            1.926448   
+1         0.000000         0.000000         1.000000            0.000000   
+2         0.000000         0.000000         1.000000            0.243056   
+3         0.404561        -0.404561         0.914511            4.227271   
+4        -0.931744         0.931744         0.363116            5.001247   
+
+   principal_moments1  
+0            6.655680  
+1            5.250000  
+2            3.166667  
+3            6.219189  
+4            7.808286  
+
+[5 rows x 27 columns]
+#+end_example
+
+<<7a28e4b6-12a6-4c28-8f4d-8b0e78fbda00>>
+#+begin_src python
+# list all columns we measured
+nuclei_statistics.keys()
+#+end_src
+
+#+begin_example
+Index(['label', 'maximum', 'mean', 'median', 'minimum', 'sigma', 'sum',
+       'variance', 'elongation', 'feret_diameter', 'flatness', 'roundness',
+       'equivalent_ellipsoid_diameter_0', 'equivalent_ellipsoid_diameter_1',
+       'equivalent_spherical_perimeter', 'equivalent_spherical_radius',
+       'number_of_pixels', 'number_of_pixels_on_border', 'perimeter',
+       'perimeter_on_border', 'perimeter_on_border_ratio', 'principal_axes0',
+       'principal_axes1', 'principal_axes2', 'principal_axes3',
+       'principal_moments0', 'principal_moments1'],
+      dtype='object')
+#+end_example
+
+<<aa743e50-2b86-405f-9a18-edc4260503e7>>
+** Feature selection
+   :PROPERTIES:
+   :CUSTOM_ID: feature-selection
+   :END:
+In the image it is obvious that dividing nuclei are brighter than
+others. Furthermore, they apper elongated. Thus, we select intensity and
+shape-based features.
+
+<<0701c1d5-33be-45a2-9aea-e99980f85b50>>
+#+begin_src python
+selected_table = nuclei_statistics[
+    [
+        "mean",
+        "variance",
+        "elongation",
+    ]
+]
+
+selected_statistics = selected_table.values
+#+end_src
+
+<<78a4f8de-a8ec-4f63-9134-5d54ba057d51>>
+** Standard scaling
+   :PROPERTIES:
+   :CUSTOM_ID: standard-scaling
+   :END:
+We then scale those measurements so that intensity levels and distances
+can be interpreted in a balanced way
+([[file:machine_learning_basics.scaling][Read more]]).
+
+<<36f03f05-fdbb-434f-bedd-1f5b158dc3e9>>
+#+begin_src python
+scaled_statistics = StandardScaler().fit_transform(selected_statistics)
+
+type(scaled_statistics), scaled_statistics.shape
+#+end_src
+
+#+begin_example
+(numpy.ndarray, (320, 3))
+#+end_example
+
+<<58fa14a8-c5d0-49d1-ab3a-60c88ce13324>>
+** Plotting
+   :PROPERTIES:
+   :CUSTOM_ID: plotting
+   :END:
+For demonstration purposes, we plot the three selected features against
+each other.
+
+<<91e07f1d-9c08-4923-8e2c-c80331e95180>>
+#+begin_src python
+def hide_current_axis(*args, **kwds):
+    plt.gca().set_visible(False)
+
+g = seaborn.PairGrid(selected_table)
+g.map(seaborn.scatterplot)
+#+end_src
+
+#+begin_example
+<seaborn.axisgrid.PairGrid at 0x240b01e9c40>
+#+end_example
+
+[[file:ccce61557405a4029d2f7f03aa42bb1031a976ae.png]]
+
+<<ea4b65ab-6fdf-4f3b-a2f5-67b1037ecf5e>>
+From these plots, one could presume that datapoints with high mean
+intensity, variance and/or elongation are mitotic. However, there is no
+clear group of data points that are characteristically different from
+others, which could be easily differentiated.
+
+<<89022de4-84db-4f12-a603-975150dd421c>>
+** Dimensionality reduction
+   :PROPERTIES:
+   :CUSTOM_ID: dimensionality-reduction
+   :END:
+To demonstrate the UMAP algorithm, we now reduce these three dimensions
+to two.
+
+<<a267ccb5-442b-43a7-875a-c3d1db5254bf>>
+#+begin_src python
+reducer = umap.UMAP()
+embedding = reducer.fit_transform(scaled_statistics)
+type(embedding), embedding.shape
+#+end_src
+
+#+begin_example
+(numpy.ndarray, (320, 2))
+#+end_example
+
+<<442d7fe0-8955-4aac-8a14-fe67d9b1b267>>
+#+begin_src python
+seaborn.scatterplot(x=embedding[:, 0], 
+                    y=embedding[:, 1])
+#+end_src
+
+#+begin_example
+<AxesSubplot: >
+#+end_example
+
+[[file:40e199c0659c4a75b1fc8fc20934c30f608fc3e3.png]]
+
+<<17baed9a-1c14-42bb-8c57-30edda084fe9>>
+** A note on repeatability
+   :PROPERTIES:
+   :CUSTOM_ID: a-note-on-repeatability
+   :END:
+The algorithm behind the UMAP is partially a non-deterministic. Thus, if
+you run the same code twice, the result might look slightly different.
+
+<<b2023be7-c480-4969-89bf-cf3649632e59>>
+#+begin_src python
+reducer = umap.UMAP()
+embedding2 = reducer.fit_transform(scaled_statistics)
+
+seaborn.scatterplot(x=embedding2[:, 0], 
+                    y=embedding2[:, 1])
+#+end_src
+
+#+begin_example
+<AxesSubplot: >
+#+end_example
+
+[[file:fe6775a713024d0a3ac651c2e3934f1c99913a8e.png]]
+
+<<f9f9dcc6-2d47-4090-8b38-7907199e4a25>>
+#+begin_src python
+reducer = umap.UMAP()
+embedding2 = reducer.fit_transform(scaled_statistics)
+
+seaborn.scatterplot(x=embedding2[:, 0], 
+                    y=embedding2[:, 1])
+#+end_src
+
+#+begin_example
+<AxesSubplot: >
+#+end_example
+
+[[file:2db937545e3a509ee85a2f6886b7f5afa74284f5.png]]
+
+<<a7c733aa-fa6c-4e3f-8f57-6ff281ffb009>>
+This limitation can be circumvented by providing a non-random seed
+=random_state=. However, it does not solve the general limitation. If
+our input data is slightly different, e.g. coming from a different image
+showing different cells, we may not receive the same UMAP result.
+
+<<f385746e-883b-4972-841d-070fe514d8e8>>
+#+begin_src python
+reducer = umap.UMAP(random_state=42)
+embedding3 = reducer.fit_transform(scaled_statistics)
+
+seaborn.scatterplot(x=embedding3[:, 0], 
+                    y=embedding3[:, 1])
+#+end_src
+
+#+begin_example
+<AxesSubplot: >
+#+end_example
+
+[[file:692bd630b1dfe04149144b4637e93573775f755d.png]]
+
+<<c884c677-d3e8-45f4-9072-81ca5aaa13d1>>
+#+begin_src python
+reducer = umap.UMAP(random_state=42)
+embedding4 = reducer.fit_transform(scaled_statistics)
+
+seaborn.scatterplot(x=embedding4[:, 0], 
+                    y=embedding4[:, 1])
+#+end_src
+
+#+begin_example
+<AxesSubplot: >
+#+end_example
+
+[[file:692bd630b1dfe04149144b4637e93573775f755d.png]]
+
+<<d25e5a36-5372-44eb-82c0-69fa192e8ecb>>
+#+begin_src python
+nuclei_statistics["UMAP1"] = embedding4[:, 0]
+nuclei_statistics["UMAP2"] = embedding4[:, 1]
+#+end_src
+
+<<67b0b1ac-2c2b-443e-92b4-853d658dd1f2>>
+** Manual clustering
+   :PROPERTIES:
+   :CUSTOM_ID: manual-clustering
+   :END:
+We can mark regions in the UMAP plot interactively (e.g. using the
+[[https://www.napari-hub.org/plugins/napari-clusters-plotter][napari-clusters-plotter]]).
+To mimik this in a notebook, we set a manual threshold on a single UMAP
+axis to mark a region of data points we would like to investigate
+further. As mentioned above, as the UMAP result may not be 100%
+repeatable, we might need to adapt this threshold after generating a new
+UMAP on a different dataset.
+
+<<845aac34-b07f-41fc-9ffa-c809f57d5895>>
+#+begin_src python
+def manual_threshold(x):
+    if x < 9:
+        return 1
+    else:
+        return 2
+    
+nuclei_statistics["MANUAL_CLUSTER_ID"] = [
+    manual_threshold(x) 
+    for x in nuclei_statistics["UMAP1"]
+]
+#+end_src
+
+<<539294db-66f5-414e-856d-5513ad7a6acd>>
+#+begin_src python
+seaborn.scatterplot(
+    x=nuclei_statistics["UMAP1"],
+    y=nuclei_statistics["UMAP2"],
+    hue=nuclei_statistics["MANUAL_CLUSTER_ID"],
+)
+#+end_src
+
+#+begin_example
+<AxesSubplot: xlabel='UMAP1', ylabel='UMAP2'>
+#+end_example
+
+[[file:42557fb6c684cc6524132afe4984bfbd0617ae7c.png]]
+
+<<8c847e27-f6e9-491f-a2ae-890fafb10d09>>
+** Cluster visualization in image space
+   :PROPERTIES:
+   :CUSTOM_ID: cluster-visualization-in-image-space
+   :END:
+
+<<e3c77ae4-54b1-42de-80e5-e2185305fdd6>>
+#+begin_src python
+# put a 0 for background in front
+new_values = [0] + nuclei_statistics["MANUAL_CLUSTER_ID"].tolist()
+
+print(new_values[:10])
+#+end_src
+
+#+begin_example
+[0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+#+end_example
+
+<<54c101a8-e3dd-4611-bcae-b2b5fa10c494>>
+#+begin_src python
+cluster_id_image = cle.replace_intensities(labels, new_values)
+cle.imshow(cluster_id_image, labels=True)
+#+end_src
+
+[[file:5a488ca394e099abf33b9351c0bcd060a68705b1.png]]
+
+<<10d891e7-7759-4a42-81d7-b352422df270>>
+#+begin_src python
+label_edges = cle.detect_label_edges(labels)
+coloured_label_edges = label_edges * cluster_id_image
+
+def show_crop(x=0, y=0, size=100):
+    fig, axs = plt.subplots(1,3, figsize=(10,10))
+    
+    cle.imshow(image[x:x+size, y:y+size], plot=axs[0], 
+               min_display_intensity=0,
+               max_display_intensity=255)
+    
+    cle.imshow(cluster_id_image[x:x+size, y:y+size], labels=True, plot=axs[1], 
+               min_display_intensity=0,
+               max_display_intensity=3)
+
+    cle.imshow(image[x:x+size, y:y+size], continue_drawing=True, plot=axs[2], 
+               min_display_intensity=0,
+               max_display_intensity=255)
+    cle.imshow(coloured_label_edges[x:x+size, y:y+size], labels=True, alpha=0.5, 
+               min_display_intensity=0,
+               max_display_intensity=3,
+                  plot=axs[2])
+    
+    axs[0].set_title("Image crop")
+    axs[1].set_title("Cluster")
+    axs[2].set_title("Overlay")
+    
+
+show_crop()
+show_crop(400, 0)
+show_crop(0, 400)
+#+end_src
+
+[[file:13ec78d4d5eebf5bd9b6c4d732f30e0ba25bc7ea.png]]
+
+[[file:718063da0e01d32fa02d652f505df8d92100967d.png]]
+
+[[file:3ba91387046626cfa16d39a3fbdbfcac1f64a062.png]]
+
+<<22a00036-f8fc-42fd-8bd9-21e010e8cf2c>>
+** Feature selection
+   :PROPERTIES:
+   :CUSTOM_ID: feature-selection
+   :END:
+When drawing UMAPs, it matters which parameters are selected. The
+procedure above demonstrates that it is possible to produce a UMAP and
+select a region in it which represents cells with a given phenontype.
+When choosing wrong parameters, a UMAP can still be generated but may
+not allow differentiating phenotypes. To demonstrate this, we take the
+result from the manual clustering step above as ground-truth for the
+next demonstration. We draw a UMAP from parameters which are supposedly
+not useful for differentiating phenotypes. In this UMAP, we will color
+the objects's manual cluster ID. Principal moments and axes are
+describing how cells are oriented in space. The phenotype mitotic vs.
+non-mitotic should not be related with those parameters.
+
+<<12e48ff2-8622-422a-9be9-8a3d5ceff909>>
+#+begin_src python
+selected_statistics2 = nuclei_statistics[
+    [
+        "principal_moments0",
+        "principal_moments1",
+        "principal_axes0",
+        "principal_axes1",
+        "principal_axes2",
+        "principal_axes3",
+    ]
+].values
+
+scaled_statistics2 = StandardScaler().fit_transform(selected_statistics2)
+
+type(scaled_statistics2), scaled_statistics2.shape
+#+end_src
+
+#+begin_example
+(numpy.ndarray, (320, 6))
+#+end_example
+
+<<edd9e153-581c-49e5-8902-44f934d2f0df>>
+#+begin_src python
+reducer = umap.UMAP()
+embedding5 = reducer.fit_transform(scaled_statistics2)
+
+seaborn.scatterplot(embedding5[:, 0], embedding5[:, 1], 
+                    hue=nuclei_statistics["MANUAL_CLUSTER_ID"])
+#+end_src
+
+#+begin_example
+---------------------------------------------------------------------------
+TypeError                                 Traceback (most recent call last)
+Cell In[22], line 4
+      1 reducer = umap.UMAP()
+      2 embedding5 = reducer.fit_transform(scaled_statistics2)
+----> 4 seaborn.scatterplot(embedding5[:, 0], embedding5[:, 1], 
+      5                     hue=nuclei_statistics["MANUAL_CLUSTER_ID"])
+
+TypeError: scatterplot() takes from 0 to 1 positional arguments but 2 positional arguments (and 1 keyword-only argument) were given
+#+end_example
+
+<<c780fa31-6bb3-4551-8625-917a418dcbd0>>
+Thus, when experimenting with dimensionality reduction, it is always
+useful to have some annota:ed datasets available. Without annotations
+and without the possibility to mark regions in the a UMAP, it may be
+hard to interpret these plots.
+
+<<e2b75b1d-545b-4aa3-bc8b-4d0bf4376e4b>>
+#+begin_src python
+selected_statistics3 = nuclei_statistics[
+    [
+        "label",
+        "minimum"
+    ]
+].values
+
+scaled_statistics3 = StandardScaler().fit_transform(selected_statistics3)
+
+type(scaled_statistics3), scaled_statistics3.shape
+#+end_src
+
+<<3c3eb83c-c5cc-40e9-9714-3c6bb74752c2>>
+** UMAPs of random and non-informative measurements
+   :PROPERTIES:
+   :CUSTOM_ID: umaps-of-random-and-non-informative-measurements
+   :END:
+Our measurement table above also contains columns which may not at all
+be related to the phenotype. The column =label= is a subsequent
+enumeration of all object. Assuming the objects are enumerated in random
+order makes this effectively a random number. The used segmentation
+algorithm uses a thresholding technique under the hood. Thus, the
+minimum intensity of all segmented objects is presumably close to this
+threshold. This leads to the column =minimum= containing almost constant
+values with some random variation related to noise in the image. If we
+use such columns to generate a UMAP from, the algorithm will generate a
+snake-like arrangement of data points.
+
+<<f657a9ad-8d63-4873-b2fd-3e96868e90eb>>
+#+begin_src python
+reducer = umap.UMAP()
+embedding6 = reducer.fit_transform(scaled_statistics3)
+
+seaborn.scatterplot(embedding6[:, 0], embedding6[:, 1], 
+                    hue=nuclei_statistics["MANUAL_CLUSTER_ID"])
+#+end_src
+
+<<df29b9bc-2b65-481e-b95e-39293a10f748>>
+Interpreting this UMAP may not lead to reasonable results. Just as
+comparison, we draw the plot of the two selected columns.
+
+<<89d81ff4-c49b-44d8-bc28-d513aead4fa4>>
+#+begin_src python
+seaborn.scatterplot(x=nuclei_statistics["label"], 
+                    y=nuclei_statistics["minimum"], 
+                    hue=nuclei_statistics["MANUAL_CLUSTER_ID"])
+#+end_src
+
+<<45ed527c-d5c2-4714-82ef-721e3f37d93f>>
+#+begin_src python
+#+end_src

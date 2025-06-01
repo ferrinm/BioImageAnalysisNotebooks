@@ -1,0 +1,111 @@
+* Setting up a dataset
+  :PROPERTIES:
+  :CUSTOM_ID: setting-up-a-dataset
+  :END:
+
+#+begin_src python
+import tomatoes
+
+number_of_tomatoes = 100
+
+ripe_time = tomatoes.ripen(number_of_tomatoes)
+
+print(ripe_time)
+#+end_src
+
+#+begin_example
+[25.36077192 21.99284607 24.66147459 24.13522414 25.19699394 27.1105588
+ 27.21711827 23.99201324 24.62837502 24.00316964 23.97265165 23.69150348
+ 23.87474102 24.24951924 22.70964348 27.44811164 23.14164549 23.69577962
+ 24.63399963 25.52432004 24.44467109 24.68202734 20.99456432 25.01167432
+ 25.31265913 25.98709214 17.59602636 28.80564209 24.74442957 23.09989612
+ 24.0190898  22.8590973  22.8516007  25.67153251 25.13355891 26.42321083
+ 27.99791641 20.84282366 21.66138292 23.38381399 20.58994995 26.24360199
+ 25.36720024 25.46465655 21.03491453 24.78498624 27.36868498 27.48801593
+ 25.57688679 25.54842762 26.74737965 22.51636024 25.75046789 20.93175349
+ 25.83472988 23.41791145 22.6338715  22.12807181 29.58382288 21.54881035
+ 24.60023214 25.09047661 24.75968111 24.64405223 25.7446681  25.201116
+ 23.38080789 22.85446879 20.55882516 24.80651406 25.26496377 25.95638214
+ 24.69654821 26.11271043 24.57061342 26.21995055 23.57329152 22.38873739
+ 23.79337091 25.38534656 24.89694605 22.29055239 23.23316104 26.95960368
+ 23.48341966 25.05951226 22.38369459 24.06997003 27.97668846 25.86545142
+ 26.85137435 25.39114133 23.21363012 24.38962764 22.08019012 26.99443634
+ 24.40998955 26.6712733  25.06958356 27.04129782]
+#+end_example
+
+* Descriptive statistics
+  :PROPERTIES:
+  :CUSTOM_ID: descriptive-statistics
+  :END:
+
+#+begin_src python
+import numpy as np
+
+def do_descriptive_statistics(x):
+    mean_x = np.mean(x)
+    standard_deviation_x = np.std(x)
+
+    print("Mean: " + str(mean_x) + " +- " + str(standard_deviation_x))
+#+end_src
+
+#+begin_src python
+do_descriptive_statistics(ripe_time)
+#+end_src
+
+#+begin_example
+Mean: 24.512579751104184 +- 1.9787623359862967
+#+end_example
+
+#+begin_src python
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots()
+ax.hist(ripe_time, bins=10)
+ax.set_title('Ripe time of ' + str(len(ripe_time)) + ' tomatoes')
+ax.set_ylabel("count")
+ax.set_xlabel("Ripe time / days")
+plt.show()
+#+end_src
+
+[[file:c01f17b8bb590928424cfa6fb6ac84258f55408b.png]]
+
+* Hypothesis testing
+  :PROPERTIES:
+  :CUSTOM_ID: hypothesis-testing
+  :END:
+- null-hypothesis: Tomatoes become ripe after 25 days
+
+- alternate hypothesis: Ripe time of our tomatoes is different from 25
+  days
+
+** Parametric test: One sample t-test
+   :PROPERTIES:
+   :CUSTOM_ID: parametric-test-one-sample-t-test
+   :END:
+Parameter: Presumptive mean of the population: 25
+
+#+begin_src python
+from scipy import stats
+
+presumptive_ripe_time = 25
+
+statistics, p_value = stats.ttest_1samp(ripe_time, presumptive_ripe_time)
+
+print("p-value: " + str(p_value))
+#+end_src
+
+#+begin_example
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+<ipython-input-1-40d3242832e0> in <module>
+      3 presumptive_ripe_time = 25
+      4 
+----> 5 statistics, p_value = stats.ttest_1samp(ripe_time, presumptive_ripe_time)
+      6 
+      7 print("p-value: " + str(p_value))
+
+NameError: name 'ripe_time' is not defined
+#+end_example
+
+#+begin_src python
+#+end_src

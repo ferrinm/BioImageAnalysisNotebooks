@@ -1,0 +1,105 @@
+<<3f64620a-5c2d-4f93-8c92-a54dbdd672a0>>
+* Quick start with micro-sam
+  :PROPERTIES:
+  :CUSTOM_ID: quick-start-with-micro-sam
+  :END:
+This notebook shows the very basics necessary to segment an image using
+[[https://github.com/computational-cell-analytics/micro-sam][micro-sam]].
+
+** Installation
+   :PROPERTIES:
+   :CUSTOM_ID: installation
+   :END:
+You can install micro-sam in a conda environment like this. If you never
+worked with conda-environments before, consider reading
+[[https://biapol.github.io/blog/mara_lampert/getting_started_with_miniforge_and_python/readme.html][this
+blog post]] first.
+
+#+begin_example
+mamba install -y -q -c conda-forge micro_sam
+#+end_example
+
+For result visualization we use [[][stackview]] which can be installed
+using pip.
+
+#+begin_example
+pip install stackview
+#+end_example
+
+First we import the required libraries.
+
+<<a00fdeac-2f97-4da5-8c32-46b51eb3d684>>
+#+begin_src python
+from micro_sam.automatic_segmentation import get_predictor_and_segmenter, automatic_instance_segmentation
+from skimage.data import cells3d
+import stackview
+#+end_src
+
+<<246e025f-e366-4795-9046-8aa0bfd91a25>>
+We load an example 2D image from the
+[[https://scikit-image.org/docs/stable/api/skimage.data.html][scikit-image]]
+library.
+
+<<a9bb2ea5-d6dd-4329-a9bc-45d21a3e8635>>
+#+begin_src python
+image = cells3d()[30,0]
+
+stackview.insight(image)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[4496, 5212, 6863, ..., 2917, 2680, 2642],
+                  [4533, 5146, 7555, ..., 2843, 2857, 2748],
+                  [4640, 6082, 8452, ..., 3372, 3039, 3128],
+                  ...,
+                  [1339, 1403, 1359, ..., 4458, 4314, 4795],
+                  [1473, 1560, 1622, ..., 3967, 4531, 4204],
+                  [1380, 1368, 1649, ..., 3091, 3558, 3682]], dtype=uint16)
+#+end_example
+
+<<2b915aa3-ca50-4339-bf6a-866d35a87f2c>>
+Loading a pre-trained micro-sam model and applying it to an image just
+takes two lines of python code:
+
+<<6542f7b7-d66b-46f7-93c8-e05d415cbada>>
+#+begin_src python
+# Load model
+predictor, segmenter = get_predictor_and_segmenter(model_type="vit_b_lm")
+
+# Apply model
+label_image = automatic_instance_segmentation(predictor=predictor, segmenter=segmenter, input_path=image)
+
+# Visualize result
+stackview.insight(label_image)
+#+end_src
+
+#+begin_example
+Compute Image Embeddings 2D: 100%|███████████████████████████████████████████████████████| 1/1 [00:00<00:00,  1.50it/s]
+Initialize instance segmentation with decoder: 100%|█████████████████████████████████████| 1/1 [00:00<00:00,  5.14it/s]
+#+end_example
+
+#+begin_example
+StackViewNDArray([[ 6,  6,  6, ...,  5,  5,  5],
+                  [ 6,  6,  6, ...,  5,  5,  5],
+                  [ 6,  6,  6, ...,  5,  5,  5],
+                  ...,
+                  [39, 39, 39, ..., 37, 37, 37],
+                  [39, 39, 39, ..., 37, 37, 37],
+                  [39, 39, 39, ..., 37, 37, 37]])
+#+end_example
+
+<<de7e1b9d-2231-4dd5-8eb5-7223c0f9dcb3>>
+We can also quickly show the result using an animated curtain.
+
+<<22f0ad18-08fa-4644-bc18-849ac5ab4e2c>>
+#+begin_src python
+stackview.animate_curtain(image, label_image)
+#+end_src
+
+#+begin_example
+<IPython.core.display.HTML object>
+#+end_example
+
+<<b38378b3-d86f-4442-9bd0-f1c425ef8fbf>>
+#+begin_src python
+#+end_src

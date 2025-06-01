@@ -1,0 +1,370 @@
+<<20443bff-9f35-4600-a55f-1b88257d0c99>>
+* Label touch count and touch portion
+  :PROPERTIES:
+  :CUSTOM_ID: label-touch-count-and-touch-portion
+  :END:
+In this notebook we explain the concept of touch count and touch portion
+between labels. The two measurements can be used to characterize label
+images showing touching objects such as cells in tissues.
+
+<<e1e814f6-154d-4922-96a9-449dce885e4f>>
+#+begin_src python
+import numpy as np
+import pyclesperanto_prototype as cle
+from skimage.io import imread
+import matplotlib.pyplot as plt
+#+end_src
+
+<<01571d0d-4868-421e-8da0-f43459a9ad52>>
+** Motivation
+   :PROPERTIES:
+   :CUSTOM_ID: motivation
+   :END:
+We study tissues which are characterized by local and regional
+relationsships of cells. One method for doing this is to study the
+contact area between cells in tissues
+([[https://www.science.org/doi/10.1126/science.aar5663][Guignard et al
+2020]]). There is a variety of measurements which can be derived from
+labeled images that the one way or the other described the contact area.
+Those measurements and ways for visualizing them should be introduced
+here. As an example, we visualize the touch portion and touch portion
+asymmetry in an image stack of a Tribolium embryo. The dataset, curtesy
+of Daniela Vorkel / Myers lab / MPI-CBG / CSBD can be
+[[https://github.com/clEsperanto/clesperanto_example_data/blob/main/Lund-100MB.tif][downloaded
+here]].
+
+Note that the methods introduced below assume that images have an
+isotropic voxel size.
+
+<<0d62bba3-6a44-4d91-93f7-f8337d6c4f3a>>
+#+begin_src python
+embryo = imread("../../../clesperanto_example_data/Lund-100MB.tif")[3]
+
+bg_subtracted = cle.top_hat_box(embryo, radius_x=5, radius_y=5)
+
+nuclei_labels = cle.voronoi_otsu_labeling(bg_subtracted, spot_sigma=0.5, outline_sigma=1)
+
+cell_estimation = cle.dilate_labels(nuclei_labels, radius=12)
+#+end_src
+
+<<2ff0df58-1dd4-4490-8c2e-d4292356d6f3>>
+#+begin_src python
+touch_mesh = cle.draw_mesh_between_touching_labels(cell_estimation)
+
+touch_centroid_distance_mesh = cle.draw_distance_mesh_between_touching_labels(cell_estimation)
+
+touch_portion_mesh_ = cle.draw_touch_portion_mesh_between_touching_labels(cell_estimation)
+
+touch_portion_ratio_mesh = cle.draw_touch_portion_ratio_mesh_between_touching_labels(cell_estimation)
+#+end_src
+
+<<01cce1af-fce4-471d-b50f-032a32916864>>
+#+begin_src python
+number_of_touching_neighbors = cle.touching_neighbor_count_map(cell_estimation)
+
+number_of_proximal_neighbors = cle.proximal_neighbor_count_map(cell_estimation, max_distance=25)
+
+average_distance_of_nearest_neighbors = cle.average_distance_of_n_nearest_neighbors_map(cell_estimation, n=6)
+
+standard_deviation_touch_portion_map = cle.standard_deviation_touch_portion_map(cell_estimation)
+#+end_src
+
+<<cffd6543-8723-4eae-91b4-dece7b798e5f>>
+#+begin_src python
+fig, axs = plt.subplots(3, 4, figsize=(10,10))
+
+axs[0,0].set_title("Raw")
+cle.imshow(embryo, plot=axs[0,0])
+axs[0,1].set_title("Background subtracted")
+cle.imshow(bg_subtracted, plot=axs[0,1])
+axs[0,2].set_title("Nuclei segmentation")
+cle.imshow(nuclei_labels, plot=axs[0,2], labels=True)
+axs[0,3].set_title("Cell estimation")
+cle.imshow(cell_estimation, plot=axs[0,3], labels=True)
+
+def thicker_lines(mesh):
+    return cle.maximum_box(mesh, radius_x=1, radius_y=1)
+
+axs[1,0].set_title("Touching")
+cle.imshow(thicker_lines(touch_mesh), plot=axs[1,0])
+axs[1,1].set_title("Centroid distance")
+cle.imshow(thicker_lines(touch_centroid_distance_mesh), plot=axs[1,1])
+axs[1,2].set_title("Touch portion")
+cle.imshow(thicker_lines(touch_portion_mesh_), plot=axs[1,2])
+axs[1,3].set_title("Touch portion ratio")
+cle.imshow(thicker_lines(touch_portion_ratio_mesh), plot=axs[1,3])
+
+axs[2,0].set_title("No of touching neighbors")
+cle.imshow(number_of_touching_neighbors, plot=axs[2,0])
+axs[2,1].set_title("No of proximal neighbors")
+cle.imshow(number_of_proximal_neighbors, plot=axs[2,1])
+axs[2,2].set_title("Avg distance of nearest neighbors")
+cle.imshow(average_distance_of_nearest_neighbors, plot=axs[2,2])
+axs[2,3].set_title("Std. dev. touch portion")
+cle.imshow(standard_deviation_touch_portion_map, plot=axs[2,3])
+#+end_src
+
+[[file:bc8569beb24855471bc60e2657a281a6cffdfcc9.png]]
+
+<<d1f10fad-0181-4d65-aa66-a09b45a8a975>>
+** Demonstration with a simpler example
+   :PROPERTIES:
+   :CUSTOM_ID: demonstration-with-a-simpler-example
+   :END:
+Our example image shows a couple of objects. In the following, we will
+concentrate on the objects =4= and =5= in the center of the image.
+
+<<14437c2b-fe98-4814-a783-b7b90821323e>>
+#+begin_src python
+labels = cle.scale(cle.asarray([
+   [1, 1, 1, 1, 2, 2, 2, 2],
+   [1, 1, 1, 1, 2, 2, 2, 2],
+   [1, 1, 4, 4, 5, 5, 2, 2],
+   [1, 1, 4, 4, 5, 5, 2, 2],
+   [1, 1, 4, 4, 3, 3, 2, 2],
+   [1, 1, 4, 4, 3, 3, 2, 2],
+   [3, 3, 3, 3, 3, 3, 3, 3],
+   [3, 3, 3, 3, 3, 3, 3, 3],
+]), factor_x=10, factor_y=10, auto_size=True).astype(np.uint32)
+labels
+#+end_src
+
+#+begin_example
+cl.OCLArray([[1, 1, 1, ..., 2, 2, 2],
+       [1, 1, 1, ..., 2, 2, 2],
+       [1, 1, 1, ..., 2, 2, 2],
+       ...,
+       [3, 3, 3, ..., 3, 3, 3],
+       [3, 3, 3, ..., 3, 3, 3],
+       [3, 3, 3, ..., 3, 3, 3]], dtype=uint32)
+#+end_example
+
+<<003525dc-9182-4a04-95c1-8f8637d0f7f4>>
+** Touch count
+   :PROPERTIES:
+   :CUSTOM_ID: touch-count
+   :END:
+Touch count is a measure of how many pixels along edge of label A touch
+with label B. This measurement can be expressed in a
+=touch_count_matrix= which is symmetric: the number of pixels in A which
+touch B is equal to the number of labels in B which touch A.
+
+<<3d2779ae-c11d-4942-aa0a-a2a0a81e3f07>>
+#+begin_src python
+touch_count_matrix = cle.generate_touch_count_matrix(labels)
+print(touch_count_matrix)
+#+end_src
+
+#+begin_example
+[[ 0  0  0  0  0  0]
+ [ 0  0 20 20 60  0]
+ [ 0 20  0 40  0 40]
+ [ 0 20 40  0 40 20]
+ [ 0 60  0 40  0 20]
+ [ 0  0 40 20 20  0]]
+#+end_example
+
+<<ec0654b7-8005-4159-b012-f8f34f911834>>
+To demonstrate interpreting this matrix, we use a for-loop to read out
+measurements relevant for one label:
+
+<<37a45bbb-96d1-4e10-bccd-894cedbd37c8>>
+#+begin_src python
+label_of_interest = 4
+
+for l in range(1,6):
+    num_pixels_touching = touch_count_matrix[l, label_of_interest]
+    if num_pixels_touching > 0:
+        print(f"Label {label_of_interest} touches label {l} in {num_pixels_touching} pixels")
+#+end_src
+
+#+begin_example
+Label 4 touches label 1 in 60 pixels
+Label 4 touches label 3 in 40 pixels
+Label 4 touches label 5 in 20 pixels
+#+end_example
+
+<<561d6dad-6740-49fa-9b1e-b57a13589e09>>
+** Touch portion
+   :PROPERTIES:
+   :CUSTOM_ID: touch-portion
+   :END:
+The touch portion is the ratio of pixels along a label A's border with
+another label B divided by the total number of pixels along label A's
+border.
+
+*Note:* This matrix is not symmetric. The ratio of A versus B depends on
+if the computation divides the touch count by label A's or B's total
+number of border pixels.
+
+<<53ed92ac-892e-4e44-8a19-3e8f1c19cfb3>>
+#+begin_src python
+touch_portion_matrix = cle.generate_touch_portion_matrix(labels)
+print(touch_portion_matrix)
+#+end_src
+
+#+begin_example
+[[       nan 0.         0.         0.         0.         0.        ]
+ [       nan 0.         0.19999999 0.16666666 0.49999997 0.        ]
+ [       nan 0.19999999 0.         0.3333333  0.         0.5       ]
+ [       nan 0.19999999 0.39999998 0.         0.3333333  0.25      ]
+ [       nan 0.59999996 0.         0.3333333  0.         0.25      ]
+ [       nan 0.         0.39999998 0.16666666 0.16666666 0.        ]]
+#+end_example
+
+<<0f0bed60-cc22-45e3-bb0f-635ae3ee2aa4>>
+Thus, this matrix must be read out carefully. When reading it like this,
+the sum of all percentages is 100%:
+
+<<21d1afe6-e12f-493d-9cda-78c3de906c00>>
+#+begin_src python
+for l in range(1,6):
+    ratio_touching = touch_portion_matrix[l, label_of_interest]
+    if ratio_touching > 0:
+        print(f"Label label_of_interest touches label {l} in {ratio_touching*100}% of its border")
+#+end_src
+
+#+begin_example
+Label label_of_interest touches label 1 in 49.99999701976776% of its border
+Label label_of_interest touches label 3 in 33.33333134651184% of its border
+Label label_of_interest touches label 5 in 16.66666567325592% of its border
+#+end_example
+
+<<a9f4bb02-3e6a-4da2-9e81-2fd2e5120610>>
+To demonstrate the asymmetry again, we show the label image once more
+and then read out the touch portion between 4 and 5, and the touch
+portion between 5 and 4.
+
+<<b228ccc1-15ba-47c8-95b7-4cdf9471aa12>>
+#+begin_src python
+labels
+#+end_src
+
+#+begin_example
+cl.OCLArray([[1, 1, 1, ..., 2, 2, 2],
+       [1, 1, 1, ..., 2, 2, 2],
+       [1, 1, 1, ..., 2, 2, 2],
+       ...,
+       [3, 3, 3, ..., 3, 3, 3],
+       [3, 3, 3, ..., 3, 3, 3],
+       [3, 3, 3, ..., 3, 3, 3]], dtype=uint32)
+#+end_example
+
+<<16e2b671-0990-43f0-8a2a-8f36625bfa01>>
+#+begin_src python
+def explain(label_A, label_B):
+    print(f"Label {label_A} and label {label_B} touch in {touch_portion_matrix[label_A, label_B]*100}% of label {label_B}'s border.")
+    print(f"Label {label_B} and label {label_A} touch in {touch_portion_matrix[label_B, label_A]*100}% of label {label_A}'s border.")
+
+explain(5, 4)
+#+end_src
+
+#+begin_example
+Label 5 and label 4 touch in 16.66666567325592% of label 4's border.
+Label 4 and label 5 touch in 25.0% of label 5's border.
+#+end_example
+
+<<04706cd3-7e16-4a0e-8bb5-b52df8e0f7ba>>
+** Touch-portion meshes
+   :PROPERTIES:
+   :CUSTOM_ID: touch-portion-meshes
+   :END:
+Taking the example above, we note that for each edge between two labels,
+two measurements of touch-portion exist. When we draw a mesh between the
+labels, the average between these two will be visualized. We can
+validate that by computing the average touch portion of labels 4 and 5.
+
+<<42fc21a4-9ad8-451e-827b-cd002831c134>>
+#+begin_src python
+mean_touch_portion_4_5 = (touch_portion_matrix[4, 5] + touch_portion_matrix[5, 4]) / 2
+mean_touch_portion_4_5
+#+end_src
+
+#+begin_example
+0.2083333283662796
+#+end_example
+
+<<8014102a-3537-4425-96c8-bbaaa15eb3c3>>
+#+begin_src python
+ratio_touch_portion_4_5 = max(touch_portion_matrix[4, 5], touch_portion_matrix[5, 4]) / \
+                          min(touch_portion_matrix[4, 5], touch_portion_matrix[5, 4])
+ratio_touch_portion_4_5
+#+end_src
+
+#+begin_example
+1.5000001
+#+end_example
+
+<<0a2b365f-b1ed-4249-b57b-1dea7096d430>>
+#+begin_src python
+touch_portion_mesh = cle.draw_touch_portion_mesh_between_touching_labels(labels)
+
+# for visualization purposes, we make the lines thicker
+mesh_visualized = cle.maximum_box(touch_portion_mesh)
+mesh_visualized
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       ...,
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.]], dtype=float32)
+#+end_example
+
+<<b11fc9d5-4e7b-4ea4-86af-0404a2c75c8e>>
+#+begin_src python
+touch_portion_ratio_mesh = cle.draw_touch_portion_ratio_mesh_between_touching_labels(labels)
+
+# for visualization purposes, we make the lines thicker
+mesh_visualized = cle.maximum_box(touch_portion_ratio_mesh)
+mesh_visualized
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       ...,
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.]], dtype=float32)
+#+end_example
+
+<<84042b3f-7034-4e98-b28a-2621d89133b3>>
+#+begin_src python
+# read out edge between 4 and 5
+centroids = np.asarray(cle.centroids_of_background_and_labels(labels))
+
+centroid_4 = centroids[:,4]
+centroid_5 = centroids[:,5]
+
+# compute center between both centroids in Y-X order:
+point_between_4_and_5 = (((centroid_4 + centroid_5) / 2)[::-1]).astype(int)
+print("Point between 4 and 5 (Y,X):", point_between_4_and_5)
+
+touch_portion_mesh[point_between_4_and_5[0], point_between_4_and_5[1]]
+#+end_src
+
+#+begin_example
+Point between 4 and 5 (Y,X): [34 39]
+#+end_example
+
+#+begin_example
+array(0.20833333, dtype=float32)
+#+end_example
+
+<<cf7aa38e-d181-49ea-b2ff-6ed173b6ef47>>
+#+begin_src python
+touch_portion_ratio_mesh[point_between_4_and_5[0], point_between_4_and_5[1]]
+#+end_src
+
+#+begin_example
+array(1.5000001, dtype=float32)
+#+end_example
+
+<<3d4efae6-002c-4605-8310-06d0734655e3>>
+#+begin_src python
+#+end_src

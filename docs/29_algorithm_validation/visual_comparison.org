@@ -1,0 +1,197 @@
+<<a3d1485b-8b39-4453-b6da-6f61c11e6170>>
+* Visual labeling comparison
+  :PROPERTIES:
+  :CUSTOM_ID: visual-labeling-comparison
+  :END:
+A first important step when comparing segmentation algorithms is to
+visualize the results of the individual algorithms and showing
+differences between them.
+
+<<689b4b03-fb4c-4854-b5dd-5c2d45bfe3fe>>
+#+begin_src python
+import numpy as np
+from skimage.io import imread
+from pyclesperanto_prototype import imshow
+import matplotlib.pyplot as plt
+import pandas as pd
+#+end_src
+
+<<d1d1b6fa-6077-482d-aa5c-a22f544523da>>
+From just visualizing the images, we can see that no pair of the four
+compared algorithms produce the same label image.
+
+<<29d71c2d-3007-47ad-b23b-e8b6d03edce5>>
+#+begin_src python
+filenames = [
+    "blobs_labels_imagej.tif",
+    "blobs_labels_skimage.tif",
+    "blobs_labels_clesperanto_python.tif",
+    "blobs_labels_clesperanto_imagej.tif"
+]
+
+for filename in filenames:
+    print(filename)
+    label_image = imread(filename)
+    imshow(label_image, labels=True)
+#+end_src
+
+#+begin_example
+blobs_labels_imagej.tif
+#+end_example
+
+[[file:43f62691d05bb75444dc813eaf0434e5c5731ae3.png]]
+
+#+begin_example
+blobs_labels_skimage.tif
+#+end_example
+
+[[file:ad2a1683e9ed6362cada9b1fc6c2bc27a88bcb0b.png]]
+
+#+begin_example
+blobs_labels_clesperanto_python.tif
+#+end_example
+
+[[file:24bccd1e5a34a6ec1a7630dbdbeff9ddef83745e.png]]
+
+#+begin_example
+blobs_labels_clesperanto_imagej.tif
+#+end_example
+
+[[file:ad2a1683e9ed6362cada9b1fc6c2bc27a88bcb0b.png]]
+
+<<9efb3697-2eb1-4281-a8cd-00ea37ad667f>>
+As corresponding objects have different colours in this visualization,
+we can conclude that at least the labels of the objects are differnt. We
+cannot conclude yet if Otsu's thresholding method delivers different
+results in the given implementations.
+
+** Difference images
+   :PROPERTIES:
+   :CUSTOM_ID: difference-images
+   :END:
+To see the overlap between the different images, we will produce binary
+images from the label images and visualize the difference between these
+binary images.
+
+We first compare ImageJ's result and scikit-image's result to
+demonstrate the procedure.
+
+<<0cc576eb-a489-4cae-8635-8237ec3cb6af>>
+#+begin_src python
+binary_blobs_imagej = imread(filenames[0]) > 0
+binary_blobs_skimage = imread(filenames[1]) > 0
+imshow(binary_blobs_imagej)
+imshow(binary_blobs_skimage)
+#+end_src
+
+[[file:2faeaf9072bb55f0fc42c871a341cf50e9c9ac3a.png]]
+
+[[file:d4e34a4e68998ca6f384360a5baf37f5fef0067b.png]]
+
+<<9681d99f-4ad4-4fd5-b4a3-1c45ec841786>>
+When looking at these two images carefully, one can already see that
+objects are a tiny bit larger in the second image.
+
+To produce the =difference= image, we will use
+[[https://numpy.org/doc/stable/reference/generated/numpy.logical_xor.html][numpy's
+=logical_xor= method]]. It will set all pixels in the =difference= image
+to 1, where either of the two input binary images are =1=, but not both.
+It is called the
+[[https://en.wikipedia.org/wiki/Exclusive_or][exclusive-OR operator]].
+
+<<6c5a0f85-a235-4c5c-b5b1-be508c483408>>
+#+begin_src python
+difference = np.logical_xor(binary_blobs_imagej, binary_blobs_skimage)
+
+fig, axs = plt.subplots(figsize=(10,10))
+axs.imshow(difference)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x24619eb5130>
+#+end_example
+
+[[file:819ae323ba4aba7de1b6a3fd5e7e282701e6367e.png]]
+
+<<dae39c45-acec-4fd6-add6-45fbca363c06>>
+From this binary image, we can count the number of pixels that are
+different between these two approaches:
+
+<<e8964848-b976-4a77-b93f-a45afd3a239e>>
+#+begin_src python
+np.sum(difference)
+#+end_src
+
+#+begin_example
+830
+#+end_example
+
+<<7fb99618-a082-4ae9-87d8-c562aa3b09d7>>
+** A matrix of difference-pixel counts
+   :PROPERTIES:
+   :CUSTOM_ID: a-matrix-of-difference-pixel-counts
+   :END:
+We will now program two for-loops that iterate over pairs of label
+images and compare them using the same approach. The result will be a
+4x4 matrix with the number of pixels that are different when comparing
+the corresponding algorithm implementations.
+
+<<87551a55-a324-4f0c-b82a-3d5726de0073>>
+#+begin_src python
+matrix = {"Algorithms": filenames}
+
+for filename_A in filenames:
+    image_A = imread(filename_A)
+    measurements = []
+    for filename_B in filenames:
+        image_B = imread(filename_B)
+        
+        difference = np.logical_xor(image_A, image_B)
+        number_of_different_pixels = np.sum(difference)
+        measurements.append(number_of_different_pixels)
+    
+    matrix[filename_A] = measurements
+#+end_src
+
+<<4c9f6a32-e9c5-499a-aefd-cf980b02be7d>>
+#+begin_src python
+pd.DataFrame(matrix)
+#+end_src
+
+#+begin_example
+                            Algorithms  blobs_labels_imagej.tif  \
+0              blobs_labels_imagej.tif                        0   
+1             blobs_labels_skimage.tif                      830   
+2  blobs_labels_clesperanto_python.tif                      830   
+3  blobs_labels_clesperanto_imagej.tif                      830   
+
+   blobs_labels_skimage.tif  blobs_labels_clesperanto_python.tif  \
+0                       830                                  830   
+1                         0                                    0   
+2                         0                                    0   
+3                         0                                    0   
+
+   blobs_labels_clesperanto_imagej.tif  
+0                                  830  
+1                                    0  
+2                                    0  
+3                                    0  
+#+end_example
+
+<<0a3c7e44-e60d-49b8-b98c-5d2d3740f514>>
+From this matrix, we can conclude that only the ImageJ result is
+different from the other three implementations.
+
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+We should also quickly confirm that by looking at an other =difference=
+image, for example between the clesperanto-implementation in Jython and
+scikit-image in Python. Visualize both binary images and the difference
+image between these two. Also count the number of pixels that are
+different between these two images.
+
+<<0a5e66cf-0b0b-4e21-bbf3-515f0bbbfcdf>>
+#+begin_src python
+#+end_src

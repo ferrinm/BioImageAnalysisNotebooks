@@ -1,0 +1,82 @@
+<<843cd8bf-acb3-4d97-b0e8-ad543362b309>>
+* Touching objects labeling
+  :PROPERTIES:
+  :CUSTOM_ID: touching-objects-labeling
+  :END:
+When processing images from fluorescence microscopy, we are often
+confronted to objects sticking to each other that should be
+differentiated. However, if we apply connected-component labeling after
+thresholding, we retrieve one labeled object, where we believe there
+should be two. ImageJ-users would then use the "Watershed" algorithm
+that is capable of splitting objects if the shape of an object suggests
+the object contains of two. Some functions in SimpleITK allow us to do
+the same. Again, for programming convenience, we use the scriptable
+napari plugin
+[[https://github.com/haesleinhuepf/napari-simpleitk-image-processing][napari-simpleitk-image-processing]].
+
+<<36ad16e3>>
+#+begin_src python
+import numpy as np
+from skimage.io import imread
+from pyclesperanto_prototype import imshow
+from napari_simpleitk_image_processing import threshold_otsu, touching_objects_labeling, gaussian_blur
+#+end_src
+
+<<312e595b-8db4-4c23-9a67-b96dba730472>>
+Our starting point is a binary image with some 8-shaped objects, we
+would like to split.
+
+<<7e1c47f4>>
+#+begin_src python
+blobs = imread('../../data/blobs.tif')
+binary = threshold_otsu(blobs)
+imshow(binary)
+#+end_src
+
+[[file:d4e34a4e68998ca6f384360a5baf37f5fef0067b.png]]
+
+<<ea8e3eb8>>
+The =touching_objects_labeling= function takes a binary image as input
+and produces a label image, just like connected component labeling. The
+result differs though: The 8-shaped objects are split.
+
+<<956bc43a>>
+#+begin_src python
+touching_labels = touching_objects_labeling(binary)
+imshow(touching_labels, labels=True)
+#+end_src
+
+[[file:8b216b759ab94d0fc2c9ed1ad0b6a515fb818643.png]]
+
+<<92cb7425-5e83-4513-ae17-cd464b501d85>>
+** Fine tuning the result
+   :PROPERTIES:
+   :CUSTOM_ID: fine-tuning-the-result
+   :END:
+If not all objects should be split, one can fine-tune the result of this
+process by modifying the binary image before passing it to
+=touching_objects_labeling=. For example if we apply a Gaussian blur
+filter before thesholding the image, we can retrieve a label image where
+less objects are split.
+
+<<fa54a5e4-5796-45f6-b595-2ea0b436c19e>>
+#+begin_src python
+blurred = gaussian_blur(blobs, variance_x=25, variance_y=25)
+
+binary2 = threshold_otsu(blurred)
+imshow(binary2)
+#+end_src
+
+[[file:94d4e706b76462417cc4e4bcbb9e3b49961dedb6.png]]
+
+<<31a6d2f9-382e-47bc-9cb0-70414898488a>>
+#+begin_src python
+touching_labels = touching_objects_labeling(binary2)
+imshow(touching_labels, labels=True)
+#+end_src
+
+[[file:16270bb0dd7da2266921c775187edb8a071d41fb.png]]
+
+<<f43c0885-7c13-49ed-ac01-3e2fe0b449d6>>
+#+begin_src python
+#+end_src

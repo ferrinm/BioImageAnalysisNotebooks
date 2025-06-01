@@ -1,0 +1,153 @@
+<<853d0f10-7070-475c-b418-31d7dbd7fe2a>>
+* Measuring distances between objects
+  :PROPERTIES:
+  :CUSTOM_ID: measuring-distances-between-objects
+  :END:
+This notebook demonstrates how to measure distance of objects in one
+image to the closest object in another image. A use-case for this is
+measuring the distance of objects such as cells to a vessel. The
+following procedure is demonstrated in 2D and should work analogously in
+3D.
+
+<<ce725f76-a238-4f3a-ad04-52321504a6ed>>
+#+begin_src python
+import numpy as np
+import pyclesperanto_prototype as cle
+import napari_simpleitk_image_processing as nsitk
+import pandas as pd
+#+end_src
+
+<<586de060-d4b6-4e09-b5b5-454f1640729b>>
+As example data, we use two synthetic images: a binary image showing
+where a vessel is as stripe, and a label image showing where cells /
+objects are.
+
+<<e185f2a6-4623-4648-bd45-2233d70d1761>>
+#+begin_src python
+vessel = np.asarray([
+    [0, 0, 0, 1, 1, 1, 0, 0, 0, 0],
+    [0, 0, 0, 1, 1, 1, 0, 0, 0, 0],
+    [0, 0, 0, 1, 1, 1, 0, 0, 0, 0],
+    [0, 0, 1, 1, 1, 0, 0, 0, 0, 0],
+    [0, 0, 1, 1, 1, 0, 0, 0, 0, 0],
+    [0, 0, 1, 1, 1, 0, 0, 0, 0, 0],
+    [0, 0, 1, 1, 1, 0, 0, 0, 0, 0],
+])
+
+objects = np.asarray([
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+    [1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 5, 5],
+    [0, 0, 0, 0, 2, 0, 0, 0, 5, 5],
+    [0, 4, 4, 0, 0, 0, 3, 0, 0, 0],
+    [0, 4, 4, 0, 0, 0, 3, 0, 0, 0],
+])
+
+cle.imshow(vessel, continue_drawing=True)
+cle.imshow(objects, labels=True, alpha=0.7)
+#+end_src
+
+[[file:c91529bc7bfb6abebabd4e8613d21d7456ebfec3.png]]
+
+<<dd561406-1bc1-4ea5-8467-252bdcce40b8>>
+** Distance maps
+   :PROPERTIES:
+   :CUSTOM_ID: distance-maps
+   :END:
+For measuring the average distance of labeled pixels to some other
+object, one strategy involes
+[[https://en.wikipedia.org/wiki/Distance_transform][distance maps]].
+Here we use the
+[[https://itk.org/ITKExamples/src/Filtering/DistanceMap/MaurerDistanceMapOfBinary/Documentation.html][signed
+Maurer distance map]] implemented in
+[[https://simpleitk.readthedocs.io/][SimpleITK]]. More precisely, we use
+the scriptable napari-plugin
+[[https://www.napari-hub.org/plugins/napari-simpleitk-image-processing][napari-simpleitk-image-processing]]
+to access that map. If the values are positive, we are outside the
+vessel. Negative values suggest we are inside.
+
+<<ff0b33fa-057d-48e0-99e6-3009658bf286>>
+#+begin_src python
+not_vessel = cle.binary_not(vessel)
+
+distance_from_vessel = nsitk.signed_maurer_distance_map(not_vessel)
+
+cle.imshow(distance_from_vessel, colorbar=True, colormap="jet")
+#+end_src
+
+[[file:a13d555628aca43719c6a254b4b831be8c8b8ae9.png]]
+
+<<e6693378-5438-4465-9bed-ee8f5249e91a>>
+** Object distance map
+   :PROPERTIES:
+   :CUSTOM_ID: object-distance-map
+   :END:
+Next, we measure the average intensity in the distance map where the
+objects are. These intensities represent the average distance of these
+objects to the vessel. Background intensity in these maps (distance in
+our case) is 0, per definition.
+
+<<f68775cf-4d08-46a9-9f74-9a9411fc687f>>
+#+begin_src python
+mean_distance_map = cle.mean_intensity_map(distance_from_vessel, objects)
+
+cle.imshow(mean_distance_map, colorbar=True, colormap="jet")
+#+end_src
+
+[[file:258bebaff71b7f0ef056d15b0dce59ff198b32f7.png]]
+
+<<2a669017-a8c8-423a-b07e-7d5e369656a0>>
+Alternatively, to this visualization, we can also read out the average
+distance using pixel statistics and print them out using a
+[[https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html][pandas
+Dataframe]].
+
+<<9449f4bb-e214-466d-9dd9-fc2bfcfb14eb>>
+#+begin_src python
+statistics = cle.statistics_of_labelled_pixels(distance_from_vessel, objects)
+
+table = pd.DataFrame(statistics)
+table = table[['label', 'mean_intensity']]
+table = table.rename(columns={'mean_intensity':'mean_distance'})
+
+table
+#+end_src
+
+#+begin_example
+   label  mean_distance
+0      1       0.853553
+1      2      -1.000000
+2      3       1.000000
+3      4      -0.500000
+4      5       2.599586
+#+end_example
+
+<<6418310e-b5ee-444f-aabd-6a568c4397b8>>
+** Filtering objects
+   :PROPERTIES:
+   :CUSTOM_ID: filtering-objects
+   :END:
+You can also filter out object according to their distance to the
+vessel.
+
+<<04d0412f-d0d2-468e-b29b-7d628d526899>>
+#+begin_src python
+min_distance = -4
+max_distance = 2
+objects_close_by_vessel = cle.exclude_labels_with_map_values_out_of_range(
+    mean_distance_map,
+    objects,
+    minimum_value_range=min_distance,
+    maximum_value_range=max_distance
+)
+
+cle.imshow(vessel, continue_drawing=True)
+cle.imshow(objects_close_by_vessel, labels=True, alpha=0.7)
+#+end_src
+
+[[file:8b1992cad650c80a5c88f4ba1c0d85321c32565c.png]]
+
+<<7b73c528-fc9c-4c84-a968-27a3baf65b82>>
+#+begin_src python
+#+end_src

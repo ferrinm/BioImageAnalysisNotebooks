@@ -1,0 +1,107 @@
+<<cutting-integer>>
+* Affine transforms using cupy
+  :PROPERTIES:
+  :CUSTOM_ID: affine-transforms-using-cupy
+  :END:
+Here we apply an affine transform using [[https://cupy.dev][cupy]].
+
+<<signal-waste>>
+#+begin_src python
+from skimage.io import imread, imshow
+
+import cupy
+from cupyx.scipy import ndimage as ndi
+#+end_src
+
+<<seasonal-walker>>
+#+begin_src python
+image = imread('../../data/Haase_MRT_tfl3d1.tif')
+
+imshow(image[100])
+image.shape
+#+end_src
+
+#+begin_example
+(192, 256, 256)
+#+end_example
+
+[[file:11d3a6272e52cdb9c3043d22a886f7b17485aa92.png]]
+
+<<59eae9ce-05d2-4f3b-aaf7-a12b1ec626db>>
+Analogously to transforms in scipy also cupy used transform matrices to
+describe the transformation.
+
+<<quarterly-growth>>
+#+begin_src python
+import numpy as np
+
+# scaling by factor 1 / s
+s = 0.5
+matrix = np.asarray([
+    [s, 0, 0, 0],
+    [0, s, 0, 0],
+    [0, 0, s, 0],
+    [0, 0, 0, 1],
+])
+#+end_src
+
+<<713bc3ec-b3a6-4d01-bc9a-a1e431796c43>>
+Before we can apply a cupy operation to an image, we need to send it to
+GPU memory. We receive a handle to an image on the GPU that cannot be
+shown using =imshow=.
+
+<<ada2218d-652f-4c1d-983d-8e2f9c52a7e1>>
+#+begin_src python
+cuda_image = cupy.asarray(image)
+cuda_image.shape
+#+end_src
+
+#+begin_example
+(192, 256, 256)
+#+end_example
+
+<<d0bfd72f-c469-4f64-96d7-90a3bde2c679>>
+Analogously to the affine transform in scipy, we need to create the
+output image with a defined shape, twice as large as the original image,
+before we can write into it.
+
+<<2732212b-2462-42b5-bbeb-54b00f090d69>>
+#+begin_src python
+output_shape = tuple((np.asarray(image.shape) / s).astype(int))
+cuda_scaled = cupy.ndarray(output_shape)
+print(cuda_scaled.shape)
+#+end_src
+
+#+begin_example
+(384, 512, 512)
+#+end_example
+
+<<experienced-portugal>>
+#+begin_src python
+r = ndi.affine_transform(cuda_image, cupy.asarray(matrix), output=cuda_scaled, output_shape=output_shape)
+#+end_src
+
+<<fbdd92aa-61ac-4073-8c3e-775f32b65017>>
+Before we can view the result image, we need to transfer it from GPU
+memory to CPU memory
+
+<<8d0bb88e-b1de-4ff5-84df-200adf66735f>>
+#+begin_src python
+result = cupy.asnumpy(cuda_scaled)
+result.shape
+#+end_src
+
+#+begin_example
+(384, 512, 512)
+#+end_example
+
+<<excited-binding>>
+#+begin_src python
+imshow(result[200], cmap="Greys_r", vmin=0)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1d63076bdc0>
+#+end_example
+
+[[file:0a1a0540784e4b30e86433e26c3642470fec17b1.png]]

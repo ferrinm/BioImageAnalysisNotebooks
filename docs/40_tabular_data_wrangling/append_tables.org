@@ -1,0 +1,310 @@
+<<273def9d-da84-49b7-83be-11695c64c3d9>>
+* Appending tables
+  :PROPERTIES:
+  :CUSTOM_ID: appending-tables
+  :END:
+When processing multiple images, potentially using multiple image
+processing libraries, a common task is to combine tables.
+
+We start with two small tables of measurements that could have been
+obtained from different functions or different libraries.
+
+<<1477c227>>
+#+begin_src python
+import pandas as pd
+#+end_src
+
+<<156d6b7c>>
+#+begin_src python
+table1 = pd.DataFrame({
+    "label":       [1,   2,   3],
+    "circularity": [0.3, 0.5, 0.7],
+    "elongation":  [2.3, 3.4, 1.2],
+    })
+table1
+#+end_src
+
+#+begin_example
+   label  circularity  elongation
+0      1          0.3         2.3
+1      2          0.5         3.4
+2      3          0.7         1.2
+#+end_example
+
+<<1877c769>>
+#+begin_src python
+table2 = pd.DataFrame({
+    "label":    [3,   2,   1,   4],
+    "area":     [22,  32,  25,  18],
+    "skewness": [0.5, 0.6, 0.3, 0.3],
+    })
+table2
+#+end_src
+
+#+begin_example
+   label  area  skewness
+0      3    22       0.5
+1      2    32       0.6
+2      1    25       0.3
+3      4    18       0.3
+#+end_example
+
+<<49df41b0-b63a-44d0-8b6e-ae6ac7cfa263>>
+** Combining columns of tables
+   :PROPERTIES:
+   :CUSTOM_ID: combining-columns-of-tables
+   :END:
+According to the
+[[https://pandas.pydata.org/docs/user_guide/merging.html][pandas
+documentation]] there are multiple ways for combining tables. We first
+use a /wrong/ example to highlight pitfalls when combining tables.
+
+In the following example, measurements of label 1 and 3 are mixed.
+Furthermore, one of our tables did not contain measurements for label 4.
+
+<<6f255657>>
+#+begin_src python
+wrongly_combined_tables = pd.concat([table1, table2], axis=1)
+wrongly_combined_tables
+#+end_src
+
+#+begin_example
+   label  circularity  elongation  label  area  skewness
+0    1.0          0.3         2.3      3    22       0.5
+1    2.0          0.5         3.4      2    32       0.6
+2    3.0          0.7         1.2      1    25       0.3
+3    NaN          NaN         NaN      4    18       0.3
+#+end_example
+
+<<16a4e200-8964-43d1-b43c-eb5977ed195a>>
+A better way for combining tables is the =merge= command. It allows to
+explicitly specify =on= which column the tables should be combined. Data
+scientists speak of the 'index' or 'identifier' of rows in the tables.
+
+<<29ccfdb1-2b09-46d5-90c2-c4374cb73d02>>
+#+begin_src python
+correctly_combined_tables1 = pd.merge(table1, table2, how='inner', on='label')
+correctly_combined_tables1
+#+end_src
+
+#+begin_example
+   label  circularity  elongation  area  skewness
+0      1          0.3         2.3    25       0.3
+1      2          0.5         3.4    32       0.6
+2      3          0.7         1.2    22       0.5
+#+end_example
+
+<<eebbf929-6cb4-48e4-bff4-60d444c95d49>>
+You may note that in the above example, label 4 is missing. We can also
+get it in the out table by performing an =outer join=.
+
+<<84d160b6-e577-478a-a14d-f4bba371afee>>
+#+begin_src python
+correctly_combined_tables2 = pd.merge(table1, table2, how='outer', on='label')
+correctly_combined_tables2
+#+end_src
+
+#+begin_example
+   label  circularity  elongation  area  skewness
+0      1          0.3         2.3    25       0.3
+1      2          0.5         3.4    32       0.6
+2      3          0.7         1.2    22       0.5
+3      4          NaN         NaN    18       0.3
+#+end_example
+
+<<e885d30a-3be4-4af7-9a91-8a27dfed6276>>
+#+begin_src python
+correctly_combined_tables2 = pd.merge(table1, table2, how='right', on='label')
+correctly_combined_tables2
+#+end_src
+
+#+begin_example
+   label  circularity  elongation  area  skewness
+0      3          0.7         1.2    22       0.5
+1      2          0.5         3.4    32       0.6
+2      1          0.3         2.3    25       0.3
+3      4          NaN         NaN    18       0.3
+#+end_example
+
+<<ce62adcc-f797-469a-865c-f29532561d46>>
+Suppose there is a common measurement name from different tables. For
+example, table3 below also contains "elongation".
+
+<<567ea501-70cc-47e5-80f2-9b6810fd854e>>
+#+begin_src python
+table3 = pd.DataFrame({
+    "label":    [3,   2,   1,   4],
+    "area":     [22,  32,  25,  18],
+    "skewness": [0.5, 0.6, 0.3, 0.3],
+    "elongation":  [2.3, 3.4, 1.2, 1.1]
+    })
+table3
+#+end_src
+
+#+begin_example
+   label  area  skewness  elongation
+0      3    22       0.5         2.3
+1      2    32       0.6         3.4
+2      1    25       0.3         1.2
+3      4    18       0.3         1.1
+#+end_example
+
+<<fea092cb-0e12-4056-a819-bf5051c94a25>>
+Applying merge still preserves both measurements in different columns.
+
+<<625b71eb-72ec-4680-83f5-d0a318c25c83>>
+#+begin_src python
+correctly_combined_tables3 = pd.merge(table1, table3, how='outer', on='label')
+correctly_combined_tables3 
+#+end_src
+
+#+begin_example
+   label  circularity  elongation_x  area  skewness  elongation_y
+0      1          0.3           2.3    25       0.3           1.2
+1      2          0.5           3.4    32       0.6           3.4
+2      3          0.7           1.2    22       0.5           2.3
+3      4          NaN           NaN    18       0.3           1.1
+#+end_example
+
+<<7bccacef-45e3-4a16-afc8-73f1dd8ad631>>
+We can change 'x' and 'y' by passing other suffixes.
+
+<<43990561-34ca-4099-917b-bdb6895f149d>>
+#+begin_src python
+correctly_combined_tables3 = pd.merge(table1, table3, how='outer', on='label', suffixes=('_method1', '_method2'))
+correctly_combined_tables3
+#+end_src
+
+#+begin_example
+   label  circularity  elongation_method1  area  skewness  elongation_method2
+0      1          0.3                 2.3    25       0.3                 1.2
+1      2          0.5                 3.4    32       0.6                 3.4
+2      3          0.7                 1.2    22       0.5                 2.3
+3      4          NaN                 NaN    18       0.3                 1.1
+#+end_example
+
+<<9682caa7-ea47-452a-a773-952639b53de8>>
+** Combining measurements from multiple image files
+   :PROPERTIES:
+   :CUSTOM_ID: combining-measurements-from-multiple-image-files
+   :END:
+
+<<3e37e64c-0185-439f-9e52-f1e23e732865>>
+When applying a workflow to many images, you would get tables with the
+same column names, but with a variable number of rows. To calculate
+statistics for whole folders or to perform machine learning, we usually
+need to concatenate those tables, but it is important to keep track of
+the source files.
+
+Let's open two tables generated from applying the same worflow to
+different files.
+
+<<23b7b945-b874-49ba-b48f-d494adf7e8c3>>
+#+begin_src python
+df1 = pd.read_csv('../../data/BBBC007_20P1_POS0007_D_1UL.csv')
+df1.head()
+#+end_src
+
+#+begin_example
+   area  intensity_mean  major_axis_length  minor_axis_length  aspect_ratio
+0   256       93.250000          19.995017          17.021559      1.174688
+1    90       82.488889          15.939969           7.516326      2.120713
+2   577       90.637782          35.324458          21.759434      1.623409
+3   270       95.640741          20.229431          17.669052      1.144908
+4   153       84.908497          15.683703          12.420475      1.262730
+#+end_example
+
+<<f0bf9a4b-925d-4227-8aff-4348fa2afca3>>
+#+begin_src python
+df2 = pd.read_csv('../../data/BBBC007_20P1_POS0010_D_1UL.csv')
+df2.head()
+#+end_src
+
+#+begin_example
+   area  intensity_mean  major_axis_length  minor_axis_length  aspect_ratio
+0   139       96.546763          17.504104          10.292770      1.700621
+1   360       86.613889          35.746808          14.983124      2.385805
+2    43       91.488372          12.967884           4.351573      2.980045
+3   140       73.742857          18.940508          10.314404      1.836316
+4   144       89.375000          13.639308          13.458532      1.013432
+#+end_example
+
+<<6121c288-6584-4c30-a584-43cc58871599>>
+In this particular case where we know we have the same columns, we could
+concatenate them into a single big table.
+
+<<0cf88538-6bea-4a47-ba1e-09a26fba2602>>
+#+begin_src python
+big_df = pd.concat([df1, df2], axis=0)
+big_df
+#+end_src
+
+#+begin_example
+    area  intensity_mean  major_axis_length  minor_axis_length  aspect_ratio
+0    256       93.250000          19.995017          17.021559      1.174688
+1     90       82.488889          15.939969           7.516326      2.120713
+2    577       90.637782          35.324458          21.759434      1.623409
+3    270       95.640741          20.229431          17.669052      1.144908
+4    153       84.908497          15.683703          12.420475      1.262730
+..   ...             ...                ...                ...           ...
+42   315       91.133333          20.927095          19.209283      1.089426
+43   206       94.262136          23.381879          11.669668      2.003646
+44    45       68.377778           9.406371           6.276445      1.498678
+45    33       76.727273          10.724275           4.174568      2.568955
+46    16       76.750000           7.745967           2.783882      2.782433
+
+[111 rows x 5 columns]
+#+end_example
+
+<<12290fe6-86aa-408e-b9f7-1c2b2900a64a>>
+The problem is that we lose their source identity. An easy fix for that
+is to add a new column with the file name before concatenating them.
+This will facilitate splitting them back and plotting later on.
+
+When we give a single value to a new column, it is assigned to all rows.
+
+<<a9a4745e-69a6-4bef-95e0-a449d8ec2dea>>
+#+begin_src python
+df1['file_name'] = 'BBBC007_20P1_POS0007_D_1UL'
+
+df2['file_name'] = 'BBBC007_20P1_POS0010_D_1UL'
+#+end_src
+
+<<4c87f225-eb3c-4107-b5d6-454c2598c084>>
+#+begin_src python
+big_df = pd.concat([df1, df2], axis=0)
+big_df
+#+end_src
+
+#+begin_example
+    area  intensity_mean  major_axis_length  minor_axis_length  aspect_ratio  \
+0    256       93.250000          19.995017          17.021559      1.174688   
+1     90       82.488889          15.939969           7.516326      2.120713   
+2    577       90.637782          35.324458          21.759434      1.623409   
+3    270       95.640741          20.229431          17.669052      1.144908   
+4    153       84.908497          15.683703          12.420475      1.262730   
+..   ...             ...                ...                ...           ...   
+42   315       91.133333          20.927095          19.209283      1.089426   
+43   206       94.262136          23.381879          11.669668      2.003646   
+44    45       68.377778           9.406371           6.276445      1.498678   
+45    33       76.727273          10.724275           4.174568      2.568955   
+46    16       76.750000           7.745967           2.783882      2.782433   
+
+                     file_name  
+0   BBBC007_20P1_POS0007_D_1UL  
+1   BBBC007_20P1_POS0007_D_1UL  
+2   BBBC007_20P1_POS0007_D_1UL  
+3   BBBC007_20P1_POS0007_D_1UL  
+4   BBBC007_20P1_POS0007_D_1UL  
+..                         ...  
+42  BBBC007_20P1_POS0010_D_1UL  
+43  BBBC007_20P1_POS0010_D_1UL  
+44  BBBC007_20P1_POS0010_D_1UL  
+45  BBBC007_20P1_POS0010_D_1UL  
+46  BBBC007_20P1_POS0010_D_1UL  
+
+[111 rows x 6 columns]
+#+end_example
+
+<<bf553c51-dd29-4d5b-8e72-dcf3a262c418>>
+Now, we can safely distinguish the source of each row.

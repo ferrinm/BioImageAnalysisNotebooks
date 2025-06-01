@@ -1,0 +1,267 @@
+* Basic math in python
+  :PROPERTIES:
+  :CUSTOM_ID: basic-math-in-python
+  :END:
+For understanding how Python works, we will do some basic math using
+variables and functions. Both play an important role in Python and will
+accompany us through all chapters.
+
+In the next cell we define a variable called "a" and we assign the value
+=5= to it.
+
+#+begin_src python
+a = 5
+#+end_src
+
+Afterwards, we can re-use this variable, for example to print it out:
+
+#+begin_src python
+print(a)
+#+end_src
+
+#+begin_example
+5
+#+end_example
+
+Somtimes, it might be helpful to put some additonal explanatory text
+when printing out variables:
+
+#+begin_src python
+print("The area is", a)
+#+end_src
+
+#+begin_example
+The area is 5
+#+end_example
+
+It shall be highlighted that good scientific practice is also to add
+physical units.
+
+#+begin_src python
+print("The area is", a, "mm^2")
+#+end_src
+
+#+begin_example
+The area is 5 mm^2
+#+end_example
+
+We can use multiple variables and combine them using mathematical
+operators:
+
+#+begin_src python
+b = 3
+c = a + b
+#+end_src
+
+#+begin_src python
+print(c)
+#+end_src
+
+#+begin_example
+8
+#+end_example
+
+#+begin_src python
+d = 6
+e = 7
+f = a * d
+g = f / e
+h = 1 + g
+#+end_src
+
+#+begin_src python
+print(h)
+#+end_src
+
+#+begin_example
+5.285714285714286
+#+end_example
+
+We can also get the value of a variable or expression (combination of
+variables) by putting it in a cell alone.
+
+#+begin_src python
+h
+#+end_src
+
+#+begin_example
+5.285714285714286
+#+end_example
+
+#+begin_src python
+a + b
+#+end_src
+
+#+begin_example
+8
+#+end_example
+
+If you run illegal operations, such a dividing by zero, you receive an
+error message like this:
+
+#+begin_src python
+a / 0
+#+end_src
+
+#+begin_example
+---------------------------------------------------------------------------
+ZeroDivisionError                         Traceback (most recent call last)
+Input In [11], in <module>
+----> 1 a / 0
+
+ZeroDivisionError: division by zero
+#+end_example
+
+If a variable is not defined, you would receive an error message like
+that:
+
+#+begin_src python
+a / k
+#+end_src
+
+#+begin_example
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+Input In [12], in <module>
+----> 1 a / k
+
+NameError: name 'k' is not defined
+#+end_example
+
+* Built-in math functions
+  :PROPERTIES:
+  :CUSTOM_ID: built-in-math-functions
+  :END:
+Python comes with a list of
+[[https://docs.python.org/3/library/functions.html][built-in functions]]
+
+#+begin_src python
+pow(3, 2)
+#+end_src
+
+#+begin_example
+9
+#+end_example
+
+#+begin_src python
+abs(-8)
+#+end_src
+
+#+begin_example
+8
+#+end_example
+
+#+begin_src python
+round(4.6)
+#+end_src
+
+#+begin_example
+5
+#+end_example
+
+Some of these operations are not exactly doing what you expect. Better
+try them out before you use them.
+
+#+begin_src python
+round(4.5)
+#+end_src
+
+#+begin_example
+4
+#+end_example
+
+#+begin_src python
+round(5.5)
+#+end_src
+
+#+begin_example
+6
+#+end_example
+
+#+begin_src python
+round(6.5)
+#+end_src
+
+#+begin_example
+6
+#+end_example
+
+#+begin_src python
+round(7.5)
+#+end_src
+
+#+begin_example
+8
+#+end_example
+
+By the way, we can also combine multiple expressions to print out
+intermediate results in notebooks without wasting too much space.
+
+#+begin_src python
+round(4.5), round(5.5), round(6.5), round(7.5)
+#+end_src
+
+#+begin_example
+(4, 6, 6, 8)
+#+end_example
+
+** The math library
+   :PROPERTIES:
+   :CUSTOM_ID: the-math-library
+   :END:
+There is pre-installed python library of additional
+[[https://docs.python.org/3/library/math.html][math functions]]. Before
+you can use them, you need to import this library. Otherwise, you would
+receive an error like this:
+
+#+begin_src python
+math.sqrt(9)
+#+end_src
+
+#+begin_example
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+Input In [21], in <module>
+----> 1 math.sqrt(9)
+
+NameError: name 'math' is not defined
+#+end_example
+
+When importing a library, you tell the python interpreter that you want
+to make use of everying that is part of a given library, in our case
+"math":
+
+#+begin_src python
+import math
+#+end_src
+
+After importing the "math" library, you can use functions that are part
+of math.
+
+#+begin_src python
+math.sqrt(9)
+#+end_src
+
+#+begin_example
+3.0
+#+end_example
+
+* Exercise
+  :PROPERTIES:
+  :CUSTOM_ID: exercise
+  :END:
+Assume you have two points specified by their x and y coordinates.
+Calculate the
+[[https://en.wikipedia.org/wiki/Euclidean_distance#Two_dimensions][Euclidean
+distance]] between them.
+
+#+begin_src python
+x1 = 5
+y1 = 3
+
+x2 = 8
+y2 = 11
+#+end_src
+
+#+begin_src python
+#+end_src

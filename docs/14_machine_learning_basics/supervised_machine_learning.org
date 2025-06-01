@@ -1,0 +1,318 @@
+<<12032af8-547f-486b-baab-d9f3f46cf957>>
+* Supervised machine learning
+  :PROPERTIES:
+  :CUSTOM_ID: supervised-machine-learning
+  :END:
+Supervised machine learning is a technique for configuring (learning)
+parameters of a computational model based on annotated data. In this
+example, we provide sparsely annotated data, which means we only
+annotate some of the given data points.
+
+See also
+
+- [[https://en.wikipedia.org/wiki/Supervised_learning][Supervised
+  learning (Wikipedia)]]
+- [[https://scikit-learn.org/stable/supervised_learning.html][Supervised
+  learning in scikit-learn]]
+
+<<825d6705-cf79-4b52-acc6-da93d6e2d96c>>
+#+begin_src python
+import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import jaccard_score, accuracy_score, precision_score, recall_score
+
+# local import; this library is located in the same folder as the notebook
+from data_generator import generate_biomodal_2d_data
+#+end_src
+
+<<5292a204-9e34-47dd-8fac-f7db68cd4bc6>>
+Our starting point for demonstrating supervised machine learning is a a
+pair of measurements in a bimodal distribution. In the following data
+set objects with a larger area are typically also more elongated.
+
+<<8e3707f7-77be-4a26-811d-3e6bdd47018e>>
+#+begin_src python
+data = generate_biomodal_2d_data()
+
+plt.scatter(data[:, 0], data[:, 1], c='#DDDDDD')
+plt.xlabel('area')
+plt.ylabel('elongation')
+#+end_src
+
+#+begin_example
+Text(0, 0.5, 'elongation')
+#+end_example
+
+[[file:fabf6e8b2b585fd55328d9140752358d914665da.png]]
+
+<<ad993994-7a52-4d58-8873-6c095debe66e>>
+To get a more detailed insight into the data, we print out the first
+entries.
+
+<<7d78f58d-7c5b-452a-b545-8b3e791f9c5a>>
+#+begin_src python
+data_to_annotate = data[:20]
+
+pd.DataFrame(data_to_annotate, columns=["area", "elongation"])
+#+end_src
+
+#+begin_example
+        area  elongation
+0   3.950088    2.848643
+1   4.955912    3.390093
+2   7.469852    5.575289
+3   2.544467    3.017479
+4   3.465662    1.463756
+5   3.156507    3.232181
+6   9.978705    6.676372
+7   6.001683    5.047063
+8   2.457139    3.416050
+9   3.672295    3.407462
+10  9.413702    7.598608
+11  2.896781    3.410599
+12  2.305432    2.850365
+13  4.640594    8.602249
+14  3.523277    2.828454
+15  7.636970   10.277392
+16  7.223721    6.531755
+17  7.146032    8.404857
+18  7.407157    6.260869
+19  6.543343    8.472226
+#+end_example
+
+<<9d40342e-61c9-417f-9f58-a46d3d707941>>
+** Annotating data
+   :PROPERTIES:
+   :CUSTOM_ID: annotating-data
+   :END:
+As mentioned above, supervised machine learning algorithms need some
+form of annotation, also called /ground truth/. We create a list of
+annotations where =1= represents small objects and =2= represents large
+and elongated objects.
+
+Note: We are here annotating the first 20 data points, which is a quite
+small number. In real projects, larger amounts of annotation data might
+be necessary to train well-performing classifiers.
+
+<<c00f573a-4e99-4031-acef-13a0bb56f4b3>>
+#+begin_src python
+manual_annotation = [1, 1, 2, 1, 1, 1, 2, 2, 1, 1, 2, 1, 1, 2, 1, 2, 2, 2, 2, 2]
+#+end_src
+
+<<c27e566a-70da-4a6e-a3ef-c83e903c8868>>
+Now, we visualize the measurements again and draw the annotated
+measurements on top.
+
+<<8c66f554-231b-40ab-a9b2-d5bdc815c0f5>>
+#+begin_src python
+plt.scatter(data[:, 0], data[:, 1], c='#DDDDDD')
+plt.xlabel('area')
+plt.ylabel('elongation')
+
+colors = ['orange', 'blue']
+annotated_colors = [colors[i-1] for i in manual_annotation]
+
+plt.scatter(data_to_annotate[:, 0], data_to_annotate[:, 1], c=annotated_colors)
+#+end_src
+
+#+begin_example
+<matplotlib.collections.PathCollection at 0x14d8ee3d790>
+#+end_example
+
+[[file:5d0444a3377b7fcab04952d470fcc8467d7301a7.png]]
+
+<<e7f82812-4bac-4984-b90e-a646718a6adb>>
+** Separating test and validation data
+   :PROPERTIES:
+   :CUSTOM_ID: separating-test-and-validation-data
+   :END:
+Before we train our classifier, we need to split the annotated data into
+two subsets. Goal is to enable unbiased validation. We train on the
+first half of the annotated data points and measure the quality on the
+second half.
+[[https://scikit-learn.org/stable/common_pitfalls.html#data-leakage][Read
+more]].
+
+<<2fcb456d-90c9-4cc2-90c6-9c69a43e72bb>>
+#+begin_src python
+train_data = data_to_annotate[:10]
+validation_data = data_to_annotate[10:]
+
+train_annotation = manual_annotation[:10]
+validation_annotation = manual_annotation[10:]
+#+end_src
+
+<<22c17985-c857-4170-84ce-66e96f8e4971>>
+** Classifier training
+   :PROPERTIES:
+   :CUSTOM_ID: classifier-training
+   :END:
+With the selected data to annotate and the manual annotation, we can
+train a [[https://en.wikipedia.org/wiki/Random_forest][Random Forest
+Classifier]].
+
+<<ec60e60e-bc9e-4e46-84a3-90366cf45c99>>
+#+begin_src python
+classifier = RandomForestClassifier()
+classifier.fit(train_data, train_annotation)
+#+end_src
+
+#+begin_example
+RandomForestClassifier()
+#+end_example
+
+<<ec31464b-c5c8-49fa-80a9-d5721b50a136>>
+** Validation
+   :PROPERTIES:
+   :CUSTOM_ID: validation
+   :END:
+We can now apply the classifier to the validation data and measure how
+many of these data points have been analyzed correctly.
+
+<<01002155-5344-446d-a6bb-79fdf6aba05b>>
+#+begin_src python
+result = classifier.predict(validation_data)
+
+# Show results next to annotation in a table
+result_annotation_comparison_table = {
+    "Predicted": result,
+    "Annotated": validation_annotation
+}
+pd.DataFrame(result_annotation_comparison_table)
+#+end_src
+
+#+begin_example
+   Predicted  Annotated
+0          2          2
+1          1          1
+2          1          1
+3          1          2
+4          1          1
+5          2          2
+6          2          2
+7          2          2
+8          2          2
+9          2          2
+#+end_example
+
+<<5e98ab03-d427-4c2c-99ef-f65f8abcac16>>
+To get some standardized measures of the quality of the results of our
+classifier, we use
+[[https://scikit-learn.org/stable/modules/model_evaluation.html][scikit-learn's
+metrics]]. An overview about the techniques are also available on
+[[https://en.wikipedia.org/wiki/Precision_and_recall][Wikipedia]] and
+mean in the context here:
+
+- [[https://scikit-learn.org/stable/modules/generated/sklearn.metrics.accuracy_score.html#sklearn.metrics.accuracy_score][Accurcay]]:
+  What portion of predictions were correct?
+- [[https://scikit-learn.org/stable/modules/generated/sklearn.metrics.precision_score.html#sklearn.metrics.precision_score][Precision]]:
+  What portion of predicted =1=s were annotated as =1=?
+- [[https://scikit-learn.org/stable/modules/generated/sklearn.metrics.recall_score.html#sklearn.metrics.recall_score][Recall
+  (sensitivity)]]: What portion of predicted =2=s have been annotated as
+  =2=?
+
+<<e7abc020-e5ce-42b8-b8be-e6eec1c231b0>>
+#+begin_src python
+accuracy_score(validation_annotation, result)
+#+end_src
+
+#+begin_example
+0.9
+#+end_example
+
+<<ddca7690-99a7-4e58-b639-116a756cefb3>>
+#+begin_src python
+precision_score(validation_annotation, result)
+#+end_src
+
+#+begin_example
+0.75
+#+end_example
+
+<<ac81820a-1e15-4228-8709-6bbb3225799f>>
+#+begin_src python
+recall_score(validation_annotation, result)
+#+end_src
+
+#+begin_example
+1.0
+#+end_example
+
+<<425d2693-80d7-431c-a6ca-3094048b1df7>>
+If you want to understand more detailed how the enties are counted and
+the quality scores are computed, the
+[[https://scikit-learn.org/stable/modules/generated/sklearn.metrics.multilabel_confusion_matrix.html#sklearn.metrics.multilabel_confusion_matrix][multilabel
+confusion matrix]] may be worth a look.
+
+<<a32230e9-6f91-4248-b47a-688fbfe29bf9>>
+** Prediction
+   :PROPERTIES:
+   :CUSTOM_ID: prediction
+   :END:
+After training and validation of the classifier, we can reuse it to
+process other data sets. It is uncommon to classify test- and validation
+data, as those should be used for making the classifier only. We here
+apply the classifier to the remaining data points, which have not been
+annotated.
+
+<<fa01dc06-1a8a-4f79-a6c9-de7c54087f54>>
+#+begin_src python
+remaining_data = data[20:]
+
+prediction = classifier.predict(remaining_data)
+prediction
+#+end_src
+
+#+begin_example
+array([1, 1, 1, 1, 2, 1, 2, 1, 2, 1, 2, 2, 1, 2, 2, 1, 1, 2, 1, 1, 1, 1,
+       2, 1, 2, 2, 2, 2, 2, 1, 1, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 1, 2,
+       2, 2, 1, 1, 1, 1, 1, 2, 1, 1, 2, 2, 2, 1, 1, 2, 2, 1, 2, 2, 2, 1,
+       1, 1, 1, 1, 2, 1, 2, 1, 2, 1, 2, 2, 1, 2, 1, 1, 2, 1, 1, 1, 1, 2,
+       1, 2, 1, 2, 2, 1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 1, 1, 1, 2, 2, 2,
+       1, 2, 2, 2, 1, 2, 1, 2, 2, 1, 2, 2, 1, 1, 2, 1, 1, 2, 1, 2, 1, 1,
+       1, 1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 1, 2, 2, 2, 1, 1, 1, 1, 2, 2, 1,
+       1, 1, 1, 2, 2, 1, 2, 1, 1, 2, 2, 1, 1, 2, 1, 2, 1, 2, 1, 2, 2, 2,
+       1, 2, 1, 2, 1, 1, 2, 2, 2, 1, 1, 1, 2, 1, 2, 2, 1, 2, 1, 2, 1, 1,
+       2, 1, 1, 2, 1, 1, 2, 2, 2, 1, 1, 1, 2, 2, 2, 2, 2, 1, 2, 1, 1, 2,
+       2, 2, 1, 1, 2, 1, 1, 2, 1, 2, 2, 2, 1, 1, 2, 2, 1, 1, 1, 2, 2, 1,
+       1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 2, 2, 2, 1, 2,
+       1, 2, 2, 1, 2, 2, 1, 2, 2, 1, 1, 2, 1, 1, 2, 1])
+#+end_example
+
+<<a2d4abcf-124f-4182-a705-e2884bb407d0>>
+Here we now visualize the whole data set with class colors.
+
+<<f35dce87-89e0-4fec-ba16-020188f6bdb3>>
+#+begin_src python
+predicted_colors = [colors[i-1] for i in prediction]
+
+plt.scatter(remaining_data[:, 0], remaining_data[:, 1], c=predicted_colors)
+plt.xlabel('area')
+plt.ylabel('elongation')
+#+end_src
+
+#+begin_example
+Text(0, 0.5, 'elongation')
+#+end_example
+
+[[file:bca8f37ec36f29dd63440b70b656f339f5404e28.png]]
+
+<<3988aaa0-90be-4101-a334-d262071bd8ca>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Train a [[https://scikit-learn.org/stable/modules/svm.html][Support
+Vector Machine]] and visualize its prediction.
+
+<<ccbd88e3-34e8-4aee-9fcd-e6d72e7c60fe>>
+#+begin_src python
+from sklearn.svm import SVC
+
+classifier = SVC()
+#+end_src
+
+<<8a0e2948-ecf7-4b74-8137-a46523b2ef50>>
+#+begin_src python
+#+end_src

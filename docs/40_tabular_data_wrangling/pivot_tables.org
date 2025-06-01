@@ -1,0 +1,55 @@
+<<4c16c877-0135-4ee4-86e2-db21dca5eb5f>>
+* Pivot tables
+  :PROPERTIES:
+  :CUSTOM_ID: pivot-tables
+  :END:
+For analysing data in groups, it may make sense to turn it into a
+[[https://en.wikipedia.org/wiki/Pivot_table][Pivot table]].
+
+<<05824a7f>>
+#+begin_src python
+import pandas as pd
+#+end_src
+
+<<9cbdbb5a>>
+#+begin_src python
+df = pd.DataFrame(
+    {
+        "cell": ["Purkinje","Purkinje","Purkinje","Purkinje","Purkinje"],
+        "location": ["brain1", "brain1", "brain2", "brain2", "brain1"],
+        "spikes": ["simple", "complex", "simple", "complex", "simple"],
+        "value": [3.3, 5.1, 2.5, 6.2, 2.8],
+    }
+)
+
+df
+#+end_src
+
+#+begin_example
+       cell location   spikes  value
+0  Purkinje   brain1   simple    3.3
+1  Purkinje   brain1  complex    5.1
+2  Purkinje   brain2   simple    2.5
+3  Purkinje   brain2  complex    6.2
+4  Purkinje   brain1   simple    2.8
+#+end_example
+
+<<bc8d6dc5>>
+You can turn your table into a pivot table, for example by computing the
+mean of columns for elements in groups using
+[[https://pandas.pydata.org/docs/reference/api/pandas.pivot_table.html][=pandas.pivot_table()=]]
+
+<<8eeca8cf>>
+#+begin_src python
+pivot = pd.pivot_table(
+    df, values="value", index=["cell", "location"], columns=["spikes"], aggfunc="mean"
+)
+pivot
+#+end_src
+
+#+begin_example
+spikes             complex  simple
+cell     location                 
+Purkinje brain1        5.1    3.05
+         brain2        6.2    2.50
+#+end_example

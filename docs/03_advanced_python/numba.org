@@ -1,0 +1,154 @@
+<<632ef739-4aa0-4e94-b367-cd8df9891b0b>>
+* Parallelization using numba
+  :PROPERTIES:
+  :CUSTOM_ID: parallelization-using-numba
+  :END:
+In this notebook we will optimize execution time of an algorithm by
+using [[https://numba.pydata.org/][numba]].
+
+<<eb758e9f-259e-4768-b2de-33f33342ace9>>
+#+begin_src python
+import time
+import numpy as np
+from functools import partial
+import timeit
+import matplotlib.pyplot as plt
+import platform
+#+end_src
+
+<<3bd91f50-3b6c-475a-b1a7-bf24564f0acc>>
+#+begin_src python
+image = np.zeros((10, 10))
+#+end_src
+
+<<3169c33a-1346-4627-8485-9491cefa956b>>
+** Benchmarking execution time
+   :PROPERTIES:
+   :CUSTOM_ID: benchmarking-execution-time
+   :END:
+In image processing, it is very common that execution time of algorithms
+shows different patterns depending on image size. We will now benchmark
+the algorithm above and see how it performs on differently sized images.
+To bind a function to benchmark to a given image without executing it,
+we are using the
+[[https://docs.python.org/3/library/functools.html#functools.partial][partial]]
+pattern.
+
+<<f57c6d5f-4ae7-435d-b6ec-e50d40075f91>>
+#+begin_src python
+def benchmark(target_function):
+    """
+    Tests a function on a couple of image sizes and returns times taken for processing.
+    """
+    sizes = np.arange(1, 5) * 10
+
+    benchmark_data = []
+
+    for size in sizes:
+        print("Size", size)
+
+        # make new data
+        image = np.zeros((size, size))
+        
+        # bind target function to given image
+        partial_function = partial(target_function, image)
+
+        # measure execution time
+        time_in_s = timeit.timeit(partial_function, number=10)
+        print("time", time_in_s, "s")
+
+        # store results
+        benchmark_data.append([size, time_in_s])
+
+    return np.asarray(benchmark_data)
+#+end_src
+
+<<71e07e3b-7fae-481d-8686-07777024ff4b>>
+This is the algorithm we would like to optimize:
+
+<<ad8aa333-fda9-4b97-9fff-310a1313b401>>
+#+begin_src python
+def silly_sum(image):
+    # Silly algorithm for wasting compute time
+    sum = 0
+    for i in range(image.shape[1]):
+        for j in range(image.shape[0]):
+            for k in range(image.shape[0]):
+                for l in range(image.shape[0]):
+                    sum = sum + image[i,j] - k + l
+        sum = sum + i
+        image[i, j] = sum / image.shape[1] / image.shape[0]
+#+end_src
+
+<<9d451c7c-e14f-4274-8a39-210fa01c7176>>
+#+begin_src python
+benchmark_data_silly_sum = benchmark(silly_sum)
+#+end_src
+
+#+begin_example
+Size 10
+time 0.026225900000000024 s
+Size 20
+time 0.3880397999999996 s
+Size 30
+time 2.4635917000000003 s
+Size 40
+time 6.705509999999999 s
+#+end_example
+
+<<ef55ae09-b594-46bf-ba87-c84895608b08>>
+#+begin_src python
+plt.scatter(benchmark_data_silly_sum[:,0] ** 2, benchmark_data_silly_sum[:,1])
+plt.legend(["normal"])
+plt.xlabel("Image size in pixels")
+plt.ylabel("Compute time in s")
+plt.show()
+#+end_src
+
+[[file:4c44270c560dfa878151b683c7c0f8f0b5c065da.png]]
+
+<<1167b4de-68d7-4ec1-9016-c85466226c40>>
+This algorithm is stronger dependent on image size, the plot shows
+approximately
+[[https://en.wikipedia.org/wiki/Time_complexity#Table_of_common_time_complexities][quadratic]]
+complexity. That means if the data size doubles, the compute time
+multiplies by four. The algorithms O-notation is =O(n^2)=. We could
+presume that a similar algorithm applied in 3D has cubic complexity,
+=O(n^3)=. If such algorithms are bottlenecks in your science,
+parallelization and GPU-acceleration make a lot of sense.
+
+<<d69ce323-e968-4062-b2b1-3dc3a63db960>>
+** Code optimization using numba
+   :PROPERTIES:
+   :CUSTOM_ID: code-optimization-using-numba
+   :END:
+In case the code we perform is simple and just uses standard python,
+numpy etc. function, we can use a just-in-time (JIT) compiler, e.g.
+provided by [[https://numba.pydata.org/][numba]] to speedup the code.
+
+<<0c8f70d3-aae4-4843-a195-ee0a7556c826>>
+#+begin_src python
+from numba import jit
+
+@jit
+def process_image_compiled(image):
+    for x in range(image.shape[1]):
+        for y in range(image.shape[1]):
+            # Silly algorithm for wasting compute time
+            sum = 0
+            for i in range(1000):
+                for j in range(1000):
+                    sum = sum + x
+                sum = sum + y
+            image[x, y] = sum
+#+end_src
+
+<<bed1d1f8-80c6-4349-9b27-82dadb20fd4f>>
+#+begin_src python
+%timeit process_image_compiled(image)
+#+end_src
+
+#+begin_example
+The slowest run took 56.00 times longer than the fastest. This could mean that an intermediate result is being cached.
+2.84 µs ± 5.7 µs per loop (mean ± std. dev. of 7 runs, 1 loop each)
+#+end_example

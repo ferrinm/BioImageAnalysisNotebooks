@@ -1,0 +1,66 @@
+<<3b28cebb-8400-491d-bb63-88d634749a05>>
+* Keep it short and simple
+  :PROPERTIES:
+  :CUSTOM_ID: keep-it-short-and-simple
+  :END:
+Python has amazing functionalities which allow us to write 21st century
+code. For example, we can collect functions and parameters in lists and
+the call them from a loop. While this is super cool from a programming
+point of view, it might not be easy to read code. The recommendation is:
+[[https://en.wikipedia.org/wiki/KISS_principle][Keep it short and simple
+(KISS)]].
+
+<<76c73ee3-d959-4f36-b86d-1e182d4f3da9>>
+#+begin_src python
+import numpy as np
+from skimage.io import imread, imshow
+from napari_segment_blobs_and_things_with_membranes import threshold_otsu, gaussian_blur, label
+#+end_src
+
+<<a0fa0f51-862e-4c6b-8197-368d84714eec>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+As an example, there are two code sections below. Without running the
+code - do you think both do the same?## Exercise: Without running the
+code - do you think both do the same?
+
+<<ddb977fa-133a-4782-9101-078c5475b0a4>>
+#+begin_src python
+image = imread("../../data/blobs.tif")
+
+# define a list of functions and a corresponding list of arguments
+functions = [gaussian_blur, threshold_otsu, label]
+argument_lists = [[.5], [], []]
+
+# go through functions and argument lists pair-wise
+for function, argument_list in zip(functions, argument_lists):
+    # execute function with given arguments
+    image = function(image, *argument_list)
+
+result1 = image
+imshow(result1)
+#+end_src
+
+<<b32eb680-6701-4008-970e-de2d07dc1e96>>
+#+begin_src python
+image = imread("../../data/blobs.tif")
+
+blurred = gaussian_blur(image, 5)
+binary = threshold_otsu(blurred)
+labels = label(binary)
+
+result2 = labels
+
+imshow(result2)
+#+end_src
+
+<<32718eea-2ac4-4387-a774-e35a82f31720>>
+If you are not sure, you can also directly check if the results are
+equal:
+
+<<6af1d143-cc22-48a4-b74e-64870a2a6570>>
+#+begin_src python
+np.all(result1 == result2) 
+#+end_src

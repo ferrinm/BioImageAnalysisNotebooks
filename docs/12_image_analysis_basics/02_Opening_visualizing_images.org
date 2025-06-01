@@ -1,0 +1,130 @@
+* Working with images
+  :PROPERTIES:
+  :CUSTOM_ID: working-with-images
+  :END:
+To do image data analysis, we first need to be able to do a few
+essential operations:
+
+- opening images
+- displaying images
+- have a look at pixel statistics
+
+See also
+
+- [[https://scipy-lectures.org/packages/scikit-image/index.html][Lecture
+  notes on scikit image by Emmanuelle Gouillart]]
+- [[https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_histograms/py_histogram_begins/py_histogram_begins.html][Histograms
+  of images]]
+
+** Opening images
+   :PROPERTIES:
+   :CUSTOM_ID: opening-images
+   :END:
+Most images with standard extensions (tif, png etc.) can be read using
+the
+[[https://scikit-image.org/docs/dev/api/skimage.io.html#skimage.io.imread][=skimage.io.imread=]]
+function. In case your image doesn't you should consult the
+documentation of the given file format.
+
+To use =imread= you have three possibilities:
+
+- use the absolute path to an image file e.g.
+  =imread('/Users/username/Desktop/blobs.tif')=
+- use a relative path to where you currently are (you cand find out
+  using the =pwd= command in a cell) i.e.
+  =imread('../../data/blobs.tif')=
+- use a url that points to an image file, for example from the GitHub
+  repository
+  =imread('https://github.com/haesleinhuepf/BioImageAnalysisNotebooks/raw/main/data/blobs.tif')=
+
+Here we use a relative path. Respective to the current notebook, the
+data are two folder levels higher (=../../=) in a folder called =data=:
+
+#+begin_src python
+from skimage.io import imread
+
+image = imread("../../data/blobs.tif")
+#+end_src
+
+As shown earlier, images are just matrices of intensities. However,
+showing them as such is not convenient.
+
+#+begin_src python
+image
+#+end_src
+
+#+begin_example
+array([[ 40,  32,  24, ..., 216, 200, 200],
+       [ 56,  40,  24, ..., 232, 216, 216],
+       [ 64,  48,  24, ..., 240, 232, 232],
+       ...,
+       [ 72,  80,  80, ...,  48,  48,  48],
+       [ 80,  80,  80, ...,  48,  48,  48],
+       [ 96,  88,  80, ...,  48,  48,  48]], dtype=uint8)
+#+end_example
+
+** Displaying images
+   :PROPERTIES:
+   :CUSTOM_ID: displaying-images
+   :END:
+There are many ways to display simple 2D images. In many notebooks and
+examples online, you will find examples using Matplotlib's =imshow=
+function on an array:
+
+#+begin_src python
+from matplotlib import pyplot as plt
+
+plt.imshow(image);
+#+end_src
+
+[[file:4acf81ed6009e3d701e704dd996371ce226408c4.png]]
+
+Unfortunately, the =imshow= function is not an optimal choice to display
+microscopy images: it doesn't handle well multi-channel data, it is
+difficult to handle intensity ranges etc. Throughout this course we
+therefore favor the use of the =microshow= function from the
+[[https://pypi.org/project/microfilm/][microfilm]] package or the
+=imshow= function from the
+[[https://clesperanto.github.io/][clesperanto]] package. We'll learn
+about the second solution in coming chapters. Here we just use
+=microshow=:
+
+#+begin_src python
+from microfilm.microplot import microshow
+#+end_src
+
+#+begin_src python
+microshow(image);
+#+end_src
+
+[[file:69add59627b2d0bcd1a11f97d292160f6e16145d.png]]
+
+** Lookup tables (a.k.a. color maps)
+   :PROPERTIES:
+   :CUSTOM_ID: lookup-tables-aka-color-maps
+   :END:
+We can also change the
+[[https://matplotlib.org/stable/tutorials/colors/colormaps.html][look-up
+table]], a.k.a. "color map" for the visualization.
+
+#+begin_src python
+microshow(image, cmaps="hot");
+#+end_src
+
+[[file:06f06f0a2ff90fd03d41b9b4000cf0a470d91c10.png]]
+
+#+begin_src python
+microshow(image, cmaps="pure_cyan");
+#+end_src
+
+[[file:4161de8b763586fa37037c70c48128d3e5673f6c.png]]
+
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Open the =banana020.tif= data set, visualize it in a yellowish lookup
+table.
+
+#+begin_src python
+#+end_src

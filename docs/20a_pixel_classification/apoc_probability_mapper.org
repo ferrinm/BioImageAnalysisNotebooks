@@ -1,0 +1,166 @@
+<<ce720e69>>
+* Probability maps
+  :PROPERTIES:
+  :CUSTOM_ID: probability-maps
+  :END:
+APOC is based on
+[[https://github.com/clEsperanto/pyclesperanto_prototype][pyclesperanto]]
+and [[https://scikit-learn.org/stable/][sklearn]].
+
+Let's start with loading an example image and some ground truth:
+
+<<030613f9>>
+#+begin_src python
+from skimage.io import imread, imshow, imsave
+import matplotlib.pyplot as plt
+import numpy as np
+import apoc
+
+image = imread('blobs.tif')
+imshow(image)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x25fc553f9a0>
+#+end_example
+
+[[file:ac72e13b94d0974795c52f4e609302a401bcbfae.png]]
+
+<<85d92c3b>>
+#+begin_src python
+do_manual_annotation = False
+
+if do_manual_annotation: # you can use this to make manual annotations
+    import napari
+
+    # start napari
+    viewer = napari.Viewer()
+    napari.run()
+
+    # add image
+    viewer.add_image(image)
+
+    # add an empty labels layer and keep it in a variable
+    labels = np.zeros(image.shape).astype(int)
+    viewer.add_labels(labels)
+    
+else:
+    labels = imread('annotations_3class.tif')
+#+end_src
+
+<<f9ce5403>>
+#+begin_src python
+manual_annotations = labels
+if do_manual_annotation:
+    imsave('annotations_3class.tif', manual_annotations)
+
+from skimage.io import imshow
+imshow(manual_annotations, vmin=0, vmax=3)
+#+end_src
+
+#+begin_example
+C:\Users\rober\miniconda3\envs\bio_38\lib\site-packages\skimage\io\_plugins\matplotlib_plugin.py:150: UserWarning: Low image data range; displaying image with stretched contrast.
+  lo, hi, cmap = _get_display_range(image)
+#+end_example
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x25fc565c5e0>
+#+end_example
+
+[[file:e9701547b1c644f2e3f57629572d633f38d1e8e0.png]]
+
+<<f0299779>>
+** Training
+   :PROPERTIES:
+   :CUSTOM_ID: training
+   :END:
+We now train a PixelClassifier, which is under the hood a
+[[https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html][scikit-learn
+RandomForestClassifier]]. After training, the classifier will be
+converted to
+[[https://github.com/clEsperanto/clij-opencl-kernels][clij-compatible
+OpenCL code]] and save to disk under a given filename.
+
+<<8c162a7f>>
+#+begin_src python
+# define features: original image, a blurred version and an edge image
+features = "original gaussian_blur=2 sobel_of_gaussian_blur=2"
+
+# this is where the model will be saved
+cl_filename = 'my_model.cl'
+
+output_probability_of_class = 3
+
+apoc.erase_classifier(cl_filename)
+clf = apoc.ProbabilityMapper(opencl_filename=cl_filename, output_probability_of_class=output_probability_of_class)
+clf.train(features, manual_annotations, image)
+#+end_src
+
+<<5e231f60>>
+** Prediction
+   :PROPERTIES:
+   :CUSTOM_ID: prediction
+   :END:
+The classifier can then be used to classify all pixels in the given
+image. Starting point is again, the feature stack. Thus, the user must
+make sure that the same features are used for training and for
+prediction.
+
+<<efe2721c>>
+#+begin_src python
+result = clf.predict(image=image)
+imshow(result)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x25fc5770670>
+#+end_example
+
+[[file:053b44a696255272221fc23f095c7e6e8128608a.png]]
+
+<<3ac6abc6>>
+** Training / prediction for other classes
+   :PROPERTIES:
+   :CUSTOM_ID: training--prediction-for-other-classes
+   :END:
+We will now train again and output the probability of another class
+
+<<0eb9fc81>>
+#+begin_src python
+output_probability_of_class = 2
+
+apoc.erase_classifier(cl_filename)
+clf = apoc.ProbabilityMapper(opencl_filename=cl_filename, output_probability_of_class=output_probability_of_class)
+clf.train(features, manual_annotations, image)
+
+result = clf.predict(image=image)
+imshow(result)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x25fc57d9d30>
+#+end_example
+
+[[file:9e075bd4d26000cd3287ddad741d6a95f2c5d38c.png]]
+
+<<23e010b4>>
+#+begin_src python
+output_probability_of_class = 1
+
+apoc.erase_classifier(cl_filename)
+clf = apoc.ProbabilityMapper(opencl_filename=cl_filename, output_probability_of_class=output_probability_of_class)
+clf.train(features, manual_annotations, image)
+
+result = clf.predict(image=image)
+imshow(result)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x25fc58484c0>
+#+end_example
+
+[[file:205af900a6b031983bdc6ab76fd173f61ec69a41.png]]
+
+<<7a47afe2>>
+#+begin_src python
+#+end_src

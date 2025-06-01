@@ -1,0 +1,55 @@
+<<d7a976cd-e88f-451b-8524-b90f295baa43>>
+* Count proximal labels in an other label image
+  :PROPERTIES:
+  :CUSTOM_ID: count-proximal-labels-in-an-other-label-image
+  :END:
+
+<<60b8f842>>
+#+begin_src python
+import numpy as np
+import pyclesperanto_prototype as cle
+
+cle.get_device()
+#+end_src
+
+#+begin_example
+<gfx90c on Platform: AMD Accelerated Parallel Processing (2 refs)>
+#+end_example
+
+<<697f14e2>>
+Our starting point is a label image and another label image, where some
+of the labels in the first image are selected from.
+
+<<4cb1395e>>
+#+begin_src python
+label_image = cle.artificial_tissue_2d()
+cle.imshow(label_image, labels=True)
+#+end_src
+
+[[file:cc984eccf6c2bca7e2d1727e0734ddc39b5a6e7c.png]]
+
+<<fe25d549>>
+#+begin_src python
+random_vector = np.random.random((1, int(label_image.max() + 1)))
+sparse_labels = cle.exclude_labels_with_values_out_of_range(random_vector, label_image, minimum_value_range=0, maximum_value_range=0.3)
+cle.imshow(sparse_labels, labels=True)
+#+end_src
+
+[[file:8a60f69e7c19e92f765c304602ab0fefda43a4c7.png]]
+
+<<4fd052a1>>
+We now count for every label in =label_image=, how many labels are
+proximal to it in the =sparse_labels= image. For measuring the distance,
+we use the centroid distance.
+
+<<57c32a73>>
+#+begin_src python
+count_map = cle.proximal_other_labels_count_map(label_image, sparse_labels, maximum_distance=25)
+cle.imshow(count_map)
+#+end_src
+
+[[file:a77e4b5ed1246fe52e20525fc6a69eca397f897b.png]]
+
+<<1fa6791a>>
+#+begin_src python
+#+end_src

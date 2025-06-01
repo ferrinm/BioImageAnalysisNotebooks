@@ -1,0 +1,83 @@
+<<cb1fdbe0>>
+* Tracing memory consumption
+  :PROPERTIES:
+  :CUSTOM_ID: tracing-memory-consumption
+  :END:
+When setting up complex workflows, it might male sense to take a look at
+memory consumption. In interactive environments, the user can use the
+Windows Task manager to see how busy GPU memory is. That might be
+cumbersome for scipting. When using an nvidia GPU, the following
+procedure can be used for workflow memory consumption debugging.
+
+<<01a6ede9>>
+#+begin_src python
+import numpy as np
+import pyclesperanto_prototype as cle
+
+cle.select_device("RTX")
+#+end_src
+
+#+begin_example
+<NVIDIA GeForce RTX 3050 Ti Laptop GPU on Platform: NVIDIA CUDA (1 refs)>
+#+end_example
+
+<<8a0e81e0>>
+For overseeing memory consumption, one can use
+[[https://nvidia.custhelp.com/app/answers/detail/a_id/3751/~/useful-nvidia-smi-queries][nvidia-smi]],
+a command line tool that can print out how much memory is currently
+blocked in a given GPU, by any application:
+
+<<bedbd481>>
+#+begin_src python
+!nvidia-smi --query-gpu=memory.used --format=csv
+#+end_src
+
+#+begin_example
+memory.used [MiB]
+178 MiB
+#+end_example
+
+<<3ed5c332>>
+If we then run an operation on the GPU and check memory consumption
+again, we should see an increase.
+
+<<2f06ebac>>
+#+begin_src python
+image = np.random.random((1024, 1024, 100))
+
+blurred = cle.gaussian_blur(image)
+#+end_src
+
+<<f5328a54>>
+#+begin_src python
+!nvidia-smi --query-gpu=memory.used --format=csv
+#+end_src
+
+#+begin_example
+memory.used [MiB]
+580 MiB
+#+end_example
+
+<<9587fb0c>>
+The =del= command allows to free memory. Note: The memory behind the
+variable may not be freed immediately, depending on how busy the system
+is at the moment.
+
+<<39400e4a>>
+#+begin_src python
+del blurred
+#+end_src
+
+<<8bef3a3f>>
+#+begin_src python
+!nvidia-smi --query-gpu=memory.used --format=csv
+#+end_src
+
+#+begin_example
+memory.used [MiB]
+180 MiB
+#+end_example
+
+<<fdcd417c>>
+#+begin_src python
+#+end_src

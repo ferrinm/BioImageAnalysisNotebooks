@@ -1,0 +1,132 @@
+<<b1e48be7>>
+* Overlay texts on images
+  :PROPERTIES:
+  :CUSTOM_ID: overlay-texts-on-images
+  :END:
+
+<<f049c8a8>>
+After labeling elements in an image, one may want to see some text over
+each element describing, for example, its area, or simply the label
+number of that element. One way to do that is using the
+[[https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.annotate.html][matplotlib
+axes annotate function]].
+
+<<90a58c1f>>
+Previous related topics:
+
+- [[https://haesleinhuepf.github.io/BioImageAnalysisNotebooks/20_image_segmentation/09_connected_component_labeling.html][Label
+  images]]
+- [[https://haesleinhuepf.github.io/BioImageAnalysisNotebooks/22_feature_extraction/quantitative_measurements.html][Quantitative
+  image analysis]]
+
+<<f129c732-3709-4c5a-8ba6-2e0927032dcd>>
+#+begin_src python
+from skimage.io import imread
+import matplotlib.pyplot as plt
+from skimage import measure
+import pyclesperanto_prototype as cle
+#+end_src
+
+<<c1d77cd7>>
+We first open an image and label objects in it.
+
+<<ae3e5d64-d853-4303-8af0-0c0365e30c67>>
+#+begin_src python
+# Load data
+blobs = imread('../../data/blobs.tif')
+cle.asarray(blobs)
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 40.,  32.,  24., ..., 216., 200., 200.],
+       [ 56.,  40.,  24., ..., 232., 216., 216.],
+       [ 64.,  48.,  24., ..., 240., 232., 232.],
+       ...,
+       [ 72.,  80.,  80., ...,  48.,  48.,  48.],
+       [ 80.,  80.,  80., ...,  48.,  48.,  48.],
+       [ 96.,  88.,  80., ...,  48.,  48.,  48.]], dtype=float32)
+#+end_example
+
+<<788438ad-304a-4384-ac03-32db276f75bd>>
+#+begin_src python
+labeled_blobs = cle.voronoi_otsu_labeling(blobs, spot_sigma=3.5)
+labeled_blobs
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 0,  0,  0, ..., 62, 62, 62],
+       [ 0,  0,  0, ..., 62, 62, 62],
+       [ 0,  0,  0, ..., 62, 62, 62],
+       ...,
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0]], dtype=uint32)
+#+end_example
+
+<<59defda9>>
+Then, we analyze the labeled elements and get their properties.
+
+<<43e96684>>
+#+begin_src python
+# Analyse objects
+regionprops = measure.regionprops(labeled_blobs)
+#+end_src
+
+<<179ed3cb>>
+Finally, we use the =axs.annotate()= function with the following
+arguments:
+
+- =text=: the string to be displayed;
+- =xy=: the coordinates to plot the text;
+- =fontsize=: the size of the text;
+- =color=: the color of the text;
+
+<<2d7657eb>>
+#+begin_src python
+# Visualization
+fig, axs = plt.subplots(1, 1)
+cle.imshow(blobs, continue_drawing=True, plot=axs)
+cle.imshow(cle.reduce_labels_to_label_edges(labeled_blobs), labels=True, plot=axs, continue_drawing=True, alpha=0.7)
+
+# Plot label number over each element (iterate over each element)
+for element in regionprops:
+    # Get element centroid (x, y)
+    element_centroid = (element.centroid[1]-8, element.centroid[0]+5)
+    
+    # Get element label and convert it to string
+    element_label = str(element.label)
+    
+    # Plot label number at the coordinates of that element centroid
+    axs.annotate(text = element_label, xy = element_centroid, fontsize = 12, color = 'white')
+#+end_src
+
+[[file:a48ed5227398770af5a8edf3e447ade0b2aa1f4a.png]]
+
+<<f792b026>>
+As mentioned before, we can write quantitative measurements on top of
+each element, like its area.
+
+<<ea5775e3>>
+#+begin_src python
+# Visualization
+fig, axs = plt.subplots(1, 1)
+cle.imshow(blobs, continue_drawing=True, plot=axs)
+cle.imshow(cle.reduce_labels_to_label_edges(labeled_blobs), labels=True, plot=axs, continue_drawing=True, alpha=0.7)
+
+# Plot label number over each element (iterate over each element)
+for element in regionprops:
+    # Get element centroid (x, y)
+    element_centroid = (element.centroid[1]-8, element.centroid[0]+5)
+    
+    # Get element label and convert it to string
+    element_area = str(element.area)
+    
+    # Plot label number at the coordinates of that element centroid
+    axs.annotate(text = str(element_area) + " px", xy = element_centroid, fontsize = 7, color = 'white')
+#+end_src
+
+[[file:2c4ae48d5fb03faec8698aed82d5c76b49099430.png]]
+
+<<d2b5932d-caae-4622-862c-66afc70f7b99>>
+#+begin_src python
+#+end_src

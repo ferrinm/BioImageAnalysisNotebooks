@@ -1,0 +1,79 @@
+<<41ed60d8-ea49-4d63-ad8e-f36b8ecd7c87>>
+* Image variations using Dall-E
+  :PROPERTIES:
+  :CUSTOM_ID: image-variations-using-dall-e
+  :END:
+In this notebook we will use [[https://openai.com/dall-e-2][Dall-E 2]]
+to vary an image. Image variations can be useful for producing multiple
+example images and studying if algorithms, e.g. for segmentation, are
+capable to process these images. For convenience reasons, we will use
+the [[https://github.com/haesleinhuepf/darth-d/][Darth-D]] library to
+process the image.
+
+<<75403e01-0341-4fbe-b29a-f51cb7c1e638>>
+#+begin_src python
+from darth_d import vary
+
+from skimage.io import imread
+import stackview
+#+end_src
+
+<<ef01f69d-79dc-46f9-a7ec-cd7f7412cff7>>
+As example image we use this image.
+
+<<afb5dace-ac30-4762-980c-b78c220bcdf9>>
+#+begin_src python
+image = imread("../../data/blobs.tif")
+stackview.insight(image)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[ 40,  32,  24, ..., 216, 200, 200],
+                  [ 56,  40,  24, ..., 232, 216, 216],
+                  [ 64,  48,  24, ..., 240, 232, 232],
+                  ...,
+                  [ 72,  80,  80, ...,  48,  48,  48],
+                  [ 80,  80,  80, ...,  48,  48,  48],
+                  [ 96,  88,  80, ...,  48,  48,  48]], dtype=uint8)
+#+end_example
+
+<<58eafbfb-c82a-4e3c-b8cd-5255229ece03>>
+#+begin_src python
+output_image = vary(image)
+
+output_image
+#+end_src
+
+#+begin_example
+C:\Users\haase\mambaforge\envs\t310\lib\site-packages\darth_d\_vary.py:36: UserWarning: Using the vary function on scientific images could be seen as scientific misconduct. Handle this function with care.
+  warn("Using the vary function on scientific images could be seen as scientific misconduct. Handle this function with care.")
+#+end_example
+
+#+begin_example
+StackViewNDArray([[174, 148, 130, ..., 253, 252, 252],
+                  [183, 156, 135, ..., 253, 253, 254],
+                  [189, 167, 146, ..., 254, 254, 254],
+                  ...,
+                  [ 65,  62,  61, ..., 195, 197, 198],
+                  [ 54,  58,  60, ..., 183, 185, 184],
+                  [ 56,  61,  62, ..., 162, 163, 163]], dtype=uint8)
+#+end_example
+
+<<e722a307-7496-425d-b11c-364cfbe2c17b>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Load the
+[[https://scikit-image.org/docs/stable/api/skimage.data.html#skimage.data.human_mitosis][=human_mitosis=
+example from scikit-image]] and vary it.
+
+<<6438ce13-92d5-49f6-b419-7e34e0a7be50>>
+#+begin_src python
+from skimage.data import human_mitosis
+image = human_mitosis()
+#+end_src
+
+<<58389c44-66ac-4b6a-9a4b-a084ceea0649>>
+#+begin_src python
+#+end_src

@@ -1,0 +1,114 @@
+<<micro-analyst>>
+* Image Segmentation with CellPose
+  :PROPERTIES:
+  :CUSTOM_ID: image-segmentation-with-cellpose
+  :END:
+CellPose is a deep-learning based segmentation algorithm for cells and
+nuclei in microscopy images.
+
+See also
+
+- [[https://www.nature.com/articles/s41592-020-01018-x][Cellpose in
+  Nature Methods]]
+- [[https://github.com/MouseLand/cellpose][Cellpose on github]]
+- [[https://github.com/MouseLand/cellpose/blob/master/notebooks/run_cellpose.ipynb][Cellpose
+  example notebook]]
+
+As usual, we start with loading an example image.
+
+<<4799d0ae-93e1-41d9-93bb-ea0130a12612>>
+#+begin_src python
+import stackview
+from cellpose import models, io
+import numpy as np
+from skimage.data import human_mitosis
+#+end_src
+
+<<adbb027d-98d9-49c0-bc5c-de4495552b2e>>
+#+begin_src python
+image = human_mitosis()
+stackview.insight(image)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[ 8,  8,  8, ..., 63, 78, 75],
+                  [ 8,  8,  7, ..., 67, 71, 71],
+                  [ 9,  8,  8, ..., 53, 64, 66],
+                  ...,
+                  [ 8,  9,  8, ..., 17, 24, 59],
+                  [ 8,  8,  8, ..., 17, 22, 55],
+                  [ 8,  8,  8, ..., 16, 18, 38]], dtype=uint8)
+#+end_example
+
+<<cordless-lebanon>>
+** Loading a pretrained model
+   :PROPERTIES:
+   :CUSTOM_ID: loading-a-pretrained-model
+   :END:
+CellPose comes with a number of pretrained models, e.g. for segmenting
+images showing cells or nuclei. We will just load a model for segmenting
+nuclei.
+
+<<deadly-tunisia>>
+#+begin_src python
+model = models.Cellpose(gpu=False, model_type='nuclei')
+#+end_src
+
+<<derived-electricity>>
+We let the model "evaluate" the image to produce masks of segmented
+nuclei.
+
+<<c7495d0b-186d-4694-8aa5-867f98d84106>>
+#+begin_src python
+channels = [0,0] # This means we are processing single-channel greyscale images.
+
+masks, flows, styles, diams = model.eval(image, diameter=None, channels=channels)
+#+end_src
+
+<<264b0471-dfd3-4654-a02c-c8fcdce072f4>>
+#+begin_src python
+stackview.insight(masks.astype(np.uint32))
+#+end_src
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 4, 4, 4],
+                  [0, 0, 0, ..., 4, 4, 4],
+                  [0, 0, 0, ..., 4, 4, 4],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<recent-boston>>
+** Result visualization
+   :PROPERTIES:
+   :CUSTOM_ID: result-visualization
+   :END:
+Cell / nuclei segmentation results can be checked best if the resulting
+label image is overlaid to the original image or by drawing outlines
+around segmented regions.
+
+<<fiscal-emission>>
+#+begin_src python
+from cellpose import plot
+import matplotlib.pyplot as plt
+
+fig = plt.figure(figsize=(12,5))
+plot.show_segmentation(fig, image, masks, flows[0], channels=channels)
+plt.tight_layout()
+plt.show()
+#+end_src
+
+[[file:5fc8605d3e7e8b1315023efd9a26198ebce58133.png]]
+
+<<88578710-3658-4248-8de6-230c05c3ca98>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Load =../../data/blobs.tif= and apply Cellpose to it.
+
+<<12febfe7-9fb8-4e23-b869-4d918bfec3c9>>
+#+begin_src python
+#+end_src

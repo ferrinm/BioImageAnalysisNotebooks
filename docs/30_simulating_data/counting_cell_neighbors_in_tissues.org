@@ -1,0 +1,424 @@
+<<7c24bc9f-b465-46ea-b4a8-f4bb09b63a3c>>
+* Counting cell neighbors in tissues
+  :PROPERTIES:
+  :CUSTOM_ID: counting-cell-neighbors-in-tissues
+  :END:
+When measuring properties of cells in the context of their neighbors, it
+makes a lot of sense to simulate tissues. For the 2D case, thise can be
+done using clesperanto's build-in function =artificial_tissue_2d()=
+
+<<769faa12-5d66-4c3e-9751-2324691fce16>>
+#+begin_src python
+import pyclesperanto_prototype as cle
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import math
+#+end_src
+
+<<aaff7be9-e857-45f5-b8be-04a320fa773b>>
+#+begin_src python
+cle.artificial_tissue_2d()
+#+end_src
+
+#+begin_example
+cl.OCLArray([[  1,   1,   1, ...,  11,  11,  11],
+       [  1,   1,   1, ...,  11,  11,  11],
+       [  1,   1,   1, ...,  11,  11,  11],
+       ...,
+       [166, 166, 166, ..., 176, 176, 176],
+       [166, 166, 166, ..., 176, 176, 176],
+       [166, 166, 166, ..., 176, 176, 176]], dtype=uint32)
+#+end_example
+
+<<4e03756e-a6b1-4d0e-9ba6-917139d8b13c>>
+As you can see, the simulated 2D tissue shows the common
+honeycomb-pattern of cells in tissues with some random variation. The
+amount of randomness can be controlled by changing the =sigma= value of
+the Gaussian distribution of the local shift of cell centers in pixel
+unit.
+
+<<901af0f4-f248-4c0f-9589-f0e5219f22be>>
+#+begin_src python
+cle.artificial_tissue_2d(random_sigma_x=0, random_sigma_y=0)
+#+end_src
+
+#+begin_example
+cl.OCLArray([[  1,   1,   1, ...,  11,  11,  11],
+       [  1,   1,   1, ...,  11,  11,  22],
+       [  1,   1,   1, ...,  11,  22,  22],
+       ...,
+       [166, 166, 166, ..., 176, 176, 176],
+       [166, 166, 166, ..., 176, 176, 176],
+       [166, 166, 166, ..., 176, 176, 176]], dtype=uint32)
+#+end_example
+
+<<5df9ee45-3c6c-4f76-8e26-8a492e99fdf7>>
+Furthermore, the elongation of the cells can be modified by changing the
+step size of cell center positions in pixel unit.
+
+<<f57b1457-79a2-440b-bd36-0efed4c46d58>>
+#+begin_src python
+cle.artificial_tissue_2d(delta_y=40)
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 1,  1,  1, ..., 11, 11, 11],
+       [ 1,  1,  1, ..., 11, 11, 11],
+       [ 1,  1,  1, ..., 11, 11, 11],
+       ...,
+       [67, 67, 67, ..., 77, 77, 77],
+       [67, 67, 67, ..., 77, 77, 77],
+       [67, 67, 67, ..., 77, 77, 77]], dtype=uint32)
+#+end_example
+
+<<e18c4e21-df1a-4a42-9f27-8fa866ddd456>>
+** Using simulations of tissues for validating neighbor count
+measurements
+   :PROPERTIES:
+   :CUSTOM_ID: using-simulations-of-tissues-for-validating-neighbor-count-measurements
+   :END:
+A common task in quantitative tissue imaging analysis is counting the
+number of neighbors. There are multiple algorithms available for that
+which may, or may not, be invariant against the random variation shown
+above. Here we use two:
+
+- We will count the number of cells that are directly touching in at
+  least one pixel.
+- We will count the number of cells with centroid positions in a given
+  radius.
+
+We can use both methods from clesperanto to visualize the neighbor-count
+in color:
+
+<<8f68258c-1702-4701-83de-895e06fa65bd>>
+#+begin_src python
+labels = cle.artificial_tissue_2d()
+#+end_src
+
+<<0f993bcb-f931-41de-95c4-dd39f78fe8e5>>
+#+begin_src python
+cle.touching_neighbor_count_map(labels)
+#+end_src
+
+#+begin_example
+cl.OCLArray([[1., 1., 1., ..., 3., 3., 4.],
+       [1., 1., 1., ..., 3., 4., 4.],
+       [1., 1., 1., ..., 4., 4., 4.],
+       ...,
+       [3., 3., 3., ..., 3., 3., 3.],
+       [3., 3., 3., ..., 3., 3., 3.],
+       [3., 3., 3., ..., 3., 3., 3.]], dtype=float32)
+#+end_example
+
+<<1e87abcc-9838-430e-aa08-ede5a268d95f>>
+#+begin_src python
+radius = 25
+
+cle.proximal_neighbor_count_map(labels, max_distance=radius)
+#+end_src
+
+#+begin_example
+cl.OCLArray([[2., 2., 2., ..., 3., 3., 3.],
+       [2., 2., 2., ..., 3., 3., 3.],
+       [2., 2., 2., ..., 3., 3., 3.],
+       ...,
+       [3., 3., 3., ..., 2., 2., 2.],
+       [3., 3., 3., ..., 2., 2., 2.],
+       [3., 3., 3., ..., 2., 2., 2.]], dtype=float32)
+#+end_example
+
+<<95f621df-99ba-46a7-a43f-32e3cff1bd93>>
+From these two views, we can see that the algorithms differ quite a bit
+in counting the number of neighbors locally.
+
+<<3565c6bc-1ea3-44fd-9a20-f648a5de8fab>>
+** Varying parameters
+   :PROPERTIES:
+   :CUSTOM_ID: varying-parameters
+   :END:
+In order to investigate how much the algorithms suffer from randomly
+varying position of the cells, we can apply the two methods in a
+for-loop varying the sigma parameters introduced above.
+
+Before doing that we define a helper function for visualizing the
+results.
+
+<<4481f55b-71c0-4e74-afd7-3722e509b4c2>>
+#+begin_src python
+def measure_and_visualize_neighbor_count(labels):
+    # measure
+    touching_neighbor_count_map = cle.touching_neighbor_count_map(labels)
+    radius = 25
+    proximal_neighbor_count_map = cle.proximal_neighbor_count_map(labels, max_distance=radius)
+    
+    # visualize
+    fix, ax = plt.subplots(1, 3, figsize=[10,10])
+    cle.imshow(labels, labels=True, plot=ax[0])
+    cle.imshow(touching_neighbor_count_map, 
+               plot=ax[1], 
+               min_display_intensity=0, 
+               max_display_intensity=10,
+               colormap='rainbow')
+    cle.imshow(proximal_neighbor_count_map, 
+               plot=ax[2], 
+               min_display_intensity=0, 
+               max_display_intensity=10,
+               colormap='rainbow')
+#+end_src
+
+<<cde4babf-4952-4baf-835a-511bcc754fc4>>
+#+begin_src python
+measure_and_visualize_neighbor_count(labels)
+#+end_src
+
+[[file:c1ca2012dd0123fcecd43d73c793cb12c6774369.png]]
+
+<<2df89fd3-00de-47e8-817f-df7dfc9ced8c>>
+Now we can program the for-loop that varies the sigma.
+
+<<f750a70d-03f6-41b7-86e7-146d747ba7bc>>
+#+begin_src python
+for sigma in range(0, 20, 1):
+    cells = cle.artificial_tissue_2d(
+        random_sigma_x=sigma, 
+        random_sigma_y=sigma)
+    
+    measure_and_visualize_neighbor_count(cells)
+#+end_src
+
+[[file:f466e3cdf66c2b7af99c81b958eb54f6591359a7.png]]
+
+[[file:441ab918cbcd59fbe65371adb82ddbe1f7604213.png]]
+
+[[file:7311568191f4d87e4ceabbf4811aec18cbc74ce9.png]]
+
+[[file:57257bc2119c2716bcead927f564a6577906e5f7.png]]
+
+[[file:8f34cf6d5f5545b427400a1333165acf6db6d465.png]]
+
+[[file:03cc103ee9d6f0ffd83b582508af202a2dcb3c34.png]]
+
+[[file:b5a7a75d18a0fcef868aeaef865453b4fdd7146d.png]]
+
+[[file:8b3243a6d8cf81aa68b004b52213d3b6e10c3555.png]]
+
+[[file:45061d3e38a1955409ddce75722af0527bd19ae5.png]]
+
+[[file:a890afc5f5d9ccc4498831749cce7106a8b71d37.png]]
+
+[[file:467beb49ce6a117695417c21e8f66d663ced4006.png]]
+
+[[file:31388899e4a950eb83c3a81ecb68809e948b1604.png]]
+
+[[file:34c73cd5f665e3c05994e0f4edbfaedd69eb1bd3.png]]
+
+[[file:1c4926d887e3290134d1f80f08330483d58e38c5.png]]
+
+[[file:037472eebe1172dd55659f41a9ff95a103d16bf3.png]]
+
+[[file:c38ec88332a1e78caddc4e7928b051c14326588b.png]]
+
+[[file:2ae00259b7e498f2fc63f7f9f7b11ffc44746e0c.png]]
+
+[[file:6c2be23ce4facad304d30027bf69fee3fcf23fd1.png]]
+
+[[file:7f86cd0cdd37a6d9490d206711c783f8fe3cf65f.png]]
+
+[[file:c7b0a5daabf161b09faa12c372e0945463f78bb7.png]]
+
+<<5d3200b6-8836-4ec4-bafd-938c93307bf2>>
+This visualization can be interpreted as follows:
+
+- The touching neighbor count appears to sense more neighbors touching,
+  even though the number of cells per area tissue remains constant.
+- The proximal neighbor count has local fluctuations in the neighbor
+  count which on average might cancel out.
+
+<<3758e8e2-52a6-4cfd-a6a6-1f4cfc7e3e5c>>
+We can further investigate these statements by quantitatively measuring
+the neighbor count and the standard deviation. We again write a helper
+function similar to the one above but this time it measures the average
+neighbor count. Additionally, we will count the total number of cells as
+additional quality check. The helper function will return our
+measurements as dictionary so that we can conveniently collect them in a
+pandas DataFrame.
+
+<<8d96c31d-41f4-4407-b9f1-af7a406f06aa>>
+#+begin_src python
+def measure_neighbor_count(labels):
+    # measure
+    touching_neighbor_count_map = cle.touching_neighbor_count_map(labels)
+    radius = 25
+    proximal_neighbor_count_map = cle.proximal_neighbor_count_map(labels, max_distance=radius)
+    
+    # we should not measure number of neighbors in 
+    # cells that touch the image border.
+    labels_excluding_border = cle.exclude_labels_on_edges(labels)
+
+    touching_neighbor_count_list = cle.read_intensities_from_map(labels_excluding_border, touching_neighbor_count_map)
+    proximal_neighbor_count_list = cle.read_intensities_from_map(labels_excluding_border, proximal_neighbor_count_map)
+
+    return {
+        "number_of_cells" : [labels_excluding_border.max()],
+        "touching_neighbor_count_mean" : [np.mean(touching_neighbor_count_list)],
+        "touching_neighbor_count_std" : [np.std(touching_neighbor_count_list)],
+        "proximal_neighbor_count_mean" : [np.mean(proximal_neighbor_count_list)],
+        "proximal_neighbor_count_std" : [np.std(proximal_neighbor_count_list)]
+    }
+#+end_src
+
+<<5f541dab-b60a-4b01-a163-975d79538238>>
+#+begin_src python
+pd.DataFrame(measure_neighbor_count(labels)).T
+#+end_src
+
+#+begin_example
+                                       0
+number_of_cells               130.000000
+touching_neighbor_count_mean    5.908397
+touching_neighbor_count_std     0.823791
+proximal_neighbor_count_mean    5.190840
+proximal_neighbor_count_std     0.782582
+#+end_example
+
+<<837d6f0c-3000-4fd3-8bcf-bcd739258dd0>>
+We can now run our for-loop again, collect those values and plot them.
+
+<<c080735d-c7c2-4cc4-bc47-6e65531b3ee4>>
+#+begin_src python
+statistics_over_sigma = None
+
+for sigma in range(0, 20, 1):
+    cells = cle.artificial_tissue_2d(
+        random_sigma_x=sigma, 
+        random_sigma_y=sigma)
+    
+    measurements = measure_neighbor_count(cells)
+    measurements["sigma"] = sigma
+    statistics = pd.DataFrame(measurements)
+    
+    if statistics_over_sigma is None:
+        statistics_over_sigma = pd.DataFrame(statistics)
+    else:
+        statistics_over_sigma = pd.concat([statistics_over_sigma, statistics])
+
+statistics_over_sigma
+#+end_src
+
+#+begin_example
+   number_of_cells  touching_neighbor_count_mean  touching_neighbor_count_std  \
+0            126.0                      5.984252                     0.176771   
+0            129.0                      5.961538                     0.228838   
+0            129.0                      5.961538                     0.228838   
+0            128.0                      5.891473                     0.759848   
+0            126.0                      5.968504                     0.762683   
+0            130.0                      5.786260                     1.229458   
+0            125.0                      5.928571                     1.229134   
+0            127.0                      5.703125                     1.480917   
+0            129.0                      5.761539                     1.507947   
+0            121.0                      5.754098                     1.784778   
+0            132.0                      5.631579                     1.749215   
+0            130.0                      5.557252                     1.769807   
+0            132.0                      5.631579                     1.642818   
+0            131.0                      5.772727                     1.607704   
+0            132.0                      5.368421                     1.986699   
+0            129.0                      5.684616                     1.696307   
+0            131.0                      5.598485                     1.623034   
+0            136.0                      5.532847                     1.868100   
+0            130.0                      5.282443                     2.151778   
+0            129.0                      5.438461                     1.976803   
+
+   proximal_neighbor_count_mean  proximal_neighbor_count_std  sigma  
+0                      5.984252                     0.176771      0  
+0                      5.692307                     0.552563      1  
+0                      5.453846                     0.621556      2  
+0                      5.201550                     0.892517      3  
+0                      4.976378                     0.846154      4  
+0                      4.404580                     1.075605      5  
+0                      4.317461                     0.939865      6  
+0                      4.429688                     1.315078      7  
+0                      4.230769                     1.224986      8  
+0                      3.975410                     1.217786      9  
+0                      4.075188                     1.509987     10  
+0                      4.022901                     1.570071     11  
+0                      4.210526                     1.387661     12  
+0                      4.515152                     1.607204     13  
+0                      3.879699                     1.631631     14  
+0                      4.423077                     1.718073     15  
+0                      4.234848                     1.926135     16  
+0                      4.343066                     1.658589     17  
+0                      3.946565                     1.899429     18  
+0                      4.007692                     1.610046     19  
+#+end_example
+
+<<06d526f0-6059-440b-bd43-99b2e7dc1f40>>
+First, let's plot the neighbor count together with the standard error as
+error bar.
+
+<<c631a3b3-b828-4397-a7d3-bab31b4b7e32>>
+#+begin_src python
+plt.errorbar(x=statistics_over_sigma["sigma"], 
+             y=statistics_over_sigma["touching_neighbor_count_mean"],
+             yerr=statistics_over_sigma["touching_neighbor_count_std"] / 
+                  np.sqrt(statistics_over_sigma["number_of_cells"])
+            )
+plt.errorbar(x=statistics_over_sigma["sigma"], 
+             y=statistics_over_sigma["proximal_neighbor_count_mean"],
+             yerr=statistics_over_sigma["proximal_neighbor_count_std"] / 
+                  np.sqrt(statistics_over_sigma["number_of_cells"])
+            )
+plt.legend(["Touching neighbor count", "Proximal_neighbor_count"])
+plt.xlabel("sigma")
+plt.ylabel("neighbor count")
+#+end_src
+
+#+begin_example
+Text(0, 0.5, 'neighbor count')
+#+end_example
+
+[[file:62c7dc7b2b362de7a73595fceedcdf4d86175562.png]]
+
+<<53b8ab7e-edd6-4d88-b505-810b9bec6c58>>
+Using this visualization, we could argue that the number of touching
+neighbors is the more stable measurement in the presence of varying cell
+positions. Also note that the tissues shown above might not be the best
+representation of biological tissues.
+
+Last but not least a sanity check if the number of cells in the image
+was more or less independent from the sigma.
+
+<<2dcfb29e-c9cd-428d-8720-a7e9808ba92e>>
+#+begin_src python
+plt.scatter(x=statistics_over_sigma["sigma"],
+            y=statistics_over_sigma["number_of_cells"])
+plt.xlabel("sigma")
+plt.ylabel("Cell count")
+#+end_src
+
+#+begin_example
+Text(0, 0.5, 'Cell count')
+#+end_example
+
+[[file:efd64c4397ee99115bd15dba3d8b1b3e1310e2ba.png]]
+
+<<fa08b0fe-d85a-4bda-ba7d-eb4d8a9c8e52>>
+#+begin_src python
+np.mean(statistics_over_sigma["number_of_cells"]), np.std(statistics_over_sigma["number_of_cells"])
+#+end_src
+
+#+begin_example
+(129.1, 3.0805843)
+#+end_example
+
+<<8924f56d-5b57-42c4-8a61-b6129f22e439>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Repeat the experiment shown above with cells that are elongated along x.
+If the conclusion is different, can you explain why?
+
+<<585e64ed-309c-47cc-9329-51fac109bd64>>
+#+begin_src python
+#+end_src

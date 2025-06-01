@@ -1,0 +1,300 @@
+<<78a139a0>>
+* Handling NaN values
+  :PROPERTIES:
+  :CUSTOM_ID: handling-nan-values
+  :END:
+When analysing tabular data, sometimes table cells are present that do
+not contain data. In Python this typically means the value is /Not a
+Number/ ([[https://en.wikipedia.org/wiki/NaN][NaN]]). We cannot assume
+these values are =0= or =-1= or any other value because that would
+distort descriptive statistics, for example. We need to deal with these
+NaN entries differently and this notebook will introduce how.
+
+To get a first view where NaNs play a role, we load again an example
+table and sort it.
+
+<<189e76b0-0cc2-4baa-8290-e5a06ab2d70b>>
+#+begin_src python
+import numpy as np
+import pandas as pd 
+#+end_src
+
+<<b26b1bd6-26b8-4ed2-a463-22225b292fab>>
+We are sorting the table by parameter =area= to understand where NaNs
+play a role. We are sorting the table using =sort_values=.
+
+<<4e617db1-ac10-4f69-9ba9-97913d517a15>>
+#+begin_src python
+data = pd.read_csv('../../data/Results.csv', index_col=0, delimiter=';')
+data.sort_values(by = "Area", ascending=False)
+#+end_src
+
+#+begin_example
+       Area     Mean   StdDev    Min     Max        X        Y       XM   
+                                                                          
+190  2755.0  859.928  235.458  539.0  3880.0  108.710  302.158  110.999  \
+81   2295.0  765.239   96.545  558.0  1431.0  375.003  134.888  374.982   
+209  1821.0  847.761  122.074  600.0  1510.0  287.795  321.115  288.074   
+252  1528.0  763.777   83.183  572.0  1172.0  191.969  385.944  192.487   
+265  1252.0  793.371  117.139  579.0  1668.0  262.071  394.497  262.268   
+..      ...      ...      ...    ...     ...      ...      ...      ...   
+113     1.0  587.000    0.000  587.0   587.0  399.500  117.500  399.500   
+310     1.0  866.000    0.000  866.0   866.0  343.500  408.500  343.500   
+219     1.0  763.000    0.000  763.0   763.0  411.500  296.500  411.500   
+3       NaN      NaN      NaN  608.0   964.0      NaN      NaN      NaN   
+5       NaN      NaN   69.438  566.0   792.0  348.500    7.500      NaN   
+
+          YM    Major   Minor    Angle  %Area Type  
+                                                    
+190  300.247  144.475  24.280   39.318    100    C  
+81   135.359   65.769  44.429  127.247    100    B  
+209  321.824   55.879  41.492  112.124    100    A  
+252  385.697   63.150  30.808   34.424    100    B  
+265  394.326   60.154  26.500   50.147    100    A  
+..       ...      ...     ...      ...    ...  ...  
+113  117.500    1.128   1.128    0.000    100    A  
+310  408.500    1.128   1.128    0.000    100    A  
+219  296.500    1.128   1.128    0.000    100    A  
+3      7.665    7.359     NaN  101.121    100    A  
+5      7.508      NaN   3.088      NaN    100    A  
+
+[391 rows x 14 columns]
+#+end_example
+
+<<fd16c63c-baa1-4650-b17b-1edccee7f7c0>>
+We could also use this function to sort along an axis (rows/columns).
+
+<<2a64ec3e-cdc4-4a1c-8551-903af75aeabd>>
+As you can see, there are rows at the bottom containing NaNs. These are
+at the bottom of the table because pandas cannot sort them.
+
+<<2c9b9a27-e041-455a-b0ec-7809246d25a9>>
+A quick check if there are NaNs anywhere in a table is an important
+quality check for a good scientific practice:
+
+<<5c152771>>
+#+begin_src python
+data.isnull().values.any()
+#+end_src
+
+#+begin_example
+True
+#+end_example
+
+<<87f14e62-b3e5-45f6-9c02-9820b21bd929>>
+Now we know that we have NaNs in our table. We can also get some deeper
+insights in which columns these NaN values are located.
+
+<<7f6b5eb4>>
+#+begin_src python
+data.isnull().sum()
+#+end_src
+
+#+begin_example
+Area      2
+Mean      5
+StdDev    3
+Min       3
+Max       3
+X         2
+Y         3
+XM        3
+YM        5
+Major     8
+Minor     3
+Angle     1
+%Area     0
+Type      0
+dtype: int64
+#+end_example
+
+<<b27eeccd>>
+For getting a glimpse about if we can further process that table, we may
+want to know the percentage of NaNs for each column:
+
+<<a9297b56>>
+#+begin_src python
+data.isnull().mean().sort_values(ascending=False) *100
+#+end_src
+
+#+begin_example
+Major     2.046036
+Mean      1.278772
+YM        1.278772
+StdDev    0.767263
+Min       0.767263
+Max       0.767263
+Y         0.767263
+XM        0.767263
+Minor     0.767263
+Area      0.511509
+X         0.511509
+Angle     0.255754
+%Area     0.000000
+Type      0.000000
+dtype: float64
+#+end_example
+
+<<f605facf>>
+* Dropping rows that contain NaNs
+  :PROPERTIES:
+  :CUSTOM_ID: dropping-rows-that-contain-nans
+  :END:
+Depending on what kind of data analysis should be performed, it might
+make sense to just ignore columns that contain NaN values.
+Alternatively, it is possible to delete rows that contain NaNs.
+
+It depends on your project and what is important or not for the
+analysis. Its not an easy answer.
+
+<<25bac0a9>>
+#+begin_src python
+data_no_nan = data.dropna(how="any")
+data_no_nan 
+#+end_src
+
+#+begin_example
+      Area     Mean   StdDev    Min     Max        X        Y       XM   
+                                                                         
+1     18.0  730.389  103.354  592.0   948.0  435.000    4.722  434.962  \
+2    126.0  718.333   90.367  556.0  1046.0  388.087    8.683  388.183   
+4     68.0  686.985   61.169  571.0   880.0  126.147    8.809  126.192   
+6    669.0  697.164   72.863  539.0   957.0  471.696   26.253  471.694   
+7      5.0  658.600   49.161  607.0   710.0   28.300    8.100   28.284   
+..     ...      ...      ...    ...     ...      ...      ...      ...   
+383   94.0  746.617   85.198  550.0  1021.0  194.032  498.223  194.014   
+387  152.0  801.599  111.328  582.0  1263.0  348.487  497.632  348.451   
+389   60.0  758.033   77.309  601.0   947.0  259.000  499.300  258.990   
+390   12.0  714.833   67.294  551.0   785.0  240.167  498.167  240.179   
+391   23.0  695.043   67.356  611.0   846.0   49.891  503.022   49.882   
+
+          YM   Major   Minor    Angle  %Area Type  
+                                                   
+1      4.697   5.987   3.828  168.425    100    A  
+2      8.687  16.559   9.688  175.471    100    A  
+4      8.811  15.136   5.720  168.133    100    A  
+6     26.197  36.656  23.237  124.340    100    A  
+7      8.103   3.144   2.025  161.565    100    A  
+..       ...     ...     ...      ...    ...  ...  
+383  498.239  17.295   6.920   52.720    100    B  
+387  497.675  17.773  10.889   11.829    100    A  
+389  499.289   9.476   8.062   90.000    100    A  
+390  498.148   4.606   3.317  168.690    100    A  
+391  502.979   6.454   4.537   73.243    100    A  
+
+[374 rows x 14 columns]
+#+end_example
+
+<<0d857531-4c88-450b-ae62-9008388088ba>>
+On the bottom of that table, you can see that it still contains 374 of
+the original 391 columns. If you remove rows, you should document in
+your later scientific publication, how many out of how many datasets
+were analysed.
+
+We can now also check again if NaNs are present.
+
+<<f09a2106>>
+#+begin_src python
+data_no_nan.isnull().values.any()
+#+end_src
+
+#+begin_example
+False
+#+end_example
+
+<<ab941145-75fe-4d5a-80fb-ab85672d0a86>>
+** Determining rows that contain NaNs
+   :PROPERTIES:
+   :CUSTOM_ID: determining-rows-that-contain-nans
+   :END:
+In some use-cases it might be useful to have a list of row-indices where
+there are NaN values.
+
+<<0bd532df-efad-4c5e-914c-3263b35024e3>>
+#+begin_src python
+data = {
+    'A': [0, 1, 22, 21, 12, 23],
+    'B': [2, 3, np.nan,  2,  12, 22],
+    'C': [2, 3, 44,  2,  np.nan, 52],
+}
+
+table = pd.DataFrame(data)
+table
+#+end_src
+
+#+begin_example
+    A     B     C
+0   0   2.0   2.0
+1   1   3.0   3.0
+2  22   NaN  44.0
+3  21   2.0   2.0
+4  12  12.0   NaN
+5  23  22.0  52.0
+#+end_example
+
+<<7b3b3292-0864-484e-b2d4-dab5c1a0b6ed>>
+#+begin_src python
+np.max(table.isnull().values, axis=1)
+#+end_src
+
+#+begin_example
+array([False, False,  True, False,  True, False])
+#+end_example
+
+<<b50e2eca-b6a6-4300-8e43-344830a3361a>>
+* Dropping columns that contain NaNs
+  :PROPERTIES:
+  :CUSTOM_ID: dropping-columns-that-contain-nans
+  :END:
+
+<<93d90c63-6f56-4c1b-ab9b-ad764a426270>>
+As mentioned above, sometimes it also makes sense to drop columns. For
+example if one column is full of NaN values. To show this, we will
+create such a column:
+
+<<996386c5-a5e2-4285-8bf7-8631039f3868>>
+#+begin_src python
+data['difficult_measurement'] = np.nan
+#+end_src
+
+<<88ca73ef-afe1-4e19-a80f-e8245672ea05>>
+#+begin_src python
+nan_table = pd.DataFrame(data)
+nan_table
+#+end_src
+
+#+begin_example
+    A     B     C  difficult_measurement
+0   0   2.0   2.0                    NaN
+1   1   3.0   3.0                    NaN
+2  22   NaN  44.0                    NaN
+3  21   2.0   2.0                    NaN
+4  12  12.0   NaN                    NaN
+5  23  22.0  52.0                    NaN
+#+end_example
+
+<<f3b8eb14-cde6-477d-b56e-fdbd4230dd97>>
+We can now =drop= the column like this:
+
+<<40e81067-174c-405c-8ef9-bdfdb2d6fd39>>
+#+begin_src python
+table_dropped = nan_table.drop('difficult_measurement', axis=1)
+#+end_src
+
+<<2bad5791-1ccc-480a-a705-6e97fc98e161>>
+And have the column again removed from our table
+
+<<bcf9aaea-25d1-4468-ae00-c7b21369dcae>>
+#+begin_src python
+table_dropped
+#+end_src
+
+#+begin_example
+    A     B     C
+0   0   2.0   2.0
+1   1   3.0   3.0
+2  22   NaN  44.0
+3  21   2.0   2.0
+4  12  12.0   NaN
+5  23  22.0  52.0
+#+end_example

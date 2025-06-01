@@ -1,0 +1,306 @@
+<<b23d8f3b-e0f8-4c18-9280-cad8e5a97813>>
+* Opening large CZI files with AICSImageIO
+  :PROPERTIES:
+  :CUSTOM_ID: opening-large-czi-files-with-aicsimageio
+  :END:
+When working with large microscopy images (e.g. multiple GB to TB per
+file), the data may exceed your memory capacity, potentially causing the
+kernel to crash. In this notebook, we will use the =AICSImageIO= library
+integrated with =Dask= to handle large =.czi= files efficiently.
+
+⚠️ Note:
+[[https://github.com/AllenCellModeling/aicsimageio][=AICSImageIO=]] is
+no longer actively maintained. If you run into issues while following
+this notebook, please try its compatible successor
+[[https://bioio-devs.github.io/bioio/OVERVIEW.html][=BioIO=]].
+
+<<ceb58b07-aad6-4d69-abc8-f9d14b22bfaa>>
+** Requirements
+   :PROPERTIES:
+   :CUSTOM_ID: requirements
+   :END:
+Before getting started, ensure that you have the necessary libraries for
+handling bioimage formats and =.czi= files installed. If not, please run
+these two commands in your command line:
+
+#+begin_example
+pip install aicsimageio  
+pip install aicspylibczi 
+#+end_example
+
+<<758b98c4-fd08-4eb5-aac0-14ce3ea59d4e>>
+** Downloading Data
+   :PROPERTIES:
+   :CUSTOM_ID: downloading-data
+   :END:
+
+<<ac81ee84-e53f-4d0a-a600-6c5efe3f627d>>
+We will use the mouse brain image =Demo LISH 4x8 15pct 647.czi= from
+[[https://zenodo.org/records/8305531][Nicolas Chiaruttini]], licensed
+under [[https://creativecommons.org/licenses/by/4.0/legalcode][CC BY
+4.0]] and store it in a local directory.
+
+<<b7677d93-c9b7-4c78-9bd3-a1db1a0e09a2>>
+First, let's confirm that the folder where we want to store the data
+exists - and create it if it does not.
+
+<<bdd64905-73cb-4b2e-896d-ddc6e21309b0>>
+#+begin_src python
+from aicsimageio import AICSImage
+import os
+import urllib.request
+#+end_src
+
+<<9737e4f6-ef51-485b-9a95-49f5912977f1>>
+#+begin_src python
+def ensure_folder_exists(folder_path):
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+#+end_src
+
+<<38c747de-9429-4b35-889d-eca81692ad6c>>
+#+begin_src python
+folder_path = "../../data/"
+#+end_src
+
+<<c9787fb6-5124-4902-a04a-ab7f61450292>>
+#+begin_src python
+ensure_folder_exists(folder_path)
+#+end_src
+
+<<aab9143a-330f-48a3-a077-e5bbaefa7d2a>>
+Next, we will check if the file has already been saved in the directory.
+If not, we will download it.
+
+<<ca5a6f12-2c6c-4fab-bb87-45f2273da728>>
+#+begin_src python
+def ensure_file_exists(file_path, url):
+    if not os.path.isfile(file_path):
+        try: 
+            print(f"Please wait. Downloading file from {url} to {file_path}...")
+            urllib.request.urlretrieve(url, file_path)
+            print("Download complete.")
+        except Exception as e: 
+            print(f"Download failed: {e}")
+    else:
+        print("File already exists.")
+#+end_src
+
+<<578bd9af-0a6f-4b2e-b2f3-bfc0dd3ffe0f>>
+#+begin_src python
+filename = "Demo LISH 4x8 15pct 647.czi"
+file_path = os.path.join(folder_path, filename)
+url = "https://zenodo.org/records/8305531/files/Demo%20LISH%204x8%2015pct%20647.czi?download=1"
+#+end_src
+
+<<302e0853-d1dc-4a2e-94e4-0f7b900e2ce4>>
+#+begin_src python
+ensure_file_exists(file_path, url)
+#+end_src
+
+#+begin_example
+Please wait. Downloading file from https://zenodo.org/records/8305531/files/Demo%20LISH%204x8%2015pct%20647.czi?download=1 to ../../data/Demo LISH 4x8 15pct 647.czi...
+Download complete.
+#+end_example
+
+<<8eb033d7-84d5-44b3-bb1d-761e638e9805>>
+⚠️ Note: The file is 4.5 GB large. Downloading can take a while.
+
+<<4903c298-f91a-45ae-b4f6-3d0c9b216790>>
+** Reading large CZI files
+   :PROPERTIES:
+   :CUSTOM_ID: reading-large-czi-files
+   :END:
+
+<<aa1ee359-7027-49fc-84c3-a3d5c09e8644>>
+After downloading the image, we will use =AICSImage= to create an object
+that gives us access to the metadata without immediately loading the
+full image into memory. At this stage, we are using the same command we
+would for smaller files - just like in
+[[https://github.com/haesleinhuepf/BioImageAnalysisNotebooks/blob/main/docs/12a_image_file_formats/opening_images_using_aicsimageio.ipynb][this
+notebook]].
+
+<<f34a5a64-91c9-4f55-ba94-ff0c63ae03f4>>
+#+begin_src python
+image = AICSImage(file_path)
+#+end_src
+
+<<4b18a278-8c92-4d37-9023-42a64aa7456c>>
+Next, we will make use of =Dask= (a parallel computing library for big
+data analytics) to inspect the size and structure of the image. Again,
+no actual image data is loaded into memory yet.
+
+This so-called *lazy loading* approach delays the reading of a large
+file until you actually need it (e.g. for calculation, visualization).
+It allows you to get an overview of the data first.
+
+As you can see below, Dask also enables *chunk processing*. This means
+that the data is split into smaller blocks (i.e. chunks), which can be
+processed one piece at a time. This independent and parallel processing
+is useful when your data is larger than your memory.
+
+<<a567c76f-2e2b-4d97-aaec-a29e4ec9a835>>
+#+begin_src python
+image.dask_data
+#+end_src
+
+#+begin_example
+dask.array<transpose, shape=(1, 1, 56, 6254, 4969), dtype=uint16, chunksize=(1, 1, 56, 1094, 1094), chunktype=numpy.ndarray>
+#+end_example
+
+<<b7c9f4c5-0b86-4c28-8216-9097471b51ad>>
+#+begin_src python
+image.dims
+#+end_src
+
+#+begin_example
+<Dimensions [T: 1, C: 1, Z: 56, Y: 6254, X: 4969]>
+#+end_example
+
+<<bab035e6-c135-45be-82ff-1b473571c085>>
+Now we can specify which dimensions of the image we would like to work
+with and in which order the dimensions should be arranged. Remember:
+
+- T: time points
+- C: channel
+- Z: depth
+- Y: height
+- X: width
+
+In this example, we will use all dimensions in the order ="CZYX"=. In
+addition, we will reduce the image resolution by selecting every 5th
+pixel along the X, Y, and Z axes. This helps reduce memory usage and
+processing time.
+
+Make sure to use =get_image_dask_data= instead of =get_image_data= -
+only then =Dask= will automatically handle the lazy loading and chunked
+processing for us.
+
+<<8e2aca04-da19-4e60-9c6c-5043024585c9>>
+#+begin_src python
+image_reduced = image.get_image_dask_data(
+    "CZYX", 
+    T = 0,
+    X = slice(0, -1, 5), 
+    Y = slice(0, -1, 5), 
+    Z = slice(0, -1, 5))
+#+end_src
+
+<<2edcd3ba-1a73-4044-b7ee-7599c9b636b2>>
+Now, we will call =.compute= to load the selected part of data into
+memory.
+
+<<eb491ae7-0e2d-491e-83a9-2e5ef3cf3bf1>>
+#+begin_src python
+brain_image = image_reduced.compute()
+#+end_src
+
+<<614117ad-29c9-45da-8c55-172efbe36338>>
+⚠️ Note: The last command will likely run a little longer, as image data
+is being moved into memory.
+
+In case you experience a kernel crash, try the following options:
+
+- Further reduce your data (e.g. select every 50th pixel instead of
+  every 5th pixel, select only one z-plane, etc.)
+- Free up memory (see the [[#Freeing-up-memory][last section of this
+  notebook]]).
+
+<<22dd4c16-6262-4755-95a7-8250ca556e48>>
+** Visualizing
+   :PROPERTIES:
+   :CUSTOM_ID: visualizing
+   :END:
+Let's display our image with =stackview=. You can also use =napari= if
+you prefer a more interactive viewer, as shown
+[[https://github.com/haesleinhuepf/BioImageAnalysisNotebooks/tree/main/docs/16_3d_image_visualization][here]].
+
+<<4005b903-38f8-4f8d-bedb-14cca04d815c>>
+#+begin_src python
+import stackview 
+#+end_src
+
+<<14a26df0-0f83-48fd-ad3c-fc1ff75a0710>>
+#+begin_src python
+stackview.insight(brain_image)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[[[263, 236, 253, ..., 217, 232, 248],
+                    [236, 254, 240, ..., 238, 239, 246],
+                    [231, 256, 262, ..., 247, 254, 237],
+                    ...,
+                    [216, 204, 212, ..., 216, 210, 217],
+                    [230, 216, 222, ..., 192, 208, 207],
+                    [219, 204, 212, ..., 216, 206, 205]],
+
+                   [[259, 243, 252, ..., 250, 235, 221],
+                    [226, 255, 263, ..., 238, 229, 235],
+                    [248, 280, 272, ..., 259, 263, 234],
+                    ...,
+                    [222, 208, 218, ..., 217, 207, 212],
+                    [241, 212, 221, ..., 193, 202, 215],
+                    [228, 224, 224, ..., 204, 219, 203]],
+
+                   [[251, 259, 273, ..., 268, 248, 248],
+                    [266, 252, 274, ..., 272, 280, 240],
+                    [248, 271, 261, ..., 267, 240, 238],
+                    ...,
+                    [247, 233, 230, ..., 227, 207, 215],
+                    [254, 262, 248, ..., 195, 214, 218],
+                    [259, 245, 237, ..., 213, 199, 212]],
+
+                   ...,
+
+                   [[236, 232, 227, ..., 220, 213, 220],
+                    [240, 251, 241, ..., 233, 214, 228],
+                    [239, 264, 242, ..., 213, 224, 212],
+                    ...,
+                    [239, 249, 251, ..., 247, 216, 228],
+                    [274, 259, 253, ..., 215, 216, 222],
+                    [245, 249, 279, ..., 228, 222, 223]],
+
+                   [[212, 209, 209, ..., 214, 207, 213],
+                    [209, 212, 223, ..., 211, 220, 201],
+                    [203, 229, 225, ..., 213, 211, 209],
+                    ...,
+                    [210, 221, 212, ..., 223, 218, 233],
+                    [217, 219, 215, ..., 207, 226, 210],
+                    [227, 214, 219, ..., 219, 218, 216]],
+
+                   [[213, 211, 202, ..., 209, 213, 203],
+                    [206, 207, 206, ..., 215, 219, 201],
+                    [205, 219, 218, ..., 214, 208, 213],
+                    ...,
+                    [207, 207, 215, ..., 213, 202, 209],
+                    [213, 205, 209, ..., 186, 206, 206],
+                    [217, 216, 218, ..., 206, 192, 203]]]], dtype=uint16)
+#+end_example
+
+<<f771e47a-4c4d-4c1a-bd8a-34ee4dcb8680>>
+** Freeing up memory
+   :PROPERTIES:
+   :CUSTOM_ID: freeing-up-memory
+   :END:
+Before adding (new) data into memory, it can be helpful to free up space
+by deleting variables you are no longer using with =del=. You can also
+use Python's built-in garbage collector =gc= to manually force a cleanup
+of unreachable objects. This reduces the risk of memory overload.
+
+⚠️ Note: Be cautious when deleting variables - once deleted, you will
+need to re-run the earlier code to generate them again.
+
+<<cb53a9d3-20db-41f9-966a-1e8669b3a7fb>>
+#+begin_src python
+del brain_image
+#+end_src
+
+<<879f6065-ee73-49d0-88bd-2624068aed52>>
+#+begin_src python
+import gc
+gc.collect()
+#+end_src
+
+#+begin_example
+8908
+#+end_example

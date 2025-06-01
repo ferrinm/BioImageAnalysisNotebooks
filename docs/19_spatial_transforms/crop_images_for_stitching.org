@@ -1,0 +1,48 @@
+<<d4d09470-6983-478c-b277-46b31eb5ad1f>>
+* Croppning images to stitch them later
+  :PROPERTIES:
+  :CUSTOM_ID: croppning-images-to-stitch-them-later
+  :END:
+In this notebook we crop ouot images with overlap to demonstrate
+stitching elsewhere.
+
+<<5d226286-27ca-48e9-895c-fd99f3b29599>>
+#+begin_src python
+from skimage.io import imread, imsave
+import stackview
+import matplotlib.pyplot as plt
+import pyclesperanto_prototype as cle
+#+end_src
+
+<<d408ea4b-8e9d-4504-bbcc-1492b8c8c84f>>
+#+begin_src python
+image = imread("../../data/blobs.tif")
+image.shape
+#+end_src
+
+#+begin_example
+(254, 256)
+#+end_example
+
+<<2cb1b9c2-3d76-4d79-a7ca-bd1e0678560c>>
+#+begin_src python
+overlap = 40
+image1 = image[:,:int(image.shape[1]/2+overlap/2)]
+image2 = image[:,int(image.shape[1]/2-overlap/2):]
+
+fig, ax = plt.subplots(1, 2)
+stackview.imshow(image1, plot=ax[0])
+stackview.imshow(image2, plot=ax[1])
+#+end_src
+
+[[file:dd95bf59a66a52ce2cf5df7abfb0b23e3c813e6f.png]]
+
+<<c2b18a7d-d2c1-43e9-835b-f54874976e28>>
+#+begin_src python
+imsave("../../data/blobs_stitching1_overlap40.tif", image1)
+imsave("../../data/blobs_stitching2_overlap40.tif", image2)
+#+end_src
+
+<<90ded9fe-5898-4041-830e-2b1a3516d2df>>
+#+begin_src python
+#+end_src

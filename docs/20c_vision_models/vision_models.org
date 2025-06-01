@@ -1,0 +1,236 @@
+<<665e6753-9c9c-4a16-98da-68ac9b783bd4>>
+* Vision Large Language Models for Counting objects
+  :PROPERTIES:
+  :CUSTOM_ID: vision-large-language-models-for-counting-objects
+  :END:
+In this notebook we use OpenAI's LLMs with Vision capabilities to see
+how well they can count blobs in blobs.tif.
+
+Note: It is not recommended to use this approach for counting objects in
+microscopy images. The author of this notebook is not aware of any
+publication showing that this approach works well.
+
+<<ca2dec04-c412-4421-b427-9eef7128bfac>>
+#+begin_src python
+import openai
+import PIL
+import stackview
+from skimage.io import imread
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+#+end_src
+
+<<e8bc07d1-c208-4a02-8f9a-bd43b3dbc48b>>
+We will need some helper functions for assembling a prompt and
+submitting it to the openai server.
+
+<<a7c92c01-2714-446a-beca-7676b362d6c6>>
+#+begin_src python
+def prompt_with_image(message:str, image, model="gpt-4o-2024-05-13"):
+    """A prompt helper function that sends a text message and an image
+    to openAI and returns the text response.
+    """
+    import os
+    
+    # convert message in the right format if necessary
+    if isinstance(message, str):
+        message = [{"role": "user", "content": message}]
+    
+    image_message = image_to_message(image)
+        
+    # setup connection to the LLM
+    client = openai.OpenAI()
+    
+    # submit prompt
+    response = client.chat.completions.create(
+        model=model,
+        messages=message + image_message
+    )
+    
+    # extract answer
+    return response.choices[0].message.content
+
+
+def image_to_message(image):
+    import base64
+
+    from stackview._image_widget import _img_to_rgb
+
+    rgb_image = _img_to_rgb(image)
+    byte_stream = numpy_to_bytestream(rgb_image)
+    base64_image = base64.b64encode(byte_stream).decode('utf-8')
+
+    return [{"role": "user", "content": [{
+        "type": "image_url",
+        "image_url": {
+            "url": f"data:image/jpeg;base64,{base64_image}"
+        }
+
+    }]}]
+
+
+def numpy_to_bytestream(data):
+    """Turn a NumPy array into a bytestream"""
+    import numpy as np
+    from PIL import Image
+    import io
+
+    # Convert the NumPy array to a PIL Image
+    image = Image.fromarray(data.astype(np.uint8)).convert("RGBA")
+
+    # Create a BytesIO object
+    bytes_io = io.BytesIO()
+
+    # Save the PIL image to the BytesIO object as a PNG
+    image.save(bytes_io, format='PNG')
+
+    # return the beginning of the file as a bytestream
+    bytes_io.seek(0)
+    return bytes_io.read()
+#+end_src
+
+<<5e55fea8-31ae-420f-8056-b41c815145d8>>
+This is the example image we will be using.
+
+<<0d1a7583-af96-4494-98bb-4b2a38aacdee>>
+#+begin_src python
+image = imread("../../data/blobs.tif")
+stackview.insight(image)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[ 40,  32,  24, ..., 216, 200, 200],
+                  [ 56,  40,  24, ..., 232, 216, 216],
+                  [ 64,  48,  24, ..., 240, 232, 232],
+                  ...,
+                  [ 72,  80,  80, ...,  48,  48,  48],
+                  [ 80,  80,  80, ...,  48,  48,  48],
+                  [ 96,  88,  80, ...,  48,  48,  48]], dtype=uint8)
+#+end_example
+
+<<5be7cd84-b868-48fe-8bdb-413c6b731ff1>>
+This is the prompt we submit to the server.
+
+<<7ee44e8a-fe57-42a9-a1eb-9779203d5787>>
+#+begin_src python
+my_prompt = """
+Analyse the following image by counting the bright blobs. Respond with the number only.
+"""
+
+prompt_with_image(my_prompt, image)
+#+end_src
+
+#+begin_example
+'64'
+#+end_example
+
+<<c15791ff-5a66-4558-ba77-a8e07ef7f7d9>>
+** Benchmarking vision-LLMs
+   :PROPERTIES:
+   :CUSTOM_ID: benchmarking-vision-llms
+   :END:
+We can run this prompt in a loop for a couple of vision models.
+
+<<18aab908-f13b-4f1d-8b69-6470eb2d9b3f>>
+#+begin_src python
+num_samples = 25
+
+models = {
+    "gpt-4-vision-preview":[],
+    "gpt-4-turbo-2024-04-09":[],    
+    "gpt-4o-2024-05-13":[],
+}
+for model in models.keys():
+    samples = []
+
+    while len(samples) < num_samples:
+        result = prompt_with_image(my_prompt, image)
+
+        try:
+            samples.append(int(result))
+        except:
+            print("Error processing result:", result)
+    
+    models[model] = samples
+
+sampled_models = pd.DataFrame(models)
+#+end_src
+
+<<5824ef1f-11b8-43bc-81cd-c04bd3b4d5f9>>
+Let's get an overview about samples:
+
+<<fab684f3-25b1-4035-a327-82906f88c32f>>
+#+begin_src python
+# Extract the two columns for comparison
+columns_to_plot = sampled_models[models.keys()]
+
+# Melt the dataframe to prepare for plotting
+df_melted = columns_to_plot.melt(var_name='Model', value_name='Blob count')
+
+# Draw the violin plot
+plt.figure(figsize=(8, 4))
+sns.violinplot(x='Model', y='Blob count', data=df_melted)
+plt.title('Vision models counting blobs')
+plt.show()
+#+end_src
+
+[[file:d9862d3f752d0668a7f0171231bea101cbda6ec3.png]]
+
+<<809528b3-5167-4a8e-a39b-ee535dccabea>>
+These are the results in detail:
+
+<<98464038-2c40-426e-8219-60399c6220ca>>
+#+begin_src python
+sampled_models
+#+end_src
+
+#+begin_example
+    gpt-4-vision-preview  gpt-4-turbo-2024-04-09  gpt-4o-2024-05-13
+0                     56                      56                 58
+1                     52                      52                 54
+2                     53                      54                 69
+3                     48                      59                 50
+4                     62                      51                 63
+5                     58                      54                 55
+6                     56                      55                 56
+7                     69                      58                 57
+8                     53                      60                 50
+9                     50                      78                 51
+10                    63                      52                 54
+11                   120                      56                 65
+12                    56                      64                 55
+13                    61                      57                 57
+14                    52                      56                 46
+15                    64                      52                 54
+16                    74                      53                 63
+17                    51                      57                 52
+18                    52                      49                 63
+19                    52                      72                 51
+20                    48                      47                 51
+21                    52                      54                 50
+22                    67                      50                 58
+23                    52                      56                 48
+24                    65                      54                 54
+#+end_example
+
+<<9c20a386-33ea-4b29-8366-2281566d5f79>>
+#+begin_src python
+sampled_models.describe()
+#+end_src
+
+#+begin_example
+       gpt-4-vision-preview  gpt-4-turbo-2024-04-09  gpt-4o-2024-05-13
+count             25.000000               25.000000          25.000000
+mean              59.440000               56.240000          55.360000
+std               14.399306                6.765599           5.692685
+min               48.000000               47.000000          46.000000
+25%               52.000000               52.000000          51.000000
+50%               56.000000               55.000000          54.000000
+75%               63.000000               57.000000          58.000000
+max              120.000000               78.000000          69.000000
+#+end_example
+
+<<d73e944c-4048-4f75-bd3c-6efce099c75e>>
+#+begin_src python
+#+end_src

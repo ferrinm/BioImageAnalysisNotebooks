@@ -1,0 +1,182 @@
+<<3b84ddbc-2079-48c9-a38b-b0a34abd6d27>>
+* Plotting Distributions with Seaborn
+  :PROPERTIES:
+  :CUSTOM_ID: plotting-distributions-with-seaborn
+  :END:
+
+<<66ebc29e-9f74-4333-ab93-9e163d1d5ce7>>
+With Seaborn, it is also very practical to plot data distributions such
+as boxplots, bar graphs, histograms and kernel density estimation plots.
+
+<<ec137599-b8bd-4666-b5f7-13e94243b50e>>
+#+begin_src python
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+#+end_src
+
+<<88932903-b980-42a3-b6e8-3f42327735c6>>
+We start by loading a table of measurements into a pandas DataFrame.
+
+<<c0a502d8-9181-47b4-8e6b-63b37ed3a8d4>>
+#+begin_src python
+df = pd.read_csv("../../data/BBBC007_analysis.csv")
+df
+#+end_src
+
+#+begin_example
+     area  intensity_mean  major_axis_length  minor_axis_length  aspect_ratio  \
+0     139       96.546763          17.504104          10.292770      1.700621   
+1     360       86.613889          35.746808          14.983124      2.385805   
+2      43       91.488372          12.967884           4.351573      2.980045   
+3     140       73.742857          18.940508          10.314404      1.836316   
+4     144       89.375000          13.639308          13.458532      1.013432   
+..    ...             ...                ...                ...           ...   
+106   305       88.252459          20.226532          19.244210      1.051045   
+107   593       89.905565          36.508370          21.365394      1.708762   
+108   289      106.851211          20.427809          18.221452      1.121086   
+109   277      100.664260          20.307965          17.432920      1.164920   
+110    46       70.869565          11.648895           5.298003      2.198733   
+
+              file_name  
+0    20P1_POS0010_D_1UL  
+1    20P1_POS0010_D_1UL  
+2    20P1_POS0010_D_1UL  
+3    20P1_POS0010_D_1UL  
+4    20P1_POS0010_D_1UL  
+..                  ...  
+106  20P1_POS0007_D_1UL  
+107  20P1_POS0007_D_1UL  
+108  20P1_POS0007_D_1UL  
+109  20P1_POS0007_D_1UL  
+110  20P1_POS0007_D_1UL  
+
+[111 rows x 6 columns]
+#+end_example
+
+<<ed4b3c99-c91c-46e5-b83f-0767205dfca5>>
+** Boxplots
+   :PROPERTIES:
+   :CUSTOM_ID: boxplots
+   :END:
+
+<<b78a5029-eab9-4b2f-af69-2009535172d5>>
+The axes function for plotting boxplots is =boxplot=.
+
+Seaborn already identified =file_name= as a categorical value and
+=ìntensity_mean= as a numerical value. Thus, it plots boxplots for the
+intensity variable. If we invert x and y, we still get the same graph,
+but as vertical boxplots.
+
+<<3e9fcfc2-8634-4f80-b361-538c5e084117>>
+#+begin_src python
+sns.boxplot(data=df, x="intensity_mean", y="file_name")
+#+end_src
+
+#+begin_example
+<AxesSubplot: xlabel='intensity_mean', ylabel='file_name'>
+#+end_example
+
+[[file:ec976f22dbb59676370690e97ccb695542541fda.png]]
+
+<<84b6a793-7829-45a7-9ecf-8c824ca5aed3>>
+The figure-level, and more general, version of this kind of plot is
+=catplot=. We just have to provide =kind= as =box=.
+
+<<c9b2cd94-b738-4c18-b30a-c2b5bcb5fc32>>
+#+begin_src python
+sns.catplot(data=df, x="intensity_mean", y="file_name", kind="box")
+#+end_src
+
+#+begin_example
+<seaborn.axisgrid.FacetGrid at 0x27775d754f0>
+#+end_example
+
+[[file:f73a3f77cba4d32cdb673d589afc9dc0cd553148.png]]
+
+<<5da21648-38e7-4e1c-90f5-e1f2d0fa83d2>>
+There are other kinds available, like a =bar= graph.
+
+<<e95df95a-b4e0-4ca5-b94d-0512fb09058f>>
+#+begin_src python
+sns.catplot(data=df, x="file_name", y="intensity_mean", kind="bar")
+#+end_src
+
+#+begin_example
+<seaborn.axisgrid.FacetGrid at 0x2777b1abb80>
+#+end_example
+
+[[file:df297e887c7d301014a000332593935b7c20e723.png]]
+
+<<1e2c1579-8df5-4e70-bd10-8a6095f2d564>>
+** Histograms and Distribution Plots
+   :PROPERTIES:
+   :CUSTOM_ID: histograms-and-distribution-plots
+   :END:
+
+<<e05666b2-84b9-4c07-a531-17af8496c28d>>
+The axes-level function for plotting histograms is =histplot=.
+
+<<467d56e3-4e6e-4e01-b67b-c0319734a7e0>>
+#+begin_src python
+sns.histplot(data = df, x="intensity_mean", hue="file_name")
+#+end_src
+
+#+begin_example
+<AxesSubplot: xlabel='intensity_mean', ylabel='Count'>
+#+end_example
+
+[[file:2209b73f3754e3b2213257b662d9c0601d73fcf7.png]]
+
+<<5d7b511b-8e8c-4f7d-97d5-f25cc0bcf8fa>>
+We can instead plot the kernel density estimation (kde) with =kdeplot=
+function. Just be careful while interpreting these plots (check some
+pitfalls
+[[https://seaborn.pydata.org/tutorial/distributions.html#kernel-density-estimation-pitfalls][here]])
+
+<<450fe3a4-3069-4370-8b63-c4142ae77713>>
+#+begin_src python
+sns.kdeplot(data=df, x="intensity_mean", hue="file_name")
+#+end_src
+
+#+begin_example
+<AxesSubplot: xlabel='intensity_mean', ylabel='Density'>
+#+end_example
+
+[[file:edaf6c0724e37ce795ddc102a1345e44af82950f.png]]
+
+<<a4992a72-2d5a-4382-b44c-91050e53408e>>
+The figure-level function for distributions is =distplot=. With it, you
+can have histograms and kde in the same plot, or other kinds of plots,
+like the empirical cumulative distribution function (ecdf).
+
+<<0f61843d-2f1a-4602-8a7e-295ff64c650a>>
+#+begin_src python
+sns.displot(data = df, x="intensity_mean", hue="file_name", kde=True)
+#+end_src
+
+#+begin_example
+<seaborn.axisgrid.FacetGrid at 0x2777b77c910>
+#+end_example
+
+[[file:d6439a1532f4f8cbe2c72080f5e32c42361cc43b.png]]
+
+<<05dd40e3-4b9a-44b8-8bfc-610f79809d06>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+
+<<4acf97f1-efcb-4f27-851f-643e3bfa0bae>>
+Plot two empirical cumulative distribution functions for 'area' from
+different files on a same graph with different colors.
+
+Repeat this for the property 'intensity_mean' on a second figure. Infer
+whether you would expect these properties to be different or not.
+
+*Hint: look for the =kind= parameter of =displot=
+
+<<9ee0c368-7b49-4f24-86a7-8ab65873f72f>>
+#+begin_src python
+#+end_src

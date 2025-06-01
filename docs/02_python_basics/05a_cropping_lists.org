@@ -1,0 +1,265 @@
+<<2bac9780-3f38-4f74-9a22-577e2a4c6643>>
+* Cropping lists
+  :PROPERTIES:
+  :CUSTOM_ID: cropping-lists
+  :END:
+A common task in Python is to crop out parts of lists and tuples, for
+example to access specific parts from lists.
+
+Let's start with a list of numbers
+
+<<24617c60-0f20-4d12-ae69-b99630fbd919>>
+#+begin_src python
+data = [34, 0, 65, 23, 51, 9, 50, 78, 34, 100]
+#+end_src
+
+<<21077e88-518e-4f68-94b8-2d77e87b4058>>
+We can determine how many elements are in =data=:
+
+<<c4a74ad5-2503-4644-8dae-58b6cc80bd07>>
+#+begin_src python
+len(data)
+#+end_src
+
+#+begin_example
+10
+#+end_example
+
+<<f19975f2-66ae-40fe-a129-baa8a5c3271e>>
+As shown earlier, we can access specific elements by passing an index.
+Counting the element-index starts at 0.
+
+<<aeed7787-440f-4e82-aacc-9f42b2489c5b>>
+#+begin_src python
+data[0]
+#+end_src
+
+#+begin_example
+34
+#+end_example
+
+<<45e19fb5-5f11-405a-8cbb-2a4f8e7d1789>>
+#+begin_src python
+data[1]
+#+end_src
+
+#+begin_example
+0
+#+end_example
+
+<<59396d59-dedd-45ff-b7b0-5bd3f9221c2d>>
+We can also pass negative indices. This will access elements from the
+end of the list. The last element has index -1.
+
+<<d4a46ce7-8956-477f-9279-84e6a23b973e>>
+#+begin_src python
+data[-1]
+#+end_src
+
+#+begin_example
+100
+#+end_example
+
+<<b3498523-4dde-4054-83e0-f9c86c6a23c2>>
+#+begin_src python
+data[-2]
+#+end_src
+
+#+begin_example
+34
+#+end_example
+
+<<3d7b3fa8-fe48-44ca-9397-ed009c8f7683>>
+** Selecting ranges in lists
+   :PROPERTIES:
+   :CUSTOM_ID: selecting-ranges-in-lists
+   :END:
+We can also generate a new list that contains the first three elements.
+Therefore, we pass a range in form =[start:end]=. The first element has
+index =start= and the last element of the new list will be just before
+=end=.
+
+<<d066c8a8-eea4-4983-981d-86379fc370e0>>
+#+begin_src python
+data
+#+end_src
+
+#+begin_example
+[34, 0, 65, 23, 51, 9, 50, 78, 34, 100]
+#+end_example
+
+<<eac82998-e516-4013-b791-e371d4281618>>
+#+begin_src python
+data[0:2]
+#+end_src
+
+#+begin_example
+[34, 0]
+#+end_example
+
+<<7d950d4f-77bf-4c7c-9ac8-b6f1b8c0468f>>
+#+begin_src python
+data[0:3]
+#+end_src
+
+#+begin_example
+[34, 0, 65]
+#+end_example
+
+<<34a11701-eef3-4b1a-8a7d-9523a1aa8a72>>
+#+begin_src python
+data[1:2]
+#+end_src
+
+#+begin_example
+[0]
+#+end_example
+
+<<82a94b37-d7bc-43cf-a15f-e8f8d1df18b5>>
+Furthermore, we don't have to specify either =start= or =end= if we want
+to select all entries in a list from the start or until the end.
+
+<<cbd78a00-ef91-4dea-b033-89c83d8f9e76>>
+#+begin_src python
+data
+#+end_src
+
+#+begin_example
+[34, 0, 65, 23, 51, 9, 50, 78, 34, 100]
+#+end_example
+
+<<18ed61b1-bf09-47a9-a875-89eac6955a20>>
+#+begin_src python
+data[:2]
+#+end_src
+
+#+begin_example
+[34, 0]
+#+end_example
+
+<<cfeaca31-83a9-4710-b565-8a6250166989>>
+#+begin_src python
+data[:3]
+#+end_src
+
+#+begin_example
+[34, 0, 65]
+#+end_example
+
+<<34c44699-364a-4697-9341-e0583cc7830e>>
+#+begin_src python
+data[2:]
+#+end_src
+
+#+begin_example
+[65, 23, 51, 9, 50, 78, 34, 100]
+#+end_example
+
+<<d88f089f-c23e-4e68-b788-925f122ebc9d>>
+#+begin_src python
+data[3:]
+#+end_src
+
+#+begin_example
+[23, 51, 9, 50, 78, 34, 100]
+#+end_example
+
+<<917d4bdd-c547-4e29-92da-3db5f097be05>>
+This also works with negative indices
+
+<<e40e6e8a-1cd6-4c8d-a1d1-c1230d93671c>>
+#+begin_src python
+data[-2:]
+#+end_src
+
+#+begin_example
+[34, 100]
+#+end_example
+
+<<2d3fc7e4-c8d3-43a4-99c0-07fb7245e7ba>>
+** Stepping over entries in lists
+   :PROPERTIES:
+   :CUSTOM_ID: stepping-over-entries-in-lists
+   :END:
+The =:= can also be used to provide a step length using the syntax
+=[start:end:step]=.
+
+<<d065f055-233b-4d79-8cc6-c6a4c4430409>>
+#+begin_src python
+data
+#+end_src
+
+#+begin_example
+[34, 0, 65, 23, 51, 9, 50, 78, 34, 100]
+#+end_example
+
+<<4102c548-c0d1-4bda-a389-fa1f4512c2ab>>
+For example we can select every seceond element starting at the first:
+
+<<bdc30d02-ea6c-4979-b995-b79c022838f4>>
+#+begin_src python
+data[0:10:2]
+#+end_src
+
+#+begin_example
+[34, 65, 51, 50, 34]
+#+end_example
+
+<<3c6f8f4e-e8eb-45c6-9123-596460ff416d>>
+#+begin_src python
+data[::2]
+#+end_src
+
+#+begin_example
+[34, 65, 51, 50, 34]
+#+end_example
+
+<<e8138c6e-5aa8-4b1c-8e27-e02195519992>>
+We can also start at the second element (index 1):
+
+<<56271034-0907-45fa-8e13-24c72fd2f4eb>>
+#+begin_src python
+data[1::2]
+#+end_src
+
+#+begin_example
+[0, 23, 9, 78, 100]
+#+end_example
+
+<<c15bacf5-69b7-44d2-b9c7-ab6a696ca985>>
+** Tuples
+   :PROPERTIES:
+   :CUSTOM_ID: tuples
+   :END:
+All the introduced concepts above also work with tuples
+
+<<34acbd72-3b4d-4abd-bf3c-5ffd79866f77>>
+#+begin_src python
+immutable_data = tuple(data)
+immutable_data
+#+end_src
+
+#+begin_example
+(34, 0, 65, 23, 51, 9, 50, 78, 34, 100)
+#+end_example
+
+<<861cc342-f201-45df-b652-8a1046094859>>
+#+begin_src python
+immutable_data[:5]
+#+end_src
+
+#+begin_example
+(34, 0, 65, 23, 51)
+#+end_example
+
+<<8e1f7ae9-c81b-4216-94a8-528a50dbe4f4>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Please select the three numbers 23, 9 and 78 from =data= using a single
+python command similar to the commands shown above.
+
+<<24759c70-7de0-4b3d-bbb1-b1332585bf49>>
+#+begin_src python
+#+end_src

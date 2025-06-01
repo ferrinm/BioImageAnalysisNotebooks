@@ -1,0 +1,115 @@
+<<cef9a48c-33df-4296-9380-c0c9a1dbad95>>
+* Identifying labels which touch the background
+  :PROPERTIES:
+  :CUSTOM_ID: identifying-labels-which-touch-the-background
+  :END:
+In developmental biology it is a common task to differentiate layers of
+cells, for example in epithelial tissue. Therefore it might be useful to
+know if a cell is part of an outer layer, if it touches the background.
+In this notebook we measure and visualize this.
+
+For demonstrating it we simulate a clumb of cells.
+
+<<5c01c538-6ad9-47b7-93bd-c58fbcf81006>>
+#+begin_src python
+import pyclesperanto_prototype as cle
+
+# import a function from a file in the same folder
+from simulated_cell_clumb import simulate_data
+#+end_src
+
+<<66703104-00a4-4a86-ba1c-bf25a2dacd96>>
+#+begin_src python
+cells = simulate_data()
+cells
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<bf18c763-9eee-409f-aa18-a8efa4a21d8a>>
+** Determining which cells touch the background
+   :PROPERTIES:
+   :CUSTOM_ID: determining-which-cells-touch-the-background
+   :END:
+To determine which cells touch the background, we need to produce a
+touch matrix which tells us which objects touch which others.
+
+<<dfdb2c9b-71db-475a-8861-6b235352746b>>
+#+begin_src python
+touch_matrix = cle.generate_touch_matrix(cells)
+touch_matrix
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0., 1., 1., ..., 1., 1., 1.],
+       [1., 0., 1., ..., 0., 0., 0.],
+       [1., 1., 0., ..., 0., 0., 0.],
+       ...,
+       [1., 0., 0., ..., 0., 0., 1.],
+       [1., 0., 0., ..., 0., 0., 1.],
+       [1., 0., 0., ..., 1., 1., 0.]], dtype=float32)
+#+end_example
+
+<<8b5d8105-c5e2-4388-a3cd-13f118feecb7>>
+The first row and column in this image represent objects touching the
+background. We can read out this first row or column like this:
+
+<<e1005bb2-5399-42bc-bf1e-f554a2519c10>>
+#+begin_src python
+touching_background = touch_matrix[0]
+touching_background
+#+end_src
+
+#+begin_example
+cl.OCLArray([0., 1., 1., 1., 0., 1., 1., 1., 0., 1., 0., 0., 1., 0., 0., 0., 0.,
+       1., 0., 0., 0., 0., 1., 1., 0., 0., 1., 0., 0., 1., 0., 1., 1., 0.,
+       0., 1., 1., 0., 0., 1., 1., 1.], dtype=float32)
+#+end_example
+
+<<5c3ee386-78fc-46d3-96ce-26da761990d7>>
+And we can visualized it in the original image coordinates.
+
+<<f4b208ac-fe4c-4cb8-b03b-2ad7835738f1>>
+#+begin_src python
+cle.replace_intensities(cells, touching_background)
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       ...,
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.]], dtype=float32)
+#+end_example
+
+<<da0904ae-369b-41eb-9a7b-05ff688e955e>>
+Or we can get a label image representing those objects.
+
+<<1737ff2a-3d2a-45fe-a1cf-8d86780a51c4>>
+#+begin_src python
+cle.exclude_labels(cle.binary_not([touching_background]), cells)
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<a3f8ca5c-f4fb-456b-8e73-11f4d87f7166>>
+#+begin_src python
+#+end_src

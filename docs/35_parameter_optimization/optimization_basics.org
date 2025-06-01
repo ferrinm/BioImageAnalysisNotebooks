@@ -1,0 +1,273 @@
+<<81121d6d>>
+* Optimization basics
+  :PROPERTIES:
+  :CUSTOM_ID: optimization-basics
+  :END:
+In this notebook we demonstrate how to setup an image segmentation
+workflow and optimize its parameters with a given sparse annotation.
+
+See also:
+
+- [[https://en.wikipedia.org/wiki/Jaccard_index][Jaccard index]]
+- [[https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html#scipy.optimize.minimize][scipy.optimize.minimize]]
+
+<<7a6d74ca>>
+#+begin_src python
+from skimage.io import imread
+from scipy.optimize import minimize
+import numpy as np
+import pyclesperanto_prototype as cle
+#+end_src
+
+<<7bc06c1c>>
+We start with loading an example image and a manual annotation. Not all
+objects must be annotated (sparse annotation).
+
+<<724142e9>>
+#+begin_src python
+blobs = imread('../../data/blobs.tif')
+
+cle.imshow(blobs)
+#+end_src
+
+[[file:2c88485d126415b770876bb0ef0f5b736b69a824.png]]
+
+<<4eb8970e>>
+#+begin_src python
+annotation = imread('../../data/blobs_annotated.tif')
+
+cle.imshow(annotation)
+#+end_src
+
+[[file:80dfedfcef326534a6373acaac29919c16641da0.png]]
+
+<<11d63ca3>>
+Next, we define an image processing workflow that results in a binary
+image.
+
+<<8d527fd7-0c29-4d4d-8dfa-5029ccb492b6>>
+#+begin_src python
+def workflow(image, sigma, threshold):
+    blurred = cle.gaussian_blur(image, sigma_x=sigma, sigma_y=sigma)
+    binary = cle.greater_constant(blurred, constant=threshold)
+    return binary
+#+end_src
+
+<<787fe1eb-b6c7-4560-8417-b17e8f166c39>>
+We also test this workflow with some random =sigma= and =threshold=.
+
+<<e817bf79-efb5-4185-b0f4-5ea69a43cbaf>>
+#+begin_src python
+test = workflow(blobs, 5, 100)
+cle.imshow(test)
+#+end_src
+
+[[file:68734c483d9427ed61838f35214f65b7ec275e60.png]]
+
+<<bd6ff98f>>
+Our [[https://en.wikipedia.org/wiki/Fitness_function][fitness function]]
+takes two parameters: A given segmentation result (test) and a reference
+annotation. It then determines how good the segmentation is, e.g. using
+the Jaccard index.
+
+<<dee35fd2>>
+#+begin_src python
+binary_and = cle.binary_and
+
+def fitness(test, reference):
+    """
+    Determine how correct a given test segmentation is. 
+    As metric we use the Jaccard index.
+    Assumtion: test is a binary image(0=False and 1=True) and 
+    reference is an image with 0=unknown, 1=False, 2=True.
+    """
+    negative_reference = reference == 1
+    positive_reference = reference == 2
+    negative_test = test == 0
+    positive_test = test == 1
+    
+    # true positive: test = 1, ref = 2
+    tp = binary_and(positive_reference, positive_test).sum()
+    
+    # true negative: 
+    tn = binary_and(negative_reference, negative_test).sum()
+    
+    # false positive
+    fp = binary_and(negative_reference, positive_test).sum()
+
+    # false negative
+    fn = binary_and(positive_reference, negative_test).sum()
+    
+    # return Jaccard Index
+    return tp / (tp + fn + fp)
+
+fitness(test, annotation)
+#+end_src
+
+#+begin_example
+0.74251497
+#+end_example
+
+<<9fbe169d-952a-4c51-9618-9cd1ae99217f>>
+We should also test this function on a range of parameters.
+
+<<2348116d>>
+#+begin_src python
+sigma = 5
+for threshold in range(70, 180, 10):
+    test = workflow(blobs, sigma, threshold)
+    print(threshold, fitness(test, annotation))
+#+end_src
+
+#+begin_example
+70 0.49048626
+80 0.5843038
+90 0.67019403
+100 0.74251497
+110 0.8183873
+120 0.8378158
+130 0.79089373
+140 0.7024014
+150 0.60603446
+160 0.49827588
+170 0.3974138
+#+end_example
+
+<<f57521bb>>
+Next we define a =fun=ction that takes only numerical parameters that
+should be optimized.
+
+<<5d966f33-0336-4589-9f09-a8579623909b>>
+#+begin_src python
+def fun(x):
+    # apply current parameter setting
+    test = workflow(blobs, x[0], x[1])
+    # as we are minimizing, we multiply fitness with -1
+    return -fitness(test, annotation)
+#+end_src
+
+<<465c7fdb-8289-4980-be17-b28c5e16a5bd>>
+Before starting the optimization, the final step is to configure the
+starting point =x0= for the optimization and the stoppigin criterion
+=atol=, the absolut tolerance value.
+
+<<d6457dac-df04-42c9-8abf-cda21a723028>>
+#+begin_src python
+# starting point in parameter space
+x0 = np.array([5, 100])
+
+# run the optimization
+result = minimize(fun, x0, method='nelder-mead', options={'xatol': 1e-3})
+result
+#+end_src
+
+#+begin_example
+ final_simplex: (array([[  3.89501953, 121.94091797],
+       [  3.89498663, 121.9409585 ],
+       [  3.89500463, 121.9403702 ]]), array([-0.85761315, -0.85761315, -0.85761315]))
+           fun: -0.8576131463050842
+       message: 'Optimization terminated successfully.'
+          nfev: 65
+           nit: 22
+        status: 0
+       success: True
+             x: array([  3.89501953, 121.94091797])
+#+end_example
+
+<<ae3044bc-7632-480a-a64c-5e0561e8f9b4>>
+From this =result= object we can read out the parameter set that has
+been determined as optimal and produce a binary image.
+
+<<273276b2>>
+#+begin_src python
+x = result['x']
+best_binary = workflow(blobs, x[0], x[1])
+cle.imshow(best_binary)
+#+end_src
+
+[[file:d465af9345ba9fb4e35a702ee985495f263a43b3.png]]
+
+<<435a40ae-69ad-4ae8-b7ac-11cd4d462f80>>
+** A note on convergence
+   :PROPERTIES:
+   :CUSTOM_ID: a-note-on-convergence
+   :END:
+Optimization algorithms may not always find the global optimum.
+Succeeding depends on the starting point of the optimzation, of the
+shape of the parameter space and the chosen algorithm. In the following
+example we demonstrate how a failed optimization can look like if the
+starting point was chosen poorly.
+
+<<b19df528-6bab-4690-9010-c99351dfba41>>
+#+begin_src python
+# starting point in parameter space
+x0 = np.array([0, 60])
+
+# run the optimization
+result = minimize(fun, x0, method='nelder-mead', options={'xatol': 1e-3})
+result
+#+end_src
+
+#+begin_example
+ final_simplex: (array([[0.00000000e+00, 6.00000000e+01],
+       [6.10351563e-08, 6.00000000e+01],
+       [0.00000000e+00, 6.00007324e+01]]), array([-0.63195992, -0.63195992, -0.63195992]))
+           fun: -0.6319599151611328
+       message: 'Optimization terminated successfully.'
+          nfev: 51
+           nit: 13
+        status: 0
+       success: True
+             x: array([ 0., 60.])
+#+end_example
+
+<<d9c65d56-11cb-4942-98c9-e91a23aeb3f0>>
+** Troubleshooting: Exploring the parameter space
+   :PROPERTIES:
+   :CUSTOM_ID: troubleshooting-exploring-the-parameter-space
+   :END:
+In this case, the resulting set of parameters is not different from the
+starting point. In case the fitness does not change around in the
+starting point, the optimization algorithm does not know how to improve
+the result. Visualizing the values around the starting point may help.
+
+<<b4d700ce-0861-4928-a591-091cfacf2678>>
+#+begin_src python
+sigma = 0
+for threshold in range(57, 63):
+    test = workflow(blobs, sigma, threshold)
+    print(threshold, fitness(test, annotation))
+#+end_src
+
+#+begin_example
+57 0.6319599
+58 0.6319599
+59 0.6319599
+60 0.6319599
+61 0.6319599
+62 0.6319599
+#+end_example
+
+<<1b2b1c52-f868-43bc-be50-d65dee0374ec>>
+#+begin_src python
+threshold = 60
+for sigma in np.arange(0, 0.5, 0.1):
+    test = workflow(blobs, sigma, threshold)
+    print(sigma, fitness(test, annotation))
+#+end_src
+
+#+begin_example
+0.0 0.6319599
+0.1 0.6319599
+0.2 0.6319599
+0.30000000000000004 0.6319599
+0.4 0.6319599
+#+end_example
+
+<<22f085cd-8414-4a04-815e-bc1293b27618>>
+Thus, some manual exploration of the parameter space before running
+automatic optimization make sense.
+
+<<b3e48f6f-52c2-4f9b-86f1-d18871a41043>>
+#+begin_src python
+#+end_src

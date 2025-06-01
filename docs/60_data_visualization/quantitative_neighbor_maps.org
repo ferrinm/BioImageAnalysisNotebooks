@@ -1,0 +1,81 @@
+* Quantitative maps from neighbor statistics
+  :PROPERTIES:
+  :CUSTOM_ID: quantitative-maps-from-neighbor-statistics
+  :END:
+This notebook illustrates how to generate quantitative maps based on
+neighbor statistics using image processing libraries.
+
+#+begin_src python
+import pyclesperanto_prototype as cle
+import numpy as np
+from numpy import random
+from skimage.io import imread
+import matplotlib
+#+end_src
+
+The example image "maize_clsm.tif" was taken from the repository
+[[https://github.com/dlegland/mathematical_morphology_with_MorphoLibJ][mathematical_morphology_with_MorphoLibJ]]
+and is licensed by David Legland under
+[[https://github.com/dlegland/mathematical_morphology_with_MorphoLibJ/blob/master/LICENSE][CC-BY
+4.0 license]].
+
+#+begin_src python
+intensity_image = imread('../../data/maize_clsm.tif')
+cle.imshow(intensity_image)
+#+end_src
+
+[[file:dbe83f7c579e56f25f0c7778cc1d58e06e8acead.png]]
+
+* Starting point: Label map
+  :PROPERTIES:
+  :CUSTOM_ID: starting-point-label-map
+  :END:
+First, we perform a segmentation process to obtain a labeled map of the
+cells using thresholding and Voronoi labeling.
+
+#+begin_src python
+binary = cle.binary_not(cle.threshold_otsu(intensity_image))
+cells = cle.voronoi_labeling(binary)
+
+cle.imshow(cells, labels=True)
+#+end_src
+
+[[file:f96c8acf32b513ce41182d1d68f4c018b3a7ba21.png]]
+
+** Nearest neighbor distance maps
+   :PROPERTIES:
+   :CUSTOM_ID: nearest-neighbor-distance-maps
+   :END:
+We then compute maps of the average distance to the nearest neighbors
+for each labeled cell.
+
+#+begin_src python
+average_distance_of_n_closest_neighbors_map = cle.average_distance_of_n_closest_neighbors_map(cells, n=1)
+cle.imshow(average_distance_of_n_closest_neighbors_map, color_map='jet')
+#+end_src
+
+[[file:e758a7c6829d5f034c8e7b6a97df2bcee6a0fcb6.png]]
+
+#+begin_src python
+average_distance_of_n_closest_neighbors_map = cle.average_distance_of_n_closest_neighbors_map(cells, n=5)
+cle.imshow(average_distance_of_n_closest_neighbors_map, color_map='jet')
+#+end_src
+
+[[file:14e2f8f7ea9395c2b7142af4ce541c24184ab478.png]]
+
+** Touching neighbor distance map
+   :PROPERTIES:
+   :CUSTOM_ID: touching-neighbor-distance-map
+   :END:
+Finally, we create a map that shows the average distance to touching
+neighbors for each cell.
+
+#+begin_src python
+average_neighbor_distance_map = cle.average_neighbor_distance_map(cells)
+cle.imshow(average_neighbor_distance_map, color_map='jet')
+#+end_src
+
+[[file:6ca5d073ef8e6e29e211656ba44b6f8362c97905.png]]
+
+#+begin_src python
+#+end_src

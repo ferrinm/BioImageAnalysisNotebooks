@@ -1,0 +1,78 @@
+* Python code in Jupyter notebooks
+  :PROPERTIES:
+  :CUSTOM_ID: python-code-in-jupyter-notebooks
+  :END:
+Python code can be written in ".py" files, which can be executed from
+command line. Furthermore, for academic purposes,
+[[https://jupyter-notebook.readthedocs.io/en/stable/][Jupyter
+notebooks]] are often used to document what code does and add additional
+explanations and links to resources.
+
+See also
+
+- [[https://docs.python.org/3][Python 3 documentation]]
+- [[https://swcarpentry.github.io/python-novice-inflammation/][Python
+  fundamentals by the Carpentries]]
+- [[https://www.youtube.com/playlist?list=PLZsOBAyNTZwYHBIlu_PUO19M7aHMgwBJr][Python
+  tutorials for image processing and machine learning by Digital
+  Sreeni]]
+
+To write our first small python program, we type in the Jupyter notebook
+code cell below. You can double click in this cell, change the code and
+execute it by hitting SHIFT+ENTER:
+
+#+begin_src python
+print("Hello world")
+#+end_src
+
+#+begin_example
+Hello world
+#+end_example
+
+- When working with Jupyter notebooks, obviously SHIFT-ENTER is *the*
+  short cut people use all the time.
+- If you want to "leave" a cell without executing it, you can also hit
+  ESCAPE.
+- You can add a new cell *a*bove the current cell by hitting A and
+  *b*elow by hitting B.
+- You can delete cells by hitting D.
+
+There are more shortcuts. You can see them all in the menu above Help >
+Keyboard shortcuts or by hitting H.
+
+Try it out!
+
+#+begin_src python
+#+end_src
+
+#+begin_src python
+#+end_src
+
+#+begin_src python
+#+end_src
+
+** Markdown documentation in Jupyter notebooks
+   :PROPERTIES:
+   :CUSTOM_ID: markdown-documentation-in-jupyter-notebooks
+   :END:
+Markdown is a coding language for describing the *formating* ~of~
+/text/. In order to see the markdown code which describes this text,
+double click this cell in your Jupyter notebook. Hit SHIFT+ENTER to
+return to the viewing mode.
+
+- Bullet point
+- More bullet points
+  - Deeper bullet points
+
+1. List entry
+2. Another list entry
+3. More list entries
+4. [[https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet][Markdown
+   cheatsheet]]
+
+* Exercise
+  :PROPERTIES:
+  :CUSTOM_ID: exercise
+  :END:
+Add a new python code cell below and use the =print= command to print
+your name.

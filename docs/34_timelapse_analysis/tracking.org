@@ -1,0 +1,261 @@
+<<97908193-a122-425f-b9d6-63b13f014311>>
+* Cell tracking
+  :PROPERTIES:
+  :CUSTOM_ID: cell-tracking
+  :END:
+
+<<48d78cd0-d597-4975-8dee-daeee29e45e3>>
+Two important processes in normal tissue development and disease are
+cell migration and proliferation. To gain a better understanding on
+these processes, tracking in time-lapse datasets is needed.
+
+Tracking is the motion-analysis of individual objects over space and
+time. Hereby a unique number for each detected object is generated and
+maintained.
+
+See also
+
+- [[https://www.youtube.com/watch?v=JZ6QUZIds2g][Automated deep lineage
+  tree analysis using a Bayesian single cell tracking approach]]
+- [[https://btrack.readthedocs.io/en/latest/user_guide/simple_example.html][btrack
+  user guide]]
+- [[https://napari.org/stable/tutorials/tracking/cell_tracking.html][Single
+  cell tracking with napari]]
+- [[https://github.com/quantumjot/btrack/blob/main/examples/example_tracking_pipeline-features.ipynb][btrack
+  example notebooks]]
+
+To find out more about tracking, we will explore a cancer cell migration
+dataset from [[https://zenodo.org/record/5206107#.ZFthHnZBxPa][Tinevez,
+J. & Guillaume Jacquemet, G.]] licensed by
+[[https://creativecommons.org/licenses/by/4.0/legalcode][CC BY 4.0]]. We
+will concentrate on a
+[[https://haesleinhuepf.github.io/BioImageAnalysisNotebooks/12_image_analysis_basics/04_Cropping_images.html][cropped]]
+region of the dataset (in =x=, =y= and =t=).
+
+<<14355061-7da7-4ccb-bdea-a5d82425d673>>
+#+begin_src python
+import btrack
+from skimage.io import imread, imsave
+import napari
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from napari_skimage_regionprops import add_table
+#+end_src
+
+<<bd9a0e74-e0f3-4359-b0d9-f27435507985>>
+** Image dimensionality
+   :PROPERTIES:
+   :CUSTOM_ID: image-dimensionality
+   :END:
+
+<<a5f9bdb7-a58b-40d5-8112-933eba8cc013>>
+First, we need to read in our segmentation result as it is the base of
+the tracking. Let's also read in the image itself, to be able to see
+both even though it's not needed for the tracking itself (only for
+measuring intensity values).
+
+<<43952251-82a2-49c8-bcab-595a1068a42c>>
+#+begin_src python
+image = imread('../../data/cancer_cell_migration_crop.tif')
+label_image = imread('../../data/cancer_cell_migration_voronoi_otsu_labeling_crop.tif')
+#+end_src
+
+<<e6926ea0-323d-4923-a90b-828b3a7496a1>>
+We can check our image =shape=
+
+<<c161e7fd-899b-4eed-9b5d-c6a2695d40b0>>
+#+begin_src python
+label_image.shape
+#+end_src
+
+#+begin_example
+(48, 130, 130)
+#+end_example
+
+<<8ab8f7ea-a71d-491a-85a4-3eb927de91c4>>
+And see it is sorted with the dimensions =[t,y,x]= with
+
+- =t= = time
+- =y= = number of pixels in y
+- =x= = number of pixels in x
+
+<<1647c935-30bd-4cae-ba4a-f25013a91583>>
+** Visualization of image and label image
+   :PROPERTIES:
+   :CUSTOM_ID: visualization-of-image-and-label-image
+   :END:
+
+<<bb40c7f4-f05e-4adb-bd30-d53652e742b1>>
+We can use [[https://github.com/haesleinhuepf/stackview][=stackview=]]
+to visualize this 4D stack.
+
+<<8ec561c0-1073-494c-8294-ce6715757eb8>>
+#+begin_src python
+import stackview
+#+end_src
+
+<<981ddd44-60f0-4fee-b20f-52d8bdf04705>>
+=stackview.curtain= allows us to visualize our label_image on top of our
+image
+
+<<b1a687b0-0004-4659-8ed5-6b1a8d902eee>>
+#+begin_src python
+stackview.curtain(image, label_image, continuous_update=True,zoom_factor = 3) 
+#+end_src
+
+#+begin_example
+{"model_id":"e13b27881adb422e89eaa2148e817e5f","version_major":2,"version_minor":0}
+#+end_example
+
+<<d6f68461-04f4-48fc-abdb-4f9d2dae4609>>
+** Feature extraction
+   :PROPERTIES:
+   :CUSTOM_ID: feature-extraction
+   :END:
+
+<<41c358e5-6854-4d0f-9400-13c2336a9f8e>>
+We can connect the label image to features we want to measure. These
+features are based on
+[[https://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.regionprops][scikit-image
+regionprops]].
+
+<<43fcd7bd-00c2-4c6d-8f33-66709c04c5fd>>
+#+begin_src python
+# choosing features of interest
+features = ['area', 'mean_intensity']
+#+end_src
+
+<<f4a208d7-c07c-43f9-af6c-01aedcaaae7d>>
+#+begin_src python
+# connect labels to features (if you want to measure intensity-based features, also provide the image)
+objects = btrack.utils.segmentation_to_objects(label_image, image, features)
+#+end_src
+
+#+begin_example
+[INFO][2023/05/25 03:32:40 PM] Localizing objects from segmentation...
+[INFO][2023/05/25 03:32:41 PM] Found intensity_image data
+[INFO][2023/05/25 03:32:41 PM] Calculating weighted centroids using intensity_image
+[INFO][2023/05/25 03:32:41 PM] Objects are of type: <class 'dict'>
+[INFO][2023/05/25 03:32:41 PM] ...Found 650 objects in 48 frames.
+#+end_example
+
+<<456c81e1-404f-4c6f-989e-5d60935adf86>>
+** Tracking using btrack
+   :PROPERTIES:
+   :CUSTOM_ID: tracking-using-btrack
+   :END:
+
+<<b16ff205-77ff-4f42-bb4a-e6986ee01709>>
+To configure the tracker, we need a configuration file. We will take
+here a preconfigured model instead of configuring one ourselves:
+
+<<ef069db7-c343-4d4f-a44b-bdf88874ae89>>
+#+begin_src python
+from btrack import datasets
+#+end_src
+
+<<fa151bc1-54a8-4ada-a63d-520a42645c9c>>
+#+begin_src python
+config_file = datasets.cell_config()
+#+end_src
+
+<<981bb924-b172-4d8a-9116-6a3c448514b4>>
+#+begin_src python
+config_file
+#+end_src
+
+#+begin_example
+'C:\\Users\\maral\\AppData\\Local\\btrack-examples\\btrack-examples\\Cache\\examples\\cell_config.json'
+#+end_example
+
+<<9bfa712a-c52d-4184-b7ff-599d7f49391b>>
+#+begin_src python
+# initialise a tracker session 
+with btrack.BayesianTracker() as tracker:
+
+  # configure the tracker using a preconfigured config file
+  tracker.configure(config_file)
+
+  # append the objects to be tracked
+  tracker.append(objects)
+    
+  # set the volume
+  tracker.volume = ((0, 130), (0, 130)) # if the dataset has multiple z-dimensions, we need an additional bracket
+
+  # track
+  tracker.track_interactive(step_size=100)
+
+  # get the tracks in a format for napari visualization
+  data, properties, graph = tracker.to_napari(ndim=2)
+#+end_src
+
+#+begin_example
+[INFO][2023/05/25 03:32:41 PM] Loaded btrack: C:\Users\maral\mambaforge\envs\laptrack_env2\lib\site-packages\btrack\libs\libtracker.DLL
+[INFO][2023/05/25 03:32:41 PM] Starting BayesianTracker session
+[INFO][2023/05/25 03:32:41 PM] Loading configuration file: C:\Users\maral\AppData\Local\btrack-examples\btrack-examples\Cache\examples\cell_config.json
+[INFO][2023/05/25 03:32:41 PM] Objects are of type: <class 'list'>
+[WARNING][2023/05/25 03:32:41 PM] `track_interactive` will be deprecated. Use `track` instead.
+[INFO][2023/05/25 03:32:41 PM] Starting tracking... 
+[INFO][2023/05/25 03:32:41 PM] Update using: ['MOTION']
+[INFO][2023/05/25 03:32:41 PM] Tracking objects in frames 0 to 48 (of 48)...
+[INFO][2023/05/25 03:32:41 PM]  - Timing (Bayesian updates: 1.00ms, Linking: 0.00ms)
+[INFO][2023/05/25 03:32:41 PM]  - Probabilities (Link: 0.99998, Lost: 0.46180)
+[INFO][2023/05/25 03:32:41 PM] SUCCESS.
+[INFO][2023/05/25 03:32:41 PM]  - Found 29 tracks in 48 frames (in 0.0s)
+[INFO][2023/05/25 03:32:41 PM]  - Inserted 9 dummy objects to fill tracking gaps
+[INFO][2023/05/25 03:32:41 PM] Ending BayesianTracker session
+#+end_example
+
+<<9632bcde-9a2f-4983-b85b-24faa85a2bcb>>
+** Visualizing the output in napari
+   :PROPERTIES:
+   :CUSTOM_ID: visualizing-the-output-in-napari
+   :END:
+
+<<00c5e088-3744-435d-b62f-8b7f8dd56be2>>
+Next, we visualize the result in napari.
+
+<<9dcf4416-fc94-4a81-ad15-a4a1ecaa8811>>
+#+begin_src python
+# open a napari-viewer
+viewer = napari.Viewer()
+#+end_src
+
+#+begin_example
+WARNING: QWindowsWindow::setGeometry: Unable to set geometry 1086x679+641+254 (frame: 1104x726+632+216) on QWidgetWindow/"_QtMainWindowClassWindow" on "\\.\DISPLAY1". Resulting geometry: 1360x851+642+261 (frame: 1378x898+633+223) margins: 9, 38, 9, 9 minimum size: 374x575 MINMAXINFO maxSize=0,0 maxpos=0,0 mintrack=392,622 maxtrack=0,0)
+#+end_example
+
+<<0a02da14-ecd5-4ca3-b9a3-71d30f6399b9>>
+#+begin_src python
+# add a labels layer and connect it to the features of interest
+labels_layer = viewer.add_labels(label_image, features = properties)
+#+end_src
+
+<<9438240e-185d-4d20-80a9-824633f45beb>>
+#+begin_src python
+# add a tracks layer
+tracks_layer = viewer.add_tracks(data)
+#+end_src
+
+<<0e96911a-59e3-48ca-a15b-7de5aa3ef8c6>>
+#+begin_src python
+# add the features as a table to napari
+add_table(labels_layer, viewer)
+#+end_src
+
+#+begin_example
+Napari status bar display of label properties disabled because https://github.com/napari/napari/issues/5417 and https://github.com/napari/napari/issues/4342
+#+end_example
+
+#+begin_example
+<napari_skimage_regionprops._table.TableWidget at 0x216144d73a0>
+#+end_example
+
+<<7c27a50c-11e3-43d4-a72b-454c107d0c8d>>
+#+begin_src python
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:b2bb94d467e9133402faafb2917d0ca99851b110.png]]

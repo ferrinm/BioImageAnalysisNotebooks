@@ -1,0 +1,142 @@
+<<fc865825-fe1d-4da8-83e6-8996422cc66d>>
+* Richardson-Lucy-Deconvolution on OpenCL-compatible GPUs
+  :PROPERTIES:
+  :CUSTOM_ID: richardson-lucy-deconvolution-on-opencl-compatible-gpus
+  :END:
+[[https://en.wikipedia.org/wiki/Richardson%E2%80%93Lucy_deconvolution][Richardson-Lucy-Deconvolution]]
+is a common and yet basic algorithm for image deconvolution in
+microscopy. In this notebook we will use a GPU-accelerated version of it
+that is implemented in the napari-plugin
+[[https://github.com/rosalindfranklininstitute/RedLionfish][RedLionFish]].
+Hence, you can use the same algorithm from the graphical user interface
+in napari.
+
+<<f9023ea3-8166-4484-818d-f350ae2400c8>>
+#+begin_src python
+from skimage.io import imread
+from pyclesperanto_prototype import imshow
+import RedLionfishDeconv as rl
+import matplotlib.pyplot as plt
+#+end_src
+
+<<3541b287-b03c-47bc-944d-7a856b906035>>
+We will load an image showing fluorescent intensity along lines. This 3D
+image was taken with a confocal microscope.
+
+<<8473a58b-6977-4d72-a107-b3c5dfb56460>>
+#+begin_src python
+image = imread('../../data/DeconvolutionSampleVerticalGrid1AU-crop.tif')
+image.shape
+#+end_src
+
+#+begin_example
+(21, 150, 150)
+#+end_example
+
+<<b12e8550-c366-471f-b060-989331db129a>>
+#+begin_src python
+imshow(image, colorbar=True)
+#+end_src
+
+[[file:07f23b8157c9243f196a3de850d7d517d357b3de.png]]
+
+<<1088dbd9-e74f-4953-a9ba-97632b080603>>
+The following PSF image was extracted from images taken with the same
+microscope using the procedure [[deconvolution:extract_psf][explained
+before]].
+
+<<fc5768b9-896f-49d8-951e-e946976519e6>>
+#+begin_src python
+psf = imread('../../data/psf.tif')
+
+imshow(psf, colorbar=True)
+#+end_src
+
+[[file:31927277b3da3d94b975fc3ab50646bca391bbeb.png]]
+
+<<6ee88be1-4a3c-46cc-8756-5441be595f4e>>
+We can now deconvolve the image using RedLionFish's
+Richardson-Lucy-Deconvolution algorithm. We should specify that the
+algorith shall be executed on the =gpu=.
+
+<<c05090e0-9b25-4511-a4e5-a528705dfd95>>
+#+begin_src python
+iterations = 50
+
+deconvolved = rl.doRLDeconvolutionFromNpArrays(image, 
+                                               psf, 
+                                               niter=iterations, 
+                                               method='gpu', 
+                                               resAsUint8=False )
+imshow(deconvolved)
+#+end_src
+
+#+begin_example
+ERROR:root:Failed to setup Reikna with OpenCL.
+ERROR:root:No module named 'reikna'
+#+end_example
+
+[[file:16a4592876eac7455887add197a5594468acc1a9.png]]
+
+<<13dcd525-c19d-4b2f-b556-54c2da33fb34>>
+To visualize more precisely how the original image and the deconvolved
+version differ, we can plot the intensity along a line from the left to
+the right. We retrieve these numbers from a maximum intensity projection
+along Z.
+
+<<de147a1a-5513-4f7e-a6d8-d5203a909305>>
+#+begin_src python
+max_intensity_image = image.max(axis=0)
+max_intensity_image.shape
+#+end_src
+
+#+begin_example
+(150, 150)
+#+end_example
+
+<<582b3692-7ec5-45f2-8cb8-15a272603274>>
+#+begin_src python
+max_intensity_deconvolved = deconvolved.max(axis=0)
+max_intensity_deconvolved.shape
+#+end_src
+
+#+begin_example
+(150, 150)
+#+end_example
+
+<<94241a3b-f013-4d14-bd0e-80b1d1380e29>>
+#+begin_src python
+plt.plot(max_intensity_image[80])
+plt.plot(max_intensity_deconvolved[80])
+plt.show()
+#+end_src
+
+[[file:426953df368cb52bd9cddb7b6e5a158aebc889b7.png]]
+
+<<6c0e0413-2495-4c4e-8909-670adff35ef7>>
+As you can see, the intensity range has change through deconvolution.
+This depends on the algorithm and implementation. Whenever applying
+deconvolution, consider checking if the total intensity in the original
+image and the deconvolved image are within the same range:
+
+<<3c0cb507-b39c-4ef2-b876-6f103b61af6d>>
+#+begin_src python
+image.min(), image.max()
+#+end_src
+
+#+begin_example
+(1, 8)
+#+end_example
+
+<<7feb61f9-93f7-49b6-afc2-b0090f67f185>>
+#+begin_src python
+deconvolved.min(), deconvolved.max()
+#+end_src
+
+#+begin_example
+(0.0, 28.122286)
+#+end_example
+
+<<9c701f23-09ec-4917-80ba-ba3f84268e6c>>
+#+begin_src python
+#+end_src

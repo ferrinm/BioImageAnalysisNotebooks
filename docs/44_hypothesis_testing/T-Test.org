@@ -1,0 +1,191 @@
+* T-Test
+  :PROPERTIES:
+  :CUSTOM_ID: t-test
+  :END:
+See also: [[https://en.wikipedia.org/wiki/Student%27s_t-test]]
+
+null-hypothesis: Our sample set has a mean that is equal to a given
+population mean.
+
+#+begin_src python
+import numpy as np
+from numpy import random
+import matplotlib.pyplot as plt
+
+given_mean = 7 # this number serves for generating the sample
+               # in a realistic scenario, we don't know it
+
+# generate random numbers following a normal distribution
+x = random.normal(loc=7, scale=1, size=100)
+
+
+fig, ax = plt.subplots()
+ax.hist(x, bins=100)
+ax.set_ylabel("count")
+ax.set_xlabel("Day the patient felt better")
+plt.show()
+#+end_src
+
+[[file:437c9a556c8c8e55fb0b1f4e3d7e3d15c2ddfd78.png]]
+
+#+begin_src python
+fig, ax = plt.subplots()
+ax.hist(x, bins=10, density=True)
+ax.set_ylabel("likelihood")
+ax.set_xlabel("Day the patient felt better")
+plt.show()
+#+end_src
+
+[[file:c5035b80fbecc038eaa3a475ebf99e3486650e73.png]]
+
+#+begin_src python
+# Descriptive statistics
+mean = np.mean(x)
+print("Mean of the sample is " + str(mean)) 
+
+standard_deviation = np.std(x)
+print("Standard deviation of the sample is " + str(standard_deviation)) 
+#+end_src
+
+#+begin_example
+Mean of the sample is 6.91035435725224
+Standard deviation of the sample is 0.9794186535937979
+#+end_example
+
+#+begin_src python
+#+end_src
+
+#+begin_example
+p-value of or mean being 9: p = 2.1331173491593363e-37
+#+end_example
+
+#+begin_example
+2.1331173491593363e-37
+#+end_example
+
+#+begin_src python
+#+end_src
+
+#+begin_example
+p-value of or mean being 4.0: p = 1.2080635908265571e-57
+p-value of or mean being 4.5: p = 1.4774685646480428e-50
+p-value of or mean being 5.0: p = 2.927549110228349e-42
+p-value of or mean being 5.5: p = 2.0723760293438062e-32
+p-value of or mean being 6.0: p = 8.80211621737463e-21
+p-value of or mean being 6.5: p = 2.1235971268731145e-08
+p-value of or mean being 7.0: p = 0.7671296791633029
+p-value of or mean being 7.5: p = 2.97710641011874e-07
+p-value of or mean being 8.0: p = 1.6669010569660399e-19
+p-value of or mean being 8.5: p = 2.6682967439642807e-31
+p-value of or mean being 9.0: p = 2.501526909114919e-41
+p-value of or mean being 9.5: p = 9.090047576810763e-50
+#+end_example
+
+[[file:f804d3b87ec67ee152587507d354f7cc087af95c.png]]
+
+#+begin_example
+[1.2080635908265571e-57, 1.4774685646480428e-50, 2.927549110228349e-42, 2.0723760293438062e-32, 8.80211621737463e-21, 2.1235971268731145e-08, 0.7671296791633029, 2.97710641011874e-07, 1.6669010569660399e-19, 2.6682967439642807e-31, 2.501526909114919e-41, 9.090047576810763e-50]
+#+end_example
+
+The p-value tells us something about the probability that the mean of
+our distribution is exactly a given value. However, it's not the
+probabiltiy of the mean being exactly this value, because the p-value
+has something to do with the given value AND with the given
+distribution:
+
+* A different sample
+  :PROPERTIES:
+  :CUSTOM_ID: a-different-sample
+  :END:
+
+#+begin_src python
+# we change our sample-set distribution: still the same mean, but less samples
+x = random.normal(loc=7, scale=2, size=10)
+
+fig, ax = plt.subplots()
+ax.hist(x, bins=100)
+ax.set_ylabel("count")
+ax.set_xlabel("x")
+plt.show()
+#+end_src
+
+[[file:6b1b72a48f6b90447b11815c6569c18d4bd5c62d.png]]
+
+#+begin_src python
+# Descriptive statistics
+mean = np.mean(x)
+print("Mean of the sample is " + str(mean)) 
+
+standard_deviation = np.std(x)
+print("Standard deviation of the sample is " + str(standard_deviation)) 
+#+end_src
+
+#+begin_example
+Mean of the sample is 8.119529116048758
+Standard deviation of the sample is 2.0204845095615167
+#+end_example
+
+#+begin_src python
+range = np.arange(5, 9, 0.25)
+results = []
+for value in range:
+    results = results + [test_if_mean_is(value)]
+    
+    
+fig, ax = plt.subplots()
+ax.plot(range, results)
+ax.set_ylabel("p-value")
+ax.set_xlabel("x")
+plt.show()
+
+print(results)
+#+end_src
+
+#+begin_example
+p-value of or mean being 5.0: p = 0.0012334275352099738
+p-value of or mean being 5.25: p = 0.002109113565393285
+p-value of or mean being 5.5: p = 0.0036779985289670967
+p-value of or mean being 5.75: p = 0.006533286207939051
+p-value of or mean being 6.0: p = 0.011793208822144456
+p-value of or mean being 6.25: p = 0.021546001246203775
+p-value of or mean being 6.5: p = 0.039593910627630714
+p-value of or mean being 6.75: p = 0.07252704549826716
+p-value of or mean being 7.0: p = 0.13082302205953084
+p-value of or mean being 7.25: p = 0.2288536626571357
+p-value of or mean being 7.5: p = 0.38163334982616415
+p-value of or mean being 7.75: p = 0.5965754653989805
+p-value of or mean being 8.0: p = 0.8630646511353139
+p-value of or mean being 8.25: p = 0.8506951082698209
+p-value of or mean being 8.5: p = 0.5859313467823023
+p-value of or mean being 8.75: p = 0.3736492963758953
+#+end_example
+
+[[file:ce0c198ead37ba863080651bf2aae3fb2a95a868.png]]
+
+#+begin_example
+[0.0012334275352099738, 0.002109113565393285, 0.0036779985289670967, 0.006533286207939051, 0.011793208822144456, 0.021546001246203775, 0.039593910627630714, 0.07252704549826716, 0.13082302205953084, 0.2288536626571357, 0.38163334982616415, 0.5965754653989805, 0.8630646511353139, 0.8506951082698209, 0.5859313467823023, 0.3736492963758953]
+#+end_example
+
+#+begin_src python
+#+end_src
+
+#+begin_example
+p-value of or mean being 6.0: p = 0.023914983809892813
+#+end_example
+
+#+begin_example
+---------------------------------------------------------------------------
+TypeError                                 Traceback (most recent call last)
+<ipython-input-21-edd57d4b05b6> in <module>
+      1 results = []
+      2 for value in np.arange(6, 8, 0.25):
+----> 3     results = results + test_if_mean_is(value)
+
+TypeError: can only concatenate list (not "NoneType") to list
+#+end_example
+
+null-hypothesis: there is no effect, distributions are equal alternative
+hypothesis: mean is greater in sample2 compared sample1
+
+set threshold: significance level (alpha): How different does it have to
+be in order to be "significantly different": 1%, 5%, 100%

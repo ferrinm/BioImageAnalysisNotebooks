@@ -1,0 +1,286 @@
+<<6e0c82ac-42f4-41fe-889f-38b27c2e1fcb>>
+* Surface quality measurements using vedo in napari
+  :PROPERTIES:
+  :CUSTOM_ID: surface-quality-measurements-using-vedo-in-napari
+  :END:
+This notebook shows how to visualize quantitatvie measurements on
+surface data in napari.
+
+See also
+
+- [[https://vedo.embl.es/autodocs/content/vedo/mesh.html#vedo.mesh.Mesh.addQuality][vedo
+  add_quality documentation]]
+
+<<f4d60da0-f483-4050-aa43-d5566c0a95d0>>
+#+begin_src python
+import napari_process_points_and_surfaces as nppas
+
+import napari
+import numpy as np
+import pandas as pd
+from skimage.measure import label
+from skimage.data import cells3d
+#+end_src
+
+<<931b8ad2-9572-4860-8d63-441dc02a8ced>>
+#+begin_src python
+viewer = napari.Viewer(ndisplay=3)
+
+def hide_all(viewer):
+    for layer in viewer.layers:
+        layer.visible = False
+        
+def show_all(viewer):
+    for layer in viewer.layers:
+        layer.visible = True
+#+end_src
+
+<<c591fce5-1230-4f12-8ad5-988fe8312e6f>>
+#+begin_src python
+surface = nppas.gastruloid()
+
+surface_layer = viewer.add_surface(surface, blending='translucent', shading='flat')
+surface = surface_layer.data
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+#+begin_example
+The nppas gastruloid example is derived from AV Luque and JV Veenvliet (2023) which is licensed CC-BY (https://creativecommons.org/licenses/by/4.0/legalcode) and can be downloaded from here: https://zenodo.org/record/7603081
+#+end_example
+
+[[file:b8e918722bb95c6e7e4ee31eb6bdc3f008d0faa5.png]]
+
+<<8f22d3ef-0624-4b63-b467-796635f8904d>>
+#+begin_src python
+hide_all(viewer)
+
+area_surface = nppas.add_quality(surface, quality_id=nppas.Quality.AREA)
+viewer.add_surface(area_surface, colormap='jet')
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:c9d1849601dd7d95df75771e90d1257d2d3c6887.png]]
+
+<<3913d1b3-86c6-4b2e-b9da-6ef092dd5bbe>>
+#+begin_src python
+hide_all(viewer)
+
+aspect_ratio_surface = nppas.add_quality(surface, quality_id=nppas.Quality.ASPECT_RATIO)
+viewer.add_surface(aspect_ratio_surface, colormap='jet')
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:9d787531d4b1fb7fb88de7f233363cb7440458d7.png]]
+
+<<65c03553-0b7c-486a-b1c3-00ee6b1dc81f>>
+#+begin_src python
+hide_all(viewer)
+
+distortion_surface = nppas.add_quality(surface, quality_id=nppas.Quality.DISTORTION)
+viewer.add_surface(distortion_surface, colormap='jet')
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:8730be3ab0bddb8d0b7bdc36bd28a9f7cf7311eb.png]]
+
+<<7e58a3bc-d6ae-4b93-931f-4733b4bfafdf>>
+#+begin_src python
+hide_all(viewer)
+
+min_angle_surface = nppas.add_quality(surface, quality_id=nppas.Quality.MIN_ANGLE)
+viewer.add_surface(min_angle_surface, colormap='jet')
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:5d3ae9d19a2da8cd33228eafeb7f2f16938e9d80.png]]
+
+<<df74a8d3-30da-461c-a7f3-7ace98861535>>
+#+begin_src python
+hide_all(viewer)
+
+condition_surface = nppas.add_quality(surface, quality_id=nppas.Quality.CONDITION)
+viewer.add_surface(condition_surface, colormap='jet')
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:aba0b09c64e72a8f89c530793c58f38410a24530.png]]
+
+<<d28c8c00-4b36-4ae4-9407-ab717d29f416>>
+#+begin_src python
+hide_all(viewer)
+
+max_angle_surface = nppas.add_quality(surface, quality_id=nppas.Quality.MAX_ANGLE)
+viewer.add_surface(max_angle_surface, colormap='jet')
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:fc2ed80d38eb0ba84542419687d9c45aefb7feed.png]]
+
+<<37f5e7df-8871-4f5b-a05b-325692b6c7d1>>
+#+begin_src python
+hide_all(viewer)
+
+curvature1 = nppas.add_quality(surface, quality_id=nppas.Quality.MEAN_CURVATURE)
+viewer.add_surface(curvature1, colormap='jet')
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:a18f4f74463a494bc8ef70c07e050b00d0f1eb70.png]]
+
+<<3cf54235-472f-4040-b2db-61fb793eceec>>
+#+begin_src python
+hide_all(viewer)
+
+curvature2 = nppas.add_quality(surface, quality_id=nppas.Quality.SPHERE_FITTED_CURVATURE_DECA_VOXEL)
+viewer.add_surface(curvature2, colormap='jet')
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:3cab12d24ceac778dfd3e86306f3eedf2a0f9118.png]]
+
+<<b1e0d377-44b4-43a5-a333-7811c6a1744d>>
+#+begin_src python
+hide_all(viewer)
+
+curvature3 = nppas.add_quality(surface, quality_id=nppas.Quality.SPHERE_FITTED_CURVATURE_HECTA_VOXEL)
+viewer.add_surface(curvature3, colormap='jet')
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:aaab6e9d9cc25940b1fcb439ef54076b6b3e18ea.png]]
+
+<<abaf2968-c7f0-4b07-aa21-bf0e70b8418f>>
+#+begin_src python
+hide_all(viewer)
+
+curvature4 = nppas.add_quality(surface, quality_id=nppas.Quality.SPHERE_FITTED_CURVATURE_KILO_VOXEL)
+viewer.add_surface(curvature4, colormap='jet')
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:4ea0959ee71c2bbf6a2476bda63edf357357ecb9.png]]
+
+<<98953c32-3538-417e-9e1c-2ed821cb0b98>>
+** Reading out values
+   :PROPERTIES:
+   :CUSTOM_ID: reading-out-values
+   :END:
+After measurements have been visualized, you can read them out:
+
+<<24f559a2-e508-4243-9a98-34b370d5f6ce>>
+#+begin_src python
+vertices, faces, values = viewer.layers[-1].data
+
+table = {
+    "X": vertices[:,2],
+    "Y": vertices[:,1],
+    "Z": vertices[:,0],
+    "value":values
+}
+
+pd.DataFrame(table)
+#+end_src
+
+#+begin_example
+               X           Y           Z     value
+0     224.082855  220.405991   14.174363  0.000019
+1     220.321533  208.158768   13.983076  0.000019
+2     229.455795  219.060226   14.819012  0.000019
+3     209.542557  150.734894   14.348864  0.000019
+4     214.309753  145.722107   14.344353  0.000019
+...          ...         ...         ...       ...
+3319  428.314514  349.007416  112.390945  0.000019
+3320  412.195129  354.458801  112.101349  0.000019
+3321  430.368317  356.983643  112.182083  0.000019
+3322  421.842499  360.458557  112.378403  0.000019
+3323  422.173492  352.256104  112.865425  0.000019
+
+[3324 rows x 4 columns]
+#+end_example
+
+<<524cfc01-fedd-4a60-8dca-664c440f91f2>>
+** Other mesh quality measurements
+   :PROPERTIES:
+   :CUSTOM_ID: other-mesh-quality-measurements
+   :END:
+There are more mesh quality measurements available. Not all work on all
+meshes. Watch out for an error message in a grey window.
+
+<<b7cb71d4-b886-4253-a4a6-5d677fb1df4d>>
+#+begin_src python
+for q in nppas.Quality:
+    print(q)
+#+end_src
+
+#+begin_example
+Quality.EDGE_RATIO
+Quality.ASPECT_RATIO
+Quality.RADIUS_RATIO
+Quality.ASPECT_FROBENIUS
+Quality.MED_ASPECT_FROBENIUS
+Quality.MAX_ASPECT_FROBENIUS
+Quality.MIN_ANGLE
+Quality.COLLAPSE_RATIO
+Quality.MAX_ANGLE
+Quality.CONDITION
+Quality.SCALED_JACOBIAN
+Quality.SHEAR
+Quality.RELATIVE_SIZE_SQUARED
+Quality.SHAPE
+Quality.SHAPE_AND_SIZE
+Quality.DISTORTION
+Quality.MAX_EDGE_RATIO
+Quality.SKEW
+Quality.TAPER
+Quality.VOLUME
+Quality.STRETCH
+Quality.DIAGONAL
+Quality.DIMENSION
+Quality.ODDY
+Quality.SHEAR_AND_SIZE
+Quality.JACOBIAN
+Quality.WARPAGE
+Quality.ASPECT_GAMMA
+Quality.AREA
+Quality.ASPECT_BETA
+Quality.GAUSS_CURVATURE
+Quality.MEAN_CURVATURE
+Quality.MAXIMUM_CURVATURE
+Quality.MINIMUM_CURVATURE
+Quality.SPHERE_FITTED_CURVATURE_1_PERCENT
+Quality.SPHERE_FITTED_CURVATURE_2_PERCENT
+Quality.SPHERE_FITTED_CURVATURE_5_PERCENT
+Quality.SPHERE_FITTED_CURVATURE_10_PERCENT
+Quality.SPHERE_FITTED_CURVATURE_25_PERCENT
+Quality.SPHERE_FITTED_CURVATURE_50_PERCENT
+Quality.SPHERE_FITTED_CURVATURE_MICRO_VOXEL
+Quality.SPHERE_FITTED_CURVATURE_MILLI_VOXEL
+Quality.SPHERE_FITTED_CURVATURE_CENTI_VOXEL
+Quality.SPHERE_FITTED_CURVATURE_DECI_VOXEL
+Quality.SPHERE_FITTED_CURVATURE_VOXEL
+Quality.SPHERE_FITTED_CURVATURE_DECA_VOXEL
+Quality.SPHERE_FITTED_CURVATURE_HECTA_VOXEL
+Quality.SPHERE_FITTED_CURVATURE_KILO_VOXEL
+Quality.SPHERE_FITTED_CURVATURE_MEGA_VOXEL
+#+end_example
+
+<<96c3ea04-a74f-4e09-88be-a608629de5f6>>
+#+begin_src python
+show_all(viewer)
+viewer.grid.enabled = True
+viewer.grid.stride = -1
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:a5174f096dd8e8ce5b4144331f89ad4013986008.png]]

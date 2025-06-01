@@ -1,0 +1,114 @@
+<<50f6743a-03a3-43b5-8e8a-5bb32ff41f6f>>
+* Merging labels according to edge-to-edge-distances
+  :PROPERTIES:
+  :CUSTOM_ID: merging-labels-according-to-edge-to-edge-distances
+  :END:
+In this notebook we will merge labels in a label image according to
+their edge-to-edge distances to each other. Labels close-by will be
+merged.
+
+See also
+
+- [[https://forum.image.sc/t/measure-distances-between-labels/79125][Image.sc
+  discussion]]
+- [[https://github.com/haesleinhuepf/napari-accelerated-pixel-and-object-classification#merging-objects][Merging
+  labels using napari-accelerated-pixel-and-object-classifiers]]
+
+<<626d0d82-dbbb-4092-bf57-80eda98de375>>
+#+begin_src python
+import pyclesperanto_prototype as cle
+from skimage.io import imread
+import numpy as np
+#+end_src
+
+<<f6585d60-e431-4902-bed9-901afcf4f6ba>>
+For demonstration purposes, we use a modified version of the labels
+derived from the blobs example-image. We artificially introduce gaps
+between them.
+
+<<878e3c57-593c-4ad3-9c3c-096f1eef2c6b>>
+#+begin_src python
+image = imread("../../data/blobs.tif")
+image[:, 80:150] = 0
+image[80:130, 100:] = 0
+
+image = cle.asarray(image)
+labels = cle.voronoi_otsu_labeling(image, spot_sigma=4, outline_sigma=3)
+labels
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 0,  0,  0, ..., 45, 45, 45],
+       [ 0,  0,  0, ..., 45, 45, 45],
+       [ 0,  0,  0, ..., 45, 45, 45],
+       ...,
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0]], dtype=uint32)
+#+end_example
+
+<<457c3bd0-1641-4021-affb-06b22649b324>>
+First, we dilate the labels by half of the maximum distance the edges
+are allowed to have.
+
+<<20258bd4-9f74-479e-a7bd-1d5399a6ef21>>
+#+begin_src python
+maximum_distance = 12
+
+dilated_labels = cle.dilate_labels(labels, radius=maximum_distance/2)
+dilated_labels
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 0,  0,  0, ..., 45, 45, 45],
+       [ 0,  0,  0, ..., 45, 45, 45],
+       [ 0,  0,  0, ..., 45, 45, 45],
+       ...,
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0]], dtype=uint32)
+#+end_example
+
+<<e07254cf-accc-425e-af51-d992f481d1fc>>
+We then merge the labels if the touch.
+
+<<7298aa54-71b4-46f6-bff3-6eb22547d329>>
+#+begin_src python
+merged_dilated_labels = cle.merge_touching_labels(dilated_labels)
+merged_dilated_labels
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 4, 4, 4],
+       [0, 0, 0, ..., 4, 4, 4],
+       [0, 0, 0, ..., 4, 4, 4],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<d850ccfc-eaee-4647-ac52-3fbfaac5b1c9>>
+Afterwards, we mask the merged labels with the original label's shape.
+We also convert the result of this operation to 32-bit integer, so that
+the visualization as label-image works.
+
+<<b41bd861-c9fb-4e81-b20a-91cc8920e379>>
+#+begin_src python
+merged_labels = (merged_dilated_labels * (labels > 0)).astype(np.uint32)
+merged_labels
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 4, 4, 4],
+       [0, 0, 0, ..., 4, 4, 4],
+       [0, 0, 0, ..., 4, 4, 4],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<cf56cb38-aaaa-4e79-b762-21e87ec78045>>
+#+begin_src python
+#+end_src

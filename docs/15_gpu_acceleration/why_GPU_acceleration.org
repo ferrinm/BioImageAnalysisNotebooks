@@ -1,0 +1,126 @@
+* Why GPU-acceleration makes sense
+  :PROPERTIES:
+  :CUSTOM_ID: why-gpu-acceleration-makes-sense
+  :END:
+In this notebook we demonstrate speedup through GPU-acceleration using a
+Gaussian blur filter. We'll be using the
+[[https://github.com/clEsperanto/pyclesperanto_prototype/][clEsperanto]]
+library which uses [[https://www.khronos.org/opencl/][OpenCL]] and is
+compatible to a wide range of Intel, AMD and NVidia GPUs. Feel free to
+run it on your GPU and measure the speedup!
+
+See also
+
+- [[https://github.com/clEsperanto/pyclesperanto_prototype/#benchmarking][clEsperanto
+  benchmarking noteboosk]]
+- [[https://cupy.dev/][cupy]]
+- [[https://github.com/rapidsai/cucim][cucim]]
+
+*Note:* benchmarking results vary heavily depending on image size,
+kernel size, used operations, parameters and used hardware. Use this
+notebook to adapt it to your use-case scenario and benchmark on your
+target hardware. If you have different scenarios or use-cases, you are
+very welcome to submit your notebook as pull-request!
+
+#+begin_src python
+import pyclesperanto_prototype as cle
+from skimage import filters
+import time
+
+# to measure kernel execution duration properly, we need to set this flag. It will slow down exection of workflows a bit though
+cle.set_wait_for_kernel_finish(True)
+
+# selet a GPU with the following in the name. This will fallback to any other GPU if none with this name is found
+cle.select_device('RTX')
+#+end_src
+
+#+begin_example
+<GeForce RTX 2080 Ti on Platform: NVIDIA CUDA (1 refs)>
+#+end_example
+
+#+begin_src python
+# test data
+import numpy as np
+
+from skimage.io import imread
+test_image = imread('Lund_000500_resampled-cropped.tif')
+
+sigma = 10
+#+end_src
+
+#+begin_src python
+# convolve with scikit-image
+result_image = None
+
+for i in range(0, 10):
+    start_time = time.time()
+    result_image = filters.gaussian(test_image, output=result_image, sigma=sigma)
+    print("skimage Gaussian duration: " + str(time.time() - start_time))
+    
+#+end_src
+
+#+begin_example
+skimage Gaussian duration: 0.644662618637085
+skimage Gaussian duration: 0.63631272315979
+skimage Gaussian duration: 0.6193966865539551
+skimage Gaussian duration: 0.6499156951904297
+skimage Gaussian duration: 0.6301307678222656
+skimage Gaussian duration: 0.6531178951263428
+skimage Gaussian duration: 0.6489198207855225
+skimage Gaussian duration: 0.6308994293212891
+skimage Gaussian duration: 0.7410404682159424
+skimage Gaussian duration: 0.8148434162139893
+#+end_example
+
+#+begin_src python
+# convolve with pyclesperanto
+result_image_gpu = None
+
+test_image_gpu = cle.push(test_image)
+
+for i in range(0, 10):
+    start_time = time.time()
+    result_image_gpu = cle.gaussian_blur(test_image_gpu, result_image_gpu, sigma_x=sigma, sigma_y=sigma, sigma_z=sigma)
+    print("pyclesperanto Gaussian duration: " + str(time.time() - start_time))
+#+end_src
+
+#+begin_example
+pyclesperanto Gaussian duration: 0.026170730590820312
+pyclesperanto Gaussian duration: 0.002056121826171875
+pyclesperanto Gaussian duration: 0.015659093856811523
+pyclesperanto Gaussian duration: 0.019225597381591797
+pyclesperanto Gaussian duration: 0.01566314697265625
+pyclesperanto Gaussian duration: 0.015616178512573242
+pyclesperanto Gaussian duration: 0.01566910743713379
+pyclesperanto Gaussian duration: 0.015576839447021484
+pyclesperanto Gaussian duration: 0.01562190055847168
+pyclesperanto Gaussian duration: 0.023794889450073242
+#+end_example
+
+Let's just check if the results look similar
+
+#+begin_src python
+import napari
+
+viewer = napari.Viewer()
+napari.run()
+#+end_src
+
+#+begin_src python
+viewer.add_image(test_image)
+viewer.add_image(result_image)
+viewer.add_image(result_image_gpu)
+#+end_src
+
+#+begin_example
+<Image layer 'result_image_gpu' at 0x1d3b659c460>
+#+end_example
+
+#+begin_src python
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:2fc3bb3207c894d04097241fa431b1d02b76528e.png]]
+
+#+begin_src python
+#+end_src

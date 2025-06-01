@@ -1,0 +1,408 @@
+<<e9f9be63-1543-4808-872b-7a8e3ad6ea45>>
+* Measure distance along a center line
+  :PROPERTIES:
+  :CUSTOM_ID: measure-distance-along-a-center-line
+  :END:
+A common question is how to determine distances of points along the
+centerline of an object. For this we can skeletonize the object,
+determine distances along the center line and then find the closest
+center line pixel to given point coordinates.
+
+See also:
+
+- [[https://scikit-image.org/docs/stable/auto_examples/edges/plot_skeleton.html]]
+
+<<faa6ce47-e33f-4e9f-8c55-29a73b7db43e>>
+#+begin_src python
+import bia_bob
+#+end_src
+
+<<d1d23dfa>>
+#+begin_src python
+from skimage.io import imread
+import napari_segment_blobs_and_things_with_membranes as nsbatwm
+import napari_simpleitk_image_processing as nsitk
+import numpy as np
+import skan
+import stackview
+import pyclesperanto_prototype as cle
+from scipy.spatial.distance import euclidean
+#+end_src
+
+<<c7ee349b>>
+** Starting point: a binary image
+   :PROPERTIES:
+   :CUSTOM_ID: starting-point-a-binary-image
+   :END:
+We start using a binary image that looks like an arm.
+
+<<435b72bd>>
+#+begin_src python
+binary_arm = imread("../../data/binary_arm.tif")
+stackview.insight(binary_arm)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]], dtype=uint16)
+#+end_example
+
+<<fbaed36b-f7c5-40a7-bef2-6ddad8747269>>
+Furthermore, we continue with a list of coordinates in X/Y format:
+
+<<81cbd0ce-d30e-4a73-b6a6-b2d41f521ffc>>
+#+begin_src python
+coordinates_xy = np.asarray([
+                  [80, 70],
+                  [70, 70],
+                  [60, 70],
+                  [40, 40]]).T
+#+end_src
+
+<<3a8b1fd9-c9b7-4533-814b-bef2de93c8a6>>
+We next produce a label image where the given coordinates are labeled.
+The first coordinate (index=0 in the list) will be labeled with 1, the
+second with 2, and so on. Background pixels are 0. We use this label
+image for visualization and further down, we will also use this image to
+do the measurement.
+
+<<95a916e7-21ba-402b-9335-d55e167f39ec>>
+#+begin_src python
+# draw the coordinates into an image; for visualization purposes
+blank_image = cle.create((binary_arm.shape))
+labeled_spots = coordinate_visualization = cle.pointlist_to_labelled_spots(coordinates_xy, blank_image)
+
+# show the labeled pixels on top of the binary image
+cle.imshow(binary_arm, continue_drawing=True, max_display_intensity=1)
+cle.imshow(labeled_spots, labels=True, alpha=0.6)
+#+end_src
+
+[[file:831d06fcc5b3729042ae063099c99e060375c900.png]]
+
+<<0ba19ff9-2c9e-4636-8c97-6d23b69c475c>>
+** Pre-processing
+   :PROPERTIES:
+   :CUSTOM_ID: pre-processing
+   :END:
+Before we can skeletonize the image, we need to fill the black holes in
+the white area.
+
+<<fdd7664a-96b4-456f-9131-fce331a9fa08>>
+#+begin_src python
+filled_holes = nsitk.binary_fill_holes(binary_arm)
+filled_holes
+#+end_src
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]], dtype=uint16)
+#+end_example
+
+<<16008b80>>
+** Skeletonization
+   :PROPERTIES:
+   :CUSTOM_ID: skeletonization
+   :END:
+The
+[[https://scikit-image.org/docs/stable/auto_examples/edges/plot_skeleton.html][skeleton
+of a binary image]] is a thin line in the center of white areas.
+
+<<7c410305>>
+#+begin_src python
+skeleton = nsbatwm.skeletonize(filled_holes)
+skeleton
+#+end_src
+
+#+begin_example
+<__array_function__ internals>:200: RuntimeWarning: Converting input from bool to <class 'numpy.uint8'> for compatibility.
+#+end_example
+
+#+begin_example
+StackViewNDArray([[False, False, False, ..., False, False, False],
+                  [False, False, False, ..., False, False, False],
+                  [False, False, False, ..., False, False, False],
+                  ...,
+                  [False, False, False, ..., False, False, False],
+                  [False, False, False, ..., False, False, False],
+                  [False, False, False, ..., False, False, False]])
+#+end_example
+
+<<cf66428b-9a4a-44c6-ac3c-5d60e97c5b02>>
+** Distance along the skeleton
+   :PROPERTIES:
+   :CUSTOM_ID: distance-along-the-skeleton
+   :END:
+We first scan the skeleton and retrieve a list of coordinates.
+
+<<05cc0b63-2963-4bcc-8f66-19c1d9301840>>
+#+begin_src python
+def skeleton_to_pointlist(skeleton):
+    # Convert binary image into a graph representation
+    graph = skan.Skeleton(skeleton)
+    
+    # Extract the coordinates of the polyline from the graph
+    polyline = graph.path_coordinates(0)
+
+    return polyline
+
+polyline = skeleton_to_pointlist(skeleton)
+polyline[:5]
+#+end_src
+
+#+begin_example
+array([[33, 12],
+       [33, 13],
+       [32, 14],
+       [32, 15],
+       [32, 16]], dtype=int64)
+#+end_example
+
+<<483abf93-e394-4cc5-92db-16adae1107ba>>
+We then compute the distance of all pixels within the skeleton to one
+end of the skeleton. We have little influence to which end the
+measurement is done.
+
+<<f459ace1-a85e-4fa5-ba26-ad31360791c8>>
+#+begin_src python
+def distances_along_pointlist(polyline):
+    # Initialize a list to store the distances
+    distances = [0]
+    
+    # Compute the distance between each pair of consecutive points in the polyline
+    # Iterate over pairs of points using zip and calculate the Euclidean distance 
+    # between 'point' and 'follower' for each pair
+    # Append the distance to the list 'distances'
+    for point, follower in zip(polyline[:-1], polyline[1:]):
+        d = euclidean(point, follower)
+        distances.append(np.sum(distances[-1]) + d)
+
+    return distances
+
+distances = distances_along_pointlist(polyline)
+distances[:5]
+#+end_src
+
+#+begin_example
+[0, 1.0, 2.414213562373095, 3.414213562373095, 4.414213562373095]
+#+end_example
+
+<<18904d14-fa00-4668-b427-631ced5c808e>>
+We can also visualize the distance along the skeleton as sanity check.
+
+<<7eee496e-07e5-410c-b130-2e130954f1f8>>
+#+begin_src python
+cle.replace_intensities(cle.label_spots(skeleton), [0] + distances)
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       ...,
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.]], dtype=float32)
+#+end_example
+
+<<611fc9d6-de62-4ece-a57a-8ad2f3dbc2ac>>
+** Distance matrix
+   :PROPERTIES:
+   :CUSTOM_ID: distance-matrix
+   :END:
+For computing a distance matrix from each point coordinate to each pixel
+on the skeleton, we need to reformat our data.
+
+<<62e69151-1e21-4a83-a542-f1709611bba9>>
+#+begin_src python
+# format the [[Y1,X1], [Y2,X2], ...] list into
+# [[X1, X2, ...], [Y1, Y2, ...]] clesperanto format
+polyline_xy = polyline[:,::-1].T
+polyline_xy
+#+end_src
+
+#+begin_example
+array([[12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
+        27, 28, 29, 30, 30, 30, 31, 32, 33, 33, 34, 35, 35, 36, 37, 38,
+        38, 39, 40, 40, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51,
+        52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67,
+        68, 69, 70, 71, 72, 73, 74, 75],
+       [33, 33, 32, 32, 32, 31, 31, 31, 32, 32, 32, 33, 33, 33, 34, 35,
+        36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51,
+        52, 53, 54, 55, 56, 57, 58, 58, 58, 58, 58, 59, 59, 59, 59, 60,
+        60, 60, 61, 61, 61, 62, 62, 62, 62, 62, 62, 63, 63, 64, 64, 64,
+        64, 64, 64, 65, 65, 65, 65, 64]], dtype=int64)
+#+end_example
+
+<<ad53c610-9580-46fd-aa81-5a950c0560bb>>
+A distance matrix gives a 2D represenation of all points in a given list
+to all points given in another list of points.
+
+<<bfb3d62a-9bab-4ddf-a7dd-0d3222b80c91>>
+#+begin_src python
+distance_matrix = cle.generate_distance_matrix(coordinates_xy, polyline_xy)[1:,1:]
+print(distance_matrix[:7])
+#+end_src
+
+#+begin_example
+[[77.41447  68.7968   60.60528  28.861738]
+ [76.537575 67.955864 59.816383 27.89265 ]
+ [76.15773  67.6757   59.665733 27.20294 ]
+ [75.29276  66.85058  58.898216 26.24881 ]
+ [74.431175 66.0303   58.137768 25.298222]
+ [74.094536 65.802734 58.0517   24.698177]
+ [73.246155 65.       57.31492  23.769728]]
+#+end_example
+
+<<23077c16-88ce-4368-8ef4-42e9457bbf48>>
+#+begin_src python
+distance_matrix.shape
+#+end_src
+
+#+begin_example
+(72, 4)
+#+end_example
+
+<<0bd2efa2-bf0c-4489-ace3-44d4ea5ff10f>>
+The closest point along the skeleton to each of our four points can be
+determined using argmin projection in the distance matrix.
+
+<<5a05e891-5075-4432-b35a-a1971e548191>>
+#+begin_src python
+indices_on_skeleton = np.asarray(cle.arg_minimum_y_projection(distance_matrix))[0]
+indices_on_skeleton
+#+end_src
+
+#+begin_example
+array([70., 67., 59., 24.], dtype=float32)
+#+end_example
+
+<<79e333b6-fb3e-4d8a-9244-c36afcb49eca>>
+From these indices, we can read out the distance along the skeleton.
+
+<<b1c48f7b-dac7-438d-9ce0-64a867baa99b>>
+#+begin_src python
+distances_along_skeleton = [distances[int(i)] for i in indices_on_skeleton]
+distances_along_skeleton
+#+end_src
+
+#+begin_example
+[81.59797974644663, 78.59797974644663, 69.76955262170044, 28.970562748477146]
+#+end_example
+
+<<f7f9326f-bb05-4d02-bff5-4dfd7e0b4e6e>>
+** A helper function to do it all
+   :PROPERTIES:
+   :CUSTOM_ID: a-helper-function-to-do-it-all
+   :END:
+We now formulate a function that takes the skeleton and the list of
+coordinates to all the things shown above.
+
+<<93e42e09-a8f4-46f5-817a-59ff127b9412>>
+#+begin_src python
+def distances_of_points_along_skeleton(skeleton, coordinates_xy):
+    """
+    Takes a binary skeleton image and a list of coordinates in format [[X1, X2, ...], [Y1, Y2, ...]]
+    It will then determine all distances of the points along the skeleton. 
+    """
+    polyline = skeleton_to_pointlist(skeleton)
+    distances = distances_along_pointlist(polyline)
+    
+    polyline_xy = polyline[:,::-1].T
+    distance_matrix = cle.generate_distance_matrix(coordinates_xy, polyline_xy)[1:,1:]
+
+    indices_on_skeleton = np.asarray(cle.arg_minimum_y_projection(distance_matrix))[0]
+    distances_along_skeleton = [distances[int(i)] for i in indices_on_skeleton]
+
+    return distances_along_skeleton
+
+distances_of_points_along_skeleton(skeleton, coordinates_xy)
+#+end_src
+
+#+begin_example
+[81.59797974644663, 78.59797974644663, 69.76955262170044, 28.970562748477146]
+#+end_example
+
+<<6abf1047-2c91-4295-92fb-5ddb312fe9e0>>
+** A distance map of the binary image
+   :PROPERTIES:
+   :CUSTOM_ID: a-distance-map-of-the-binary-image
+   :END:
+To check that our distance computation makes sense, also visually, we
+can compute the distance along the center line (skeleton) for all pixels
+in the binary image. Therefore we first label all pixels individually.
+
+<<644f59f7-4881-4e32-80a2-e13e1b4073b4>>
+#+begin_src python
+all_pixels_labeled = cle.label_spots(binary_arm)
+all_pixels_labeled
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<c699816c-19df-4b15-86be-72d45a7beaf0>>
+We then compute the distance along the skeleton for all labeled pixel
+like above and visualize this in an image.
+
+<<0c671db4-76dd-4597-a662-bd2efda832a6>>
+#+begin_src python
+coordinates_all_xy = cle.labelled_spots_to_pointlist(all_pixels_labeled)
+distances_all = distances_of_points_along_skeleton(skeleton, coordinates_all_xy)
+distance_map = cle.replace_intensities(all_pixels_labeled, [0] + distances_all)
+distance_map
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       ...,
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.]], dtype=float32)
+#+end_example
+
+<<6b0364aa-aeb8-439a-bbb0-bcb0a7fd493d>>
+Using
+[[https://github.com/haesleinhuepf/stackview#pick-intensities][=stackview.picker=]]
+we can hover with the mouse over the image and read out intensities.
+This only works in a Jupyter-like environment.
+
+<<60603514-1a47-4ca4-b897-70f86e0a141d>>
+#+begin_src python
+stackview.picker(distance_map, zoom_factor=4)
+#+end_src
+
+#+begin_example
+{"model_id":"ef07ebf1366046809d0f57c0614aeb33","version_major":2,"version_minor":0}
+#+end_example
+
+<<d7a9b8c2-65a5-4572-bdcc-29ef892497c5>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Compute the distance of the points with respect to the other end of the
+image. Hint: Flip the input image when computing the path along the
+skeleton.
+
+<<7e7f2575-d9e3-47ee-8919-6a192e8153eb>>
+#+begin_src python
+#+end_src

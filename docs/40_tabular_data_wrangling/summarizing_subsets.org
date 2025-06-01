@@ -1,0 +1,153 @@
+<<731039f0-a993-430b-996a-cad1b809ac02>>
+* Summarizing subsets of data
+  :PROPERTIES:
+  :CUSTOM_ID: summarizing-subsets-of-data
+  :END:
+
+<<f34f881f-7f9b-4e51-9ee7-8c50b877390c>>
+Assume we want to summarize our data, e.g. by splitting it into groups
+according to filename and computing mean intensity measurements for
+these groups. This will give us a smaller table with summarized
+measurements per file.
+
+See also
+
+- [[https://biapol.github.io/Quantitative_Bio_Image_Analysis_with_Python_2022/day3a_Tabular_Data_and_Descriptive_Statistics/07_split_apply_combine.html][Split-apply-combine]]
+- [[https://pandas.pydata.org/docs/user_guide/groupby.html][Pandas'
+  Group by]]
+
+<<6ad14083-e065-44e9-a5ef-69db286bfc67>>
+#+begin_src python
+import pandas as pd
+import numpy as np
+#+end_src
+
+<<f1da98ac-e6f4-4dd1-afc2-4bcc10d54492>>
+To demonstate the example, we load a table which contains shape
+measurements of many objects that have been segmented in multiple files
+of the [[https://bbbc.broadinstitute.org/BBBC007][Broad Bioimage
+Benchmark Collection BBB0007 dataset from Jones et al., Proc. ICCV
+Workshop on Computer Vision for Biomedical Image Applications, 2005)]].
+
+<<8e6ddf36-5f87-415e-a983-364168dee4c3>>
+#+begin_src python
+df = pd.read_csv('../../data/BBBC007_analysis.csv')
+df
+#+end_src
+
+#+begin_example
+     area  intensity_mean  major_axis_length  minor_axis_length  aspect_ratio  \
+0     139       96.546763          17.504104          10.292770      1.700621   
+1     360       86.613889          35.746808          14.983124      2.385805   
+2      43       91.488372          12.967884           4.351573      2.980045   
+3     140       73.742857          18.940508          10.314404      1.836316   
+4     144       89.375000          13.639308          13.458532      1.013432   
+..    ...             ...                ...                ...           ...   
+106   305       88.252459          20.226532          19.244210      1.051045   
+107   593       89.905565          36.508370          21.365394      1.708762   
+108   289      106.851211          20.427809          18.221452      1.121086   
+109   277      100.664260          20.307965          17.432920      1.164920   
+110    46       70.869565          11.648895           5.298003      2.198733   
+
+              file_name  
+0    20P1_POS0010_D_1UL  
+1    20P1_POS0010_D_1UL  
+2    20P1_POS0010_D_1UL  
+3    20P1_POS0010_D_1UL  
+4    20P1_POS0010_D_1UL  
+..                  ...  
+106  20P1_POS0007_D_1UL  
+107  20P1_POS0007_D_1UL  
+108  20P1_POS0007_D_1UL  
+109  20P1_POS0007_D_1UL  
+110  20P1_POS0007_D_1UL  
+
+[111 rows x 6 columns]
+#+end_example
+
+<<464afbc4-287e-4ebc-9b29-dc80fe4f8805>>
+** Grouping by filename
+   :PROPERTIES:
+   :CUSTOM_ID: grouping-by-filename
+   :END:
+
+<<ef04e5ff-02a2-4b72-aab6-e596dcb63eda>>
+We will now group the table by image filename.
+
+<<37aaf674-fcc8-4ff1-96e2-216a0135fe10>>
+#+begin_src python
+grouped_df = df.groupby('file_name')
+grouped_df
+#+end_src
+
+#+begin_example
+<pandas.core.groupby.generic.DataFrameGroupBy object at 0x000002DC95CF2520>
+#+end_example
+
+<<00eac35a-50a6-4085-b94e-6c79592c5ef5>>
+From this =grouped_df= object we can derive basic statistics, for
+example the mean of all numeric columns.
+
+<<14983422-5c93-431e-a105-7eb90f739372>>
+#+begin_src python
+summary_df = grouped_df.mean(numeric_only = True)
+summary_df
+#+end_src
+
+#+begin_example
+                          area  intensity_mean  major_axis_length  \
+file_name                                                           
+20P1_POS0007_D_1UL  300.859375       95.889956          22.015742   
+20P1_POS0010_D_1UL  253.361702       96.745373          20.120268   
+
+                    minor_axis_length  aspect_ratio  
+file_name                                            
+20P1_POS0007_D_1UL          17.132505      1.316197  
+20P1_POS0010_D_1UL          15.330923      1.402934  
+#+end_example
+
+<<339a3a54-7d67-427b-9a74-c62239040959>>
+The outputted data frame has the mean values of all quantities,
+including the intensities that we wanted. Note that this data frame has
+'filename' as the name of the row index. To convert it back to a normal
+table with a numeric index columm, we can use the reset_index() method.
+
+<<103b54c4-24a1-487a-a169-4f4fc535ddf7>>
+#+begin_src python
+summary_df.reset_index()
+#+end_src
+
+#+begin_example
+            file_name        area  intensity_mean  major_axis_length  \
+0  20P1_POS0007_D_1UL  300.859375       95.889956          22.015742   
+1  20P1_POS0010_D_1UL  253.361702       96.745373          20.120268   
+
+   minor_axis_length  aspect_ratio  
+0          17.132505      1.316197  
+1          15.330923      1.402934  
+#+end_example
+
+<<c01ca9fd-eb54-4ebd-ba73-e0318b2d143d>>
+Note, though, that this was not done in-place. =summary_df= still has an
+index labeled =round=. If you want to update your table, you have to
+explicitly do so with an assignment operator.
+
+<<199fe5d5-e7ea-4956-be6c-76fece4ae370>>
+#+begin_src python
+summary_df = summary_df.reset_index()
+summary_df
+#+end_src
+
+#+begin_example
+            file_name        area  intensity_mean  major_axis_length  \
+0  20P1_POS0007_D_1UL  300.859375       95.889956          22.015742   
+1  20P1_POS0010_D_1UL  253.361702       96.745373          20.120268   
+
+   minor_axis_length  aspect_ratio  
+0          17.132505      1.316197  
+1          15.330923      1.402934  
+#+end_example
+
+<<9293eae3-a69b-4caa-b0c0-75434f20e39a>>
+#+begin_src python
+#+end_src

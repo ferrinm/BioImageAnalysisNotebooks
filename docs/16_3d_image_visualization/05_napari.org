@@ -1,0 +1,104 @@
+* Interactive image visualization with napari
+  :PROPERTIES:
+  :CUSTOM_ID: interactive-image-visualization-with-napari
+  :END:
+[[https://napari.org/][napari]] is a python-based image viewer. Today,
+we will use it by remote-controlling it from a jupyter notebook.
+
+See also
+
+- [[https://napari.org/tutorials/index.html][napari tutorials]]
+- [[https://www.youtube.com/watch?v=VgvDSq5aCDQ][Multi-dimensional image
+  visualization in Python using napari [NEUBIAS Academy@Home] webinar]]
+
+For opening an image, we still use scikit-image:
+
+#+begin_src python
+from skimage.io import imread
+
+image = imread('../../data/blobs.tif')
+
+# print out the spatial dimensions of the image
+print(image.shape)
+#+end_src
+
+#+begin_example
+(254, 256)
+#+end_example
+
+#+begin_src python
+import napari
+
+# Create an empty viewer
+viewer = napari.Viewer()
+#+end_src
+
+#+begin_src python
+# Add a new layer containing an image
+viewer.add_image(image);
+#+end_src
+
+With this command, we can make a screenshot of napari and save it in our
+notebook.
+
+#+begin_src python
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:599a8d1ff94b4fb235c415fb62973f9c785c0937.png]]
+
+#+begin_src python
+# Remove all layers to start from scratch
+for l in viewer.layers:
+    viewer.layers.remove(l)
+#+end_src
+
+#+begin_src python
+# add the image again with a different lookup table
+viewer.add_image(image, colormap='green');
+#+end_src
+
+We now blur the image and put it in the viewer
+
+#+begin_src python
+from skimage.filters import gaussian
+blurred_image = gaussian(image, sigma=5)
+
+# Add to napari
+viewer.add_image(blurred_image);
+#+end_src
+
+We now apply background subtraction to the image and add it to the
+viewer
+
+#+begin_src python
+from skimage.morphology import white_tophat, disk
+background_subtracted_image = white_tophat(image, disk(25))
+
+# Add a new layer containing an image
+viewer.add_image(background_subtracted_image);
+#+end_src
+
+By clicking the galery button (bottom left), we can view the different
+images side by side:
+
+#+begin_src python
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:bfeda8dac6586e1c9c2f3a6c442f2854aa2641de.png]]
+
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Start a new notebook, import napari, load the image
+=../data/hela-cells.tif= and add its three channels independently to
+napari as three layers. Afterwards, play with colormap and blending in
+the user interface. Can you make it look similar to ImageJ? Also check
+out the napari
+[[https://napari.org/tutorials/fundamentals/image.html][image layer
+tutorial]]. Can you also code this?
+
+#+begin_src python
+#+end_src

@@ -1,0 +1,109 @@
+<<5230dc33-291b-4748-a4c8-77bb80036486>>
+* Prevent magic numbers
+  :PROPERTIES:
+  :CUSTOM_ID: prevent-magic-numbers
+  :END:
+When reading code, we sometimes find numbers in the code where it is not
+ovious what they do. However, when we change them, suddenly our program
+does not work anymore. We call these numbers
+[[https://en.wikipedia.org/wiki/Magic_number_(programming)][magic
+numbers]]. For example, do you know what the =3= and =7= in the code
+below do?
+
+<<c0ddc835-d1a8-4d05-abc6-9df2e606b9fe>>
+#+begin_src python
+from skimage.io import imread
+from skimage.filters import gaussian, threshold_otsu
+from skimage.measure import label
+#+end_src
+
+<<ff35ed3c-4159-479c-8be8-f314eda942d9>>
+#+begin_src python
+image = imread("../../data/BBBC007_batch/17P1_POS0013_D_1UL.tif")
+
+# noise removal
+blurred = gaussian(image, 3)
+
+# instance segmentation
+binary = blurred > threshold_otsu(blurred)
+labels = label(binary)
+
+# quantitative measurement
+labels.max()
+#+end_src
+
+#+begin_example
+37
+#+end_example
+
+<<a373b994-def7-4bdd-8525-2c81b5970d8a>>
+#+begin_src python
+image = imread("../../data/BBBC007_batch/17P1_POS0013_D_1UL.tif")
+
+# noise removal
+blurred = gaussian(image, 7)
+
+# instance segmentation
+binary = blurred > threshold_otsu(blurred)
+labels = label(binary)
+
+# quantitative measurement
+labels.max()
+#+end_src
+
+#+begin_example
+19
+#+end_example
+
+<<d9f144e8-0b63-491d-ad45-7bdf360ad958>>
+** A configuration section at the beginning
+   :PROPERTIES:
+   :CUSTOM_ID: a-configuration-section-at-the-beginning
+   :END:
+To prevent magic numbers and to make code better readable, it is
+recommended to have a configuration code section at the beginning of
+every script / notebook. There you can also use comments to explain what
+variables mean. Btw. giving those variables good names is key.
+
+<<951b4f71-158f-468b-84a2-a9fd1b1deb23>>
+#+begin_src python
+# enter the image filename to be processed here
+file_to_process = "../../data/BBBC007_batch/17P1_POS0013_D_1UL.tif"
+
+# enter the expected radius of nuclei here, in pixel units
+approximate_nuclei_radius = 3
+#+end_src
+
+<<9f715981-c55d-4526-bbe6-bfb0f521be49>>
+#+begin_src python
+image = imread(file_to_process)
+
+# noise removal
+blurred = gaussian(image, approximate_nuclei_radius)
+
+# instance segmentation
+binary = blurred > threshold_otsu(blurred)
+labels = label(binary)
+
+# quantitative measurement
+labels.max()
+#+end_src
+
+#+begin_example
+37
+#+end_example
+
+<<2326b955-ec1e-416e-9606-36a2f7709d90>>
+One more hint: Python allows specifying
+[[https://treyhunner.com/2018/04/keyword-arguments-in-python/][keyword
+arguments]] when calling functions. When using them, code becomes easier
+to read and understand:
+
+<<76d0cc44-4a5e-4dcd-990e-ec2e49b5462f>>
+#+begin_src python
+blurred = gaussian(image, sigma=approximate_nuclei_radius)
+#+end_src
+
+<<5384afe5-3760-424e-8d7c-998f4aa724fe>>
+#+begin_src python
+#+end_src

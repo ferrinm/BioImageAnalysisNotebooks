@@ -1,0 +1,168 @@
+<<925cb362-2b6f-4375-9e18-22ae9c224f4b>>
+* Eroded Otsu-labeling
+  :PROPERTIES:
+  :CUSTOM_ID: eroded-otsu-labeling
+  :END:
+This operation segments and labels an image using blurring,
+Otsu-thresholding, binary erosion and masked Voronoi-labeling.
+
+After bluring and thresholding using Otsu's method, iterative binary
+erosion is applied. Objects in the eroded image are labeled using
+connected component labeling and these labels are dilated to fit again
+into the initial binary image using masked-Voronoi labeling.
+
+This function is similar to =voronoi_otsu_labeling=. It is intended to
+deal better in cases where labels of objects swapping into each other if
+objects are dense. Like when using Voronoi-Otsu-labeling, small objects
+may disappear when applying this operation.
+
+This function is inspired by a similar
+[[https://github.com/biovoxxel/bv3dbox/blob/9e38ed02cff606e7e8fbe57db0f6af810bf1a83a/BioVoxxel_3D_Box/src/main/java/de/biovoxxel/bv3dbox/plugins/BV_LabelSplitter.java#L83][implementation
+in Java]] by Jan Brocher (Biovoxxel) in the
+[[https://zenodo.org/badge/latestdoi/434949702][Biovoxxel toolbox]]. Big
+thanks Jan!
+
+<<8d145bbd-da76-4b81-9355-82db031c1dfe>>
+#+begin_src python
+from skimage.data import cells3d
+import pyclesperanto_prototype as cle
+import napari_segment_blobs_and_things_with_membranes as nsbatwm
+#+end_src
+
+<<eb4a2ea5-a362-426d-807a-f7bbb375fd4e>>
+#+begin_src python
+image = cells3d()
+image.shape
+#+end_src
+
+#+begin_example
+(60, 2, 256, 256)
+#+end_example
+
+<<380e59ab-2a3e-4650-a866-c5d13315ad71>>
+We just crop out a 2D slice.
+
+<<997d3d15-f380-436d-b819-60f6b1ed8672>>
+#+begin_src python
+nuclei = cle.asarray(image[30, 1])
+nuclei
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 8868.,  6923.,  5690., ..., 13942., 12804., 14653.],
+       [ 7113.,  5501.,  5216., ..., 16739., 13657., 15554.],
+       [ 5833.,  7160.,  5928., ..., 15838., 16739., 17166.],
+       ...,
+       [ 2513.,  3936.,  3414., ...,  3699.,  4126.,  4220.],
+       [ 3319.,  3272.,  2513., ...,  3699.,  3367.,  2940.],
+       [ 3130.,  3794.,  3225., ...,  2987.,  3746.,  4315.]],
+      dtype=float32)
+#+end_example
+
+<<598aa36f-a3cd-443f-8165-2d88d7b0e0ba>>
+#+begin_src python
+labels = cle.eroded_otsu_labeling(nuclei, number_of_erosions=11, outline_sigma=4)
+labels
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<f2e9b308-7955-49ba-9887-ad83fac8e505>>
+** Parameter: number_of_erosions
+   :PROPERTIES:
+   :CUSTOM_ID: parameter-number_of_erosions
+   :END:
+If the specified number of erosions is too small, sticky objects will be
+labeled together.
+
+<<69e13d04-152f-4ee5-8dd5-4d8db331c4f9>>
+#+begin_src python
+labels = cle.eroded_otsu_labeling(nuclei, number_of_erosions=5, outline_sigma=4)
+labels
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<607ac2f1-b594-4f82-98dc-27e305d8fe96>>
+If too many erosions are configured, objects may disappear.
+
+<<62b486af-235e-42be-9785-9009ff3df68a>>
+#+begin_src python
+labels = cle.eroded_otsu_labeling(nuclei, number_of_erosions=20, outline_sigma=4)
+labels
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<83b2ece5-b769-4e42-858f-dc26ec06cfc0>>
+** Parameter: outline_sigma
+   :PROPERTIES:
+   :CUSTOM_ID: parameter-outline_sigma
+   :END:
+With this outline, you can control the denoising before thresholding. If
+this value is too low, objects may have noisy edges and holes lead to
+more object-splits.
+
+<<f3f28d92-1f8c-4a86-adb5-d0eb9fbc4eb7>>
+#+begin_src python
+labels = cle.eroded_otsu_labeling(nuclei, number_of_erosions=5, outline_sigma=1)
+labels
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<a20547ce-b34d-4417-bc93-5ff4f0d4c763>>
+If this value is too high, object outlines may be not fitting to the
+original objects anymore.
+
+<<ab4de1df-5371-4f43-a699-39123c1ce007>>
+#+begin_src python
+labels = cle.eroded_otsu_labeling(nuclei, number_of_erosions=11, outline_sigma=10)
+labels
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<bad3d788-baf1-482a-a818-3596ecd49e08>>
+#+begin_src python
+#+end_src

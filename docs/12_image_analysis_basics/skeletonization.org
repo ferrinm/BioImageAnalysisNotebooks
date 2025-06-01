@@ -1,0 +1,83 @@
+<<516defef-d37a-4408-ae4e-69b541a20b99>>
+* Skeletonization
+  :PROPERTIES:
+  :CUSTOM_ID: skeletonization
+  :END:
+
+<<6c5e7ffd-c7b5-49ae-8532-b406df958fea>>
+#+begin_src python
+import pyclesperanto_prototype as cle
+from skimage.morphology import skeletonize, skeletonize_3d
+#+end_src
+
+<<05128f12-e5c6-4491-aad9-f2bfb2097f42>>
+#+begin_src python
+stack = cle.create((100, 100, 100))
+cle.draw_line(stack, x1=0, y1=0, z1=0, x2=60, y2=50, z2=20, thickness=10, value=1)
+cle.draw_line(stack, x1=100, y1=100, z1=0, x2=60, y2=50, z2=20, thickness=10, value=1)
+cle.draw_line(stack, x1=100, y1=0, z1=0, x2=60, y2=50, z2=20, thickness=10, value=1)
+cle.draw_line(stack, x1=0, y1=50, z1=80, x2=60, y2=50, z2=20, thickness=10, value=1)
+
+cle.imshow(stack)
+#+end_src
+
+[[file:404ee26e4c2484357e8d1ef9267fdce4a823c613.png]]
+
+<<8c7d8ef5-b9e0-4c84-85b3-86b1f02f65be>>
+#+begin_src python
+cle.imshow(cle.maximum_x_projection(stack))
+cle.imshow(cle.maximum_y_projection(stack))
+cle.imshow(cle.maximum_z_projection(stack))
+#+end_src
+
+[[file:fd762fa381978fb71a9c5fde125e44542281fb20.png]]
+
+[[file:19ef87464b80585074dc18dc1405265229e8c9df.png]]
+
+[[file:404ee26e4c2484357e8d1ef9267fdce4a823c613.png]]
+
+<<6da31e2e-38ea-44d9-bf60-755266c68e36>>
+#+begin_src python
+skeleton = skeletonize(stack)
+cle.imshow(skeleton)
+#+end_src
+
+[[file:c27231246002d3fa0d9e6e936181f06547549833.png]]
+
+<<bb292850-2f76-408c-a716-639150c95ce7>>
+#+begin_src python
+cle.imshow(cle.maximum_x_projection(skeleton))
+cle.imshow(cle.maximum_y_projection(skeleton))
+cle.imshow(cle.maximum_z_projection(skeleton))
+#+end_src
+
+[[file:23c7f07a9d288b2aabc2480a3d7b2ab294b05305.png]]
+
+[[file:d4e016594fcca78f4450d4c3af3448a3c12450b5.png]]
+
+[[file:c27231246002d3fa0d9e6e936181f06547549833.png]]
+
+<<ea6620cf-caab-479e-b29e-72a68349ae01>>
+#+begin_src python
+skeleton_3d = skeletonize_3d(stack)
+cle.imshow(skeleton_3d)
+#+end_src
+
+[[file:c27231246002d3fa0d9e6e936181f06547549833.png]]
+
+<<5b4594e2-e745-418f-a91e-84a4c7e9d14b>>
+#+begin_src python
+cle.imshow(cle.maximum_x_projection(skeleton_3d))
+cle.imshow(cle.maximum_y_projection(skeleton_3d))
+cle.imshow(cle.maximum_z_projection(skeleton_3d))
+#+end_src
+
+[[file:23c7f07a9d288b2aabc2480a3d7b2ab294b05305.png]]
+
+[[file:d4e016594fcca78f4450d4c3af3448a3c12450b5.png]]
+
+[[file:c27231246002d3fa0d9e6e936181f06547549833.png]]
+
+<<e6ee3776-e3fb-4898-b501-f31f7a7ae8a8>>
+#+begin_src python
+#+end_src

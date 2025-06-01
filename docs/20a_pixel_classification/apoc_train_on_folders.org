@@ -1,0 +1,129 @@
+<<b89e0e1e-e26f-4004-bdfe-760244fb3d41>>
+* Training pixel classifiers from folders of images
+  :PROPERTIES:
+  :CUSTOM_ID: training-pixel-classifiers-from-folders-of-images
+  :END:
+When training pixel classifiers it often makes sense to train using
+multiple images. For example, when images look differently, especially
+between conditions, it is necessary to train classifiers with mutiple
+images from all conditions.
+
+In this notebook we demonstrate how to train
+[[https://github.com/haesleinhuepf/apoc][APOC]] classifiers using two
+folders containing pairs of training data.
+
+<<95e44345-7c1b-4108-a1ff-ba126a6b5c75>>
+#+begin_src python
+import apoc
+import os
+from skimage.io import imread
+import pyclesperanto_prototype as cle
+import matplotlib.pyplot as plt
+#+end_src
+
+<<9d437304-6349-468f-b850-c39c99b5b6ad>>
+** Data preparation
+   :PROPERTIES:
+   :CUSTOM_ID: data-preparation
+   :END:
+We start by selecting two input folders. One with images, and one with
+sparsely annotated label images. The names of the files in that folder
+must be pairwise identical. We will also have a quick look into these
+folders.
+
+For demonstration purposes, we reuse data of the
+[[https://bbbc.broadinstitute.org/BBBC007][BBBC007 dataset]] version 1
+(Jones et al., Proc. ICCV Workshop on Computer Vision for Biomedical
+Image Applications, 2005), available from the Broad Bioimage Benchmark
+Collection [[http://dx.doi.org/10.1038/nmeth.2083][Ljosa et al., Nature
+Methods, 2012]].
+
+<<e7fd1bce-4cb5-4664-a595-bed5f3040221>>
+#+begin_src python
+image_folder = "../../data/BBBC007/images/"
+masks_folder = "../../data/BBBC007/masks/"
+#+end_src
+
+<<d2cbd020-ef18-450f-97be-9649f5eee173>>
+#+begin_src python
+file_list = os.listdir(image_folder)
+
+# show all images
+fig, axs = plt.subplots(1, 4, figsize=(15,15))
+for i, filename in enumerate(file_list):
+    image = imread(image_folder + filename)
+    cle.imshow(image, plot=axs[i])
+plt.show()
+    
+# show corresponding label images
+fig, axs = plt.subplots(1, 4, figsize=(15,15))
+for i, filename in enumerate(file_list):
+    masks = imread(masks_folder + filename)
+    cle.imshow(masks, plot=axs[i], labels=True)
+plt.show()
+#+end_src
+
+[[file:402c4e699bbddb2d0a851df634368a444cd4f771.png]]
+
+[[file:9d258e220eae73659d6aa6aecf99a12b9a03dabd.png]]
+
+<<7ddd38ef-f5dd-4b35-98bb-842a50a678a8>>
+** Training
+   :PROPERTIES:
+   :CUSTOM_ID: training
+   :END:
+If the folders are setup properly, we can pass the folders to the
+training.
+
+<<a8e567ad-fef4-4b38-b1f7-c3b4f93eb72c>>
+#+begin_src python
+# setup classifer and where it should be saved
+segmenter = apoc.ObjectSegmenter(opencl_filename="test2.cl")
+
+# setup feature set used for training
+features = apoc.PredefinedFeatureSet.object_size_1_to_5_px.value
+
+# train classifier on folders
+apoc.train_classifier_from_image_folders(
+    segmenter, 
+    features, 
+    image = image_folder, 
+    ground_truth = masks_folder)
+#+end_src
+
+<<42eeee33-8f43-4191-99e7-efd60153c097>>
+** Prediction
+   :PROPERTIES:
+   :CUSTOM_ID: prediction
+   :END:
+After the training, we can apply the classifier to all images in the
+image folder. The following line reloads the classifier from disk. In
+that way we can ensure that it was stored correctly.
+
+<<481794d6-79a4-486f-b1f8-9bac2317da4e>>
+#+begin_src python
+segmenter = apoc.ObjectSegmenter(opencl_filename="test2.cl")
+#+end_src
+
+<<4e39322b-9a13-47b6-97c2-781f40a43bab>>
+#+begin_src python
+# show all images
+for i, filename in enumerate(file_list):
+    fig, axs = plt.subplots(1, 2, figsize=(15,15))
+    
+    image = imread(image_folder + filename)
+    cle.imshow(image, plot=axs[0])
+    
+    labels = segmenter.predict(image)
+    cle.imshow(labels, plot=axs[1], labels=True)
+    
+    plt.show()
+#+end_src
+
+[[file:dc812ecdec54f57748a626b570f42bc1205abff9.png]]
+
+[[file:aedf2188396872175756887785d9da1807ea6ec0.png]]
+
+[[file:2134e68806046fb89287360b57a00acf3773730e.png]]
+
+[[file:99e21b4a64f8f1bcbbc9d0fc7847bbd083bc9c72.png]]

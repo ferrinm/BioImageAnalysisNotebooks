@@ -1,0 +1,253 @@
+<<ac3fcb5f-a4dc-43ed-874e-754a1dcaddcf>>
+* Blob detection
+  :PROPERTIES:
+  :CUSTOM_ID: blob-detection
+  :END:
+A common procedure for local maxima detection on processed images is
+called Blob detection. It is typically applied to Difference-of-Gaussian
+(DoG), Laplacian-of-Gaussian (LoG) and Determinant-of-Hessian (DoH)
+images. We will use [[https://scikit-image.org][scikit-image]] functions
+for that. The advantage of these methods is that no pre-processing is
+necessary, it is built-in.
+
+See also
+
+- [[https://scikit-image.org/docs/stable/auto_examples/features_detection/plot_blob.html][Blob
+  detection (scikit-image tutorial)]]
+- [[https://www.youtube.com/watch?v=q6-NsNvu81w][Spot detection and
+  tracking (video)]]
+
+<<887c55f8-6f4d-483b-8c20-d1b097f3db16>>
+#+begin_src python
+from skimage.feature import blob_dog, blob_log, blob_doh
+
+import pyclesperanto_prototype as cle
+from skimage.io import imread, imshow
+from skimage.filters import gaussian 
+import matplotlib.pyplot as plt
+#+end_src
+
+<<22eeaa1b-4dde-4d8b-817b-0179de35e8e5>>
+We start by loading an image and cropping a region for demonstration
+purposes. We used image set
+[[https://bbbc.broadinstitute.org/BBBC007][BBBC007v1]] image set version
+1 (Jones et al., Proc. ICCV Workshop on Computer Vision for Biomedical
+Image Applications, 2005), available from the Broad Bioimage Benchmark
+Collection [Ljosa et al., Nature Methods, 2012].
+
+<<dae02e13-2578-46af-a3d9-633115f68b5b>>
+#+begin_src python
+image = imread("../../data/BBBC007_batch/A9 p7d.tif")[-100:, 0:100]
+
+cle.imshow(image)
+#+end_src
+
+[[file:088dbf9b951cb7c727a414ec62954866e699fe96.png]]
+
+<<ea02e586-c99e-456b-bc31-ea240b0e91c8>>
+For technial reasons it is important to convert the pixel type of this
+image first
+([[https://forum.image.sc/t/how-to-use-scikit-images-blob-dog/75150][see
+this discussion]]) and
+[[https://github.com/scikit-image/scikit-image/issues/6657][this github
+issue]].
+
+<<5e967d4d-74c0-4a31-950f-005c09082f7d>>
+#+begin_src python
+image = image.astype(float)
+#+end_src
+
+<<1bd60cc2-9930-4834-9b6a-25d98309ded1>>
+** Difference-of-Gaussian (DoG)
+   :PROPERTIES:
+   :CUSTOM_ID: difference-of-gaussian-dog
+   :END:
+The DoG technique consists of two Gaussian-blur operations applied to an
+image. The resulting images are subtracted from each other resulting in
+an image where objects smaller and larger than a defined size or =sigma=
+range are removed. In this image, local maxima are detected. Read more
+in the documentation of
+[[https://scikit-image.org/docs/stable/api/skimage.feature.html#skimage.feature.blob_dog][=blob_dog=]].
+
+<<a970f6cf-c2f8-493f-bd8b-f8649ad7ec32>>
+#+begin_src python
+coordinates_dog = blob_dog(image, min_sigma=1, max_sigma=10, threshold=1)
+coordinates_dog
+#+end_src
+
+#+begin_example
+array([[10.    , 30.    ,  4.096 ],
+       [24.    , 85.    ,  4.096 ],
+       [42.    , 39.    ,  4.096 ],
+       [11.    ,  0.    ,  4.096 ],
+       [87.    , 35.    ,  4.096 ],
+       [71.    , 85.    ,  4.096 ],
+       [32.    , 71.    ,  4.096 ],
+       [46.    ,  0.    ,  1.    ],
+       [ 9.    , 58.    ,  4.096 ],
+       [78.    , 18.    ,  6.5536],
+       [81.    , 85.    ,  1.6   ],
+       [99.    , 90.    ,  2.56  ],
+       [ 0.    , 99.    ,  6.5536],
+       [51.    , 41.    ,  1.6   ],
+       [52.    ,  0.    ,  1.    ],
+       [16.    , 99.    ,  1.6   ],
+       [99.    , 81.    ,  1.6   ],
+       [41.    , 27.    ,  1.    ],
+       [34.    , 37.    ,  1.    ],
+       [16.    ,  8.    ,  1.    ],
+       [46.    , 25.    ,  1.    ],
+       [99.    , 49.    ,  1.    ],
+       [99.    , 45.    ,  1.    ]])
+#+end_example
+
+<<fdb88e69-94b2-4095-acff-f4e3abf2d8cf>>
+#+begin_src python
+coordinates_dog.shape
+#+end_src
+
+#+begin_example
+(23, 3)
+#+end_example
+
+<<8b094697-22e0-46bb-8fb9-7e4008f6a668>>
+This array contains coordinates in x and y and the sigma corresponding
+to the maximum. We can extract the list of coordinates and visualize it.
+
+<<856eef1d-ea76-449f-93d0-a1d75bb4e624>>
+#+begin_src python
+cle.imshow(image, continue_drawing=True)
+plt.plot(coordinates_dog[:, 1], coordinates_dog[:, 0], 'r.')
+#+end_src
+
+#+begin_example
+[<matplotlib.lines.Line2D at 0x1a509079a00>]
+#+end_example
+
+[[file:12521f87ee7b25525ca2a0a36a87a6c7efcda29e.png]]
+
+<<3d1816f4-fdc9-447b-8115-9affcd7d0eff>>
+** Laplacian-of-Gaussian (LoG)
+   :PROPERTIES:
+   :CUSTOM_ID: laplacian-of-gaussian-log
+   :END:
+The LoG technique is a Laplacian kernel applied to a Gaussian blurred
+image. In the resulting image, objects with a given size can be detected
+more easily because noise has been remove and edges enhanced.
+
+<<7b91d818-e660-415a-aae3-3cbbd82f3ba7>>
+#+begin_src python
+coordinates_log = blob_log(image, min_sigma=1, max_sigma=10, num_sigma=10, threshold=1)
+coordinates_log
+#+end_src
+
+#+begin_example
+array([[10., 30.,  5.],
+       [23., 85.,  4.],
+       [43., 38.,  6.],
+       [11.,  0.,  6.],
+       [71., 85.,  6.],
+       [87., 35.,  5.],
+       [ 9., 58.,  5.],
+       [46.,  0.,  1.],
+       [77., 17.,  7.],
+       [81., 85.,  2.],
+       [99., 90.,  3.],
+       [ 0., 99.,  8.],
+       [51., 41.,  2.],
+       [52.,  0.,  1.],
+       [16., 99.,  3.],
+       [87., 19.,  2.],
+       [99., 81.,  2.],
+       [41., 27.,  1.],
+       [34., 36.,  1.],
+       [56., 38.,  1.],
+       [17.,  8.,  1.],
+       [46., 25.,  1.],
+       [35., 44.,  1.],
+       [56., 33.,  1.],
+       [62., 83.,  1.],
+       [99., 49.,  2.],
+       [99., 45.,  1.],
+       [82., 95.,  1.],
+       [99., 42.,  1.]])
+#+end_example
+
+<<4e677c27-7048-4187-bd1f-bedddeb12c2f>>
+#+begin_src python
+cle.imshow(image, continue_drawing=True)
+plt.plot(coordinates_log[:, 1], coordinates_log[:, 0], 'r.')
+#+end_src
+
+#+begin_example
+[<matplotlib.lines.Line2D at 0x1a5090b3a90>]
+#+end_example
+
+[[file:16f1a7dc5e54eca76112d2f2876ba87b2fe585a6.png]]
+
+<<9f30591e-990f-4067-b63a-29138346a5c5>>
+** Determinant-of-Hessian (DoH)
+   :PROPERTIES:
+   :CUSTOM_ID: determinant-of-hessian-doh
+   :END:
+This approach works by determining maxima in the Hessian determinant
+image of a Gaussian blurred image of the original
+([[https://scikit-image.org/docs/stable/api/skimage.feature.html#skimage.feature.blob_doh][read
+more]]).
+
+<<cd62eeb9-8871-4c11-baad-a37a41eb426d>>
+#+begin_src python
+coordinates_doh = blob_doh(image, min_sigma=1, max_sigma=10, num_sigma=10, threshold=1)
+coordinates_doh
+#+end_src
+
+#+begin_example
+array([[25., 85., 10.],
+       [43., 37., 10.],
+       [86., 34.,  8.],
+       [71., 85., 10.],
+       [ 0., 30., 10.],
+       [31., 70.,  9.],
+       [ 0., 77., 10.],
+       [76., 16., 10.],
+       [ 0., 57.,  9.],
+       [ 1., 93.,  5.],
+       [97., 89.,  3.],
+       [ 0., 44.,  6.],
+       [71., 29.,  9.],
+       [ 0.,  0.,  9.],
+       [19., 16., 10.],
+       [95., 22.,  9.],
+       [62.,  0., 10.],
+       [92.,  0., 10.],
+       [28., 50., 10.],
+       [41., 81.,  9.],
+       [30., 25., 10.],
+       [59., 72., 10.],
+       [43., 58., 10.],
+       [85., 95.,  9.],
+       [88., 74., 10.],
+       [17., 34.,  5.],
+       [74., 45., 10.],
+       [98., 84.,  1.],
+       [53., 11., 10.],
+       [99., 43.,  9.],
+       [35., 98.,  9.],
+       [58., 49.,  9.],
+       [57., 99.,  9.],
+       [10., 99.,  7.],
+       [57., 34.,  3.],
+       [32.,  0., 10.]])
+#+end_example
+
+<<8612d04e-fdaa-493a-a1b4-b6166f3580bf>>
+#+begin_src python
+cle.imshow(image, continue_drawing=True)
+plt.plot(coordinates_doh[:, 1], coordinates_doh[:, 0], 'r.')
+#+end_src
+
+#+begin_example
+[<matplotlib.lines.Line2D at 0x1a5090d0310>]
+#+end_example
+
+[[file:9772ec80155fb9242b156ff9c0a7c215d5b16374.png]]

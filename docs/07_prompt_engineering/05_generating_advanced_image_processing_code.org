@@ -1,0 +1,289 @@
+<<c67dbc8f-feb8-4624-a15c-607110335ba9>>
+** Generating advanced image analysis code
+   :PROPERTIES:
+   :CUSTOM_ID: generating-advanced-image-analysis-code
+   :END:
+In case chatGPT is not aware how to do specific image processing steps,
+we need to provide further details. In this notebook we ask it to
+generate code that segments blobs and connects close neighbors using a
+mesh. This meshing-operation is more challenging and thus, we do it in
+two attempts: First, we provide a simple prompt just asking for doing
+it. In a second attempt, we provide details how to do it in more detail.
+
+Note: Executing this notebook multiple times may lead to the OpenAI API
+crashing with an error mentioning that the service is saturated. It
+presumably blocks repetetive requests with identical prompts. In that
+case, wait for some time before trying again.
+
+We define a helper function for making prompts first.
+
+<<518133ff-0959-42ac-a184-f2f464959b47>>
+#+begin_src python
+import openai
+import matplotlib.pyplot as plt
+
+def prompt(message:str, model="gpt-3.5-turbo"):
+    """A prompt helper function that sends a message to openAI
+    and returns only the text response.
+    """
+    client = openai.OpenAI()
+    response = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": message}]
+    )
+    return response.choices[0].message.content
+#+end_src
+
+<<7ca10c71-b1f2-4e88-8953-173dc25f6fef>>
+A /simple/ task could be described like in the following. We explictly
+specify that this should execute from Jupyter to prevent windows popping
+up.
+
+<<eb9dbef3-51b1-4327-8d59-892105f33b5c>>
+#+begin_src python
+simple_question = """
+Write Python code only and no additional explanatory text.
+
+Write a python program, that 
+* loads the file `../../data/blobs.tif`,
+* labels objects in this image,
+* and draws a mesh between labels with a maximum distance of 50 pixels.
+
+Assume this program would be executed in a Jupyter notebook.
+It is not necessary to save the results. Show the results in Jupyter.
+"""
+#+end_src
+
+<<e2149659-ce57-4133-b2b8-954f04966dac>>
+The generated code looks like this.
+
+<<5c0ff948-5400-4d21-aa98-8f46c3ac80da>>
+#+begin_src python
+print(prompt(simple_question))
+#+end_src
+
+#+begin_example
+import matplotlib.pyplot as plt
+from skimage import io, morphology, measure
+
+# Load the image
+image = io.imread('../../data/blobs.tif')
+
+# Threshold the image
+thresh = image > 150
+
+# Label objects in the thresholded image
+labels = measure.label(thresh)
+
+# Draw a mesh between labels with a maximum distance of 50 pixels
+mesh = morphology.dilation(labels) ^ labels
+
+# Show the results
+fig, axes = plt.subplots(ncols=2, figsize=(10, 5))
+axes[0].imshow(image, cmap='gray')
+axes[0].set_title('Original Image')
+axes[0].axis('off')
+axes[1].imshow(mesh, cmap='gray')
+axes[1].set_title('Mesh between labels')
+axes[1].axis('off')
+plt.show()
+#+end_example
+
+<<efc48129-6939-49a7-9041-d5385bfef0c2>>
+Now we provide more details. We explictly state that the code should be
+like if it was written by a professional. We also give hints for how to
+solve the image analysis problem.
+
+<<c023fcb2-6b20-423e-9f9b-d61f87c1d02f>>
+#+begin_src python
+more_sophisticated_question = """
+Please program some python code like a professional would. 
+Write Python code only and no additional explanatory text.
+
+Write a python program, that 
+* loads the file `../../data/blobs.tif`,
+* labels objects using voronoi-otsu-labeling,
+* and draws a mesh between labels with a maximum distance of 50 pixels.
+
+I have this code snippet for segmenting an image:
+import pyclesperanto_prototype as cle
+label_image = cle.voronoi_otsu_labeling(image)
+
+And this is the code snippet for drawing a mesh between objects in a label image:
+mesh = cle.draw_mesh_between_proximal_labels(labels, maximum_distance:int)
+
+Assume this program would be executed in a Jupyter notebook.
+It is not necessary to save the results. Show the results in Jupyter.
+"""
+#+end_src
+
+<<01569912-2124-404b-bb50-c3b046c74ec8>>
+#+begin_src python
+print(prompt(more_sophisticated_question))
+#+end_src
+
+#+begin_example
+import pyclesperanto_prototype as cle
+import matplotlib.pyplot as plt
+
+# Load the image
+image = cle.imread('../../data/blobs.tif')
+
+# Label the objects using voronoi-otsu-labeling
+label_image = cle.voronoi_otsu_labeling(image)
+
+# Draw a mesh between labels with a maximum distance of 50 pixels
+mesh = cle.draw_mesh_between_proximal_labels(label_image, maximum_distance=50)
+
+# Display the label image and mesh
+plt.figure(figsize=(10, 5))
+plt.subplot(1, 2, 1)
+plt.imshow(cle.imshow(image))
+plt.title('Original Image')
+plt.axis('off')
+
+plt.subplot(1, 2, 2)
+plt.imshow(cle.imshow(mesh))
+plt.title('Mesh Between Labels')
+plt.axis('off')
+
+plt.show()
+#+end_example
+
+<<8a7eac1a-9433-4ea0-9e30-aff0ab5a583d>>
+** Batch prompting
+   :PROPERTIES:
+   :CUSTOM_ID: batch-prompting
+   :END:
+We now run the same two prompts multiple times, collect the code and
+test if it executes successfully.
+
+<<71b871fd-321c-4fb9-8495-fed543db86fd>>
+#+begin_src python
+def test_code(question, num_executions = 10):
+    """
+    Asks chatGPT for code n times and executes it. 
+    It returns the number of attempts when it caused an error and the total number of attempts.
+    """
+    import time
+    import random
+
+    num_errors = 0
+    for i in range(num_executions):
+        print("Attempt", i + 1)
+        
+        # sleep for a moment to prevent openAI blocking us right away
+        sleep_duration = random.uniform(60, 120)
+        time.sleep(sleep_duration)
+        
+        # ask for code
+        code = prompt(question)
+        
+        # clean it a bit
+        code = code.replace("```python", "").replace("```", "")
+
+        # execute it
+        try:
+            exec(code)
+        except:
+            num_errors += 1
+    return num_errors, num_executions
+#+end_src
+
+<<37b2e7e3-fd11-4050-883d-35cba3b3fe2d>>
+#+begin_src python
+num_errors_simple, num_executions = test_code(simple_question)
+#+end_src
+
+#+begin_example
+Attempt 1
+Attempt 2
+Attempt 3
+Attempt 4
+Attempt 5
+Attempt 6
+Attempt 7
+Attempt 8
+Attempt 9
+#+end_example
+
+[[file:d69412857b6477abdd08716db25c66ec9c7ddb4e.png]]
+
+[[file:d1617ce3fae6189bf0020dd39bda2f834ec40123.png]]
+
+[[file:b82d830fdb35d9086a2320ce540143d21818d47d.png]]
+
+#+begin_example
+Attempt 10
+#+end_example
+
+<<093d1142-4209-4b8f-8609-96e2f51ae474>>
+#+begin_src python
+num_errors_sophisticated, num_executions = test_code(more_sophisticated_question)
+#+end_src
+
+#+begin_example
+Attempt 1
+#+end_example
+
+[[file:82e82808aad3c24a31f6776f691fb782fb1c24cf.png]]
+
+#+begin_example
+Attempt 2
+#+end_example
+
+[[file:cb45f2e69ac7078729adbf64e6d9aec7baa7f941.png]]
+
+[[file:46e3cb0d0f6cb5d07de31d9906e440b15345995e.png]]
+
+[[file:2d4e2fd6e554b05aac69962622c8cf6d530dc233.png]]
+
+#+begin_example
+Attempt 3
+Attempt 4
+#+end_example
+
+[[file:f8cef03f484ef0eabd8a62e973da93884472afe6.png]]
+
+#+begin_example
+Attempt 5
+Attempt 6
+Attempt 7
+Attempt 8
+#+end_example
+
+[[file:c429003ce8efa0ec8e2ed1bde659e711e5afaa37.png]]
+
+#+begin_example
+Attempt 9
+#+end_example
+
+[[file:2df6053266b8586b3d53fb3d447767f3b8d0be6a.png]]
+
+[[file:d7bdff01df74a1991b5088562ded7541bae10817.png]]
+
+#+begin_example
+Attempt 10
+#+end_example
+
+<<efb3707b-0a12-4536-93b2-68bd87df186f>>
+#+begin_src python
+print("There were ", 
+      num_errors_simple, 
+      "errors while executing code after asking the simple question for", 
+      num_executions, "times.")
+
+print("There were ", 
+      num_errors_sophisticated, 
+      "errors while executing code after asking the more sophisticated question for", 
+      num_executions, "times.")
+#+end_src
+
+#+begin_example
+There were  9 errors while executing code after asking the simple question for 10 times.
+There were  5 errors while executing code after asking the more sophisticated question for 10 times.
+#+end_example
+
+<<717289f5-492f-4ac8-a196-52cd4025ddc3>>
+#+begin_src python
+#+end_src

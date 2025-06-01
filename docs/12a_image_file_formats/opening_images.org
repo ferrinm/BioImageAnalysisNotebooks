@@ -1,0 +1,96 @@
+<<3d8de6ee-1972-44d0-8122-bcd296b5d29f>>
+* Opening image data
+  :PROPERTIES:
+  :CUSTOM_ID: opening-image-data
+  :END:
+The first go-to library for opening image data is the
+[[https://scikit-image.org][scikit-image]] library. It comes with two
+functions, =imread= and =imshow= for reading and visualizing image data.
+It processes various file formats such as =.tif=. If it does not manage
+to open your image data properly, you need to search for customized
+solutions.
+
+<<71ad855d-636e-40e9-aec5-08b8a76e4df8>>
+#+begin_src python
+from skimage.io import imread, imshow
+import numpy as np
+#+end_src
+
+<<9d510644-d07f-4d5c-8406-d66bcbf87e9a>>
+#+begin_src python
+image = imread('../../data/blobs.tif')
+image.shape
+#+end_src
+
+#+begin_example
+(254, 256)
+#+end_example
+
+<<7c65651c-d237-4fcf-80c3-c0c825a0d877>>
+#+begin_src python
+imshow(image)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x196702bc280>
+#+end_example
+
+[[file:7dddae89ea316eecb9349194c32d02decb0cec4d.png]]
+
+<<85cac545-480d-4ac2-8b6c-58bef77daf7a>>
+** Reading meta data
+   :PROPERTIES:
+   :CUSTOM_ID: reading-meta-data
+   :END:
+When processing microscopy image data, it is quite important to respect
+the voxel size of image data. In particular when volumes should be
+computed in cubic microns, it is key to know how large a voxel is in X,
+Y and Z.
+
+<<172f8866-12bf-47f0-8372-c654ef38ec35>>
+#+begin_src python
+filename = "../../data/EM_C_6_c0.tif"
+
+image_3d = imread(filename)
+image_3d.shape
+#+end_src
+
+#+begin_example
+(256, 256, 256)
+#+end_example
+
+<<a9b7635a-768c-4f80-a5cc-bc6b73268660>>
+The following helper function was written for ImageJ Tif images. IT
+allows us to read the voxel size from the TIF file's metadata.
+[[https://github.com/napari/napari/issues/5165#issuecomment-1268525176][Source]].
+
+<<71ff047c-55a5-4892-a899-d2d259fa71d7>>
+#+begin_src python
+def get_voxel_size_from_imagej_tiff(filename):
+    """ Opens the metadata of a tiff file and returns the voxels size as (z,y,x)"""
+    from PIL import Image
+    from PIL.ExifTags import TAGS
+
+    # format the meta data so that we can read it easily
+    with Image.open(filename) as img:
+        meta_dict = {}
+        for key in img.tag.keys():
+            if key in TAGS.keys():
+                meta_dict[TAGS[key]] = img.tag[key]
+                
+    # read out voxel size from meta data
+    z = [w[8:] for w in meta_dict['ImageDescription'][0].split("\n") if w.startswith('spacing')]
+    x = 1/ (meta_dict["XResolution"][0][0]/meta_dict["XResolution"][0][1])
+    y = 1/ (meta_dict["YResolution"][0][0]/meta_dict["YResolution"][0][1])
+
+    return float(z[0]), float("%.4f" % y), float("%.4f" % x)
+#+end_src
+
+<<46515906-a0e0-47fd-ac90-c38f577809ea>>
+#+begin_src python
+get_voxel_size_from_imagej_tiff(filename)
+#+end_src
+
+#+begin_example
+(0.16784672897196262, 0.1678, 0.1678)
+#+end_example

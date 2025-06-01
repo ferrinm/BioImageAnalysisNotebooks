@@ -1,0 +1,55 @@
+<<5e80cfda-ddb8-4331-8364-bc208c742d68>>
+(image_segmentation.split_touching_objects)
+
+* Split touching objects
+  :PROPERTIES:
+  :CUSTOM_ID: split-touching-objects
+  :END:
+In this section we will split objects in binary images that have a
+roundish shape and touch each other. We will use the napari plugin
+[[https://github.com/haesleinhuepf/napari-segment-blobs-and-things-with-membranes][napari-segment-blobs-and-things-with-membranes]].
+Under the hood, this plugins uses functions from
+[[http://scikit-image.org/][scikit-image]].
+
+<<ccf46dfe-a974-4f18-a11d-006791e7be46>>
+#+begin_src python
+from napari_segment_blobs_and_things_with_membranes import threshold_otsu, split_touching_objects
+from skimage.io import imread
+from skimage import data
+from pyclesperanto_prototype import imshow
+#+end_src
+
+<<4b0d6b44-0d78-467b-bed7-071f67819f56>>
+Starting point for this is a binary image, e.g. made using
+[[image-segmentation:thresholding][thresholding]].
+
+<<1dbc1a5e>>
+#+begin_src python
+blobs = imread('../../data/blobs.tif')
+
+binary = threshold_otsu(blobs)
+
+imshow(binary)
+#+end_src
+
+[[file:68cdfeff3d0ae397845fda0f25a4d68496044199.png]]
+
+<<63e40577>>
+We can then split the touching object by only taking the binary image
+into account. The underlying algorithm aims to produce similar results
+to
+[[https://imagej.nih.gov/ij/docs/menus/process.html#watershed][ImageJ's
+binary watershed algorithm]] and the implementation here also works in
+3D.
+
+<<a4740a57>>
+#+begin_src python
+split_objects = split_touching_objects(binary)
+imshow(split_objects)
+#+end_src
+
+[[file:7044ca4f7a9ca78db6f02bf4b684294f2d2066f8.png]]
+
+<<5ed59887-f13f-4ca9-bee3-b2fda27ecbc5>>
+#+begin_src python
+#+end_src

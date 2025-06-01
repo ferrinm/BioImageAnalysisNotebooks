@@ -1,0 +1,466 @@
+<<fe523554-3c40-4b37-9978-f66046e41470>>
+#+begin_src python
+from skimage.io import imread
+import pyclesperanto_prototype as cle
+import matplotlib.pyplot as plt
+from cellpose import models, io
+from csbdeep.utils import normalize
+from napari_simpleitk_image_processing import label_statistics
+from napari_segment_blobs_and_things_with_membranes import seeded_watershed
+import pandas as pd
+import seaborn as sns
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+from sklearn.mixture import GaussianMixture
+from sklearn.cluster import KMeans
+import numpy as np
+#+end_src
+
+<<2d3e14bc-edb0-4927-89b7-b23a3bbfec73>>
+#+begin_src python
+def show_crop(image, labels=False, color_map=None):
+    """Helper function for visualizing the whole image next to a crop"""
+    cropped_image = cle.pull(image)[800:1400, 500:1100]
+
+    fix, axs = plt.subplots(1, 2, figsize=(15,15))
+
+    cle.imshow(image, plot=axs[0], labels=labels, color_map=color_map)
+    cle.imshow(cropped_image, plot=axs[1], labels=labels, color_map=color_map)
+    
+    
+#+end_src
+
+<<dfcd2be0-0a3e-4405-abe0-832424eb43c5>>
+Esteban et al shared under CC-BY 4.0
+[[https://creativecommons.org/licenses/by/4.0/]]
+
+Data Link/DOI: [[https://doi.org/10.17867/10000174]]
+
+<<14f2c3c3-adaf-4ba5-af60-6020c317e61b>>
+#+begin_src python
+multi_channel_image = imread("../../data/E39.lif [E4] - 2.png")
+multi_channel_image.shape
+#+end_src
+
+#+begin_example
+(1616, 1682, 4)
+#+end_example
+
+<<067ec440-36cf-4b2d-bed4-62287e46094b>>
+#+begin_src python
+nuclei_channel_image = multi_channel_image[:,:,2]
+
+show_crop(nuclei_channel_image)
+#+end_src
+
+[[file:d64ab0ac48bacd83834deb2052ffab7052e60687.png]]
+
+<<7bd3234d-fbf9-4fb1-939f-fe71311c0f21>>
+#+begin_src python
+membrane_channel_image = multi_channel_image[:,:,1]
+
+show_crop(membrane_channel_image)
+#+end_src
+
+[[file:207b53d2fba2186672b2506dff9c36dfaba9d703.png]]
+
+<<f8da92f9-e75e-4752-bbba-f5b4b3bade91>>
+#+begin_src python
+nuclei_labels = cle.voronoi_otsu_labeling(nuclei_channel_image, spot_sigma=4)
+
+show_crop(nuclei_labels, labels=True)
+#+end_src
+
+[[file:219ba302ed0085b2099dfb5e58ca7d1fb2e52578.png]]
+
+<<7fa34a20-7791-419a-b2b0-8226c48635ed>>
+#+begin_src python
+print("Number of nuclei", nuclei_labels.max())
+#+end_src
+
+#+begin_example
+Number of nuclei 615.0
+#+end_example
+
+<<54bb31cf-b643-4ce6-ae79-c9153d9d3374>>
+#+begin_src python
+cell_labels = cle.exclude_labels_on_edges(
+    seeded_watershed(membrane_channel_image, nuclei_labels)
+)
+show_crop(cell_labels, labels=True)
+#+end_src
+
+[[file:c2590c7484f72271f1e858bfd5f09ec84979dc0f.png]]
+
+<<2cdaf269-eb8b-47d5-af73-eeaa2810cfa9>>
+#+begin_src python
+print("Number of nuclei", cell_labels.max())
+#+end_src
+
+#+begin_example
+Number of nuclei 597.0
+#+end_example
+
+<<22d7fcac-837e-447f-9dd4-0d37bee72d62>>
+#+begin_src python
+statistics = label_statistics(membrane_channel_image, cell_labels,
+                             intensity=True,
+                             perimeter=True,
+                             shape=True)
+
+statistics.keys()
+#+end_src
+
+#+begin_example
+dict_keys(['label', 'maximum', 'mean', 'median', 'minimum', 'sigma', 'sum', 'variance', 'elongation', 'feret_diameter', 'flatness', 'roundness', 'equivalent_ellipsoid_diameter_0', 'equivalent_ellipsoid_diameter_1', 'equivalent_spherical_perimeter', 'equivalent_spherical_radius', 'number_of_pixels', 'number_of_pixels_on_border', 'perimeter', 'perimeter_on_border', 'perimeter_on_border_ratio'])
+#+end_example
+
+<<bacd3365-76a1-4bf4-bea5-bb55cd874c48>>
+#+begin_src python
+table = pd.DataFrame(statistics)[['mean', 'sigma', 'elongation', 'feret_diameter', 'flatness','roundness', 'number_of_pixels']]
+table
+#+end_src
+
+#+begin_example
+          mean     sigma  elongation  feret_diameter  flatness  roundness  \
+0    10.296167  5.327664    2.081825       28.792360  2.081825   0.773051   
+1     2.780115  1.414019    1.969280       36.496575  1.969280   0.797266   
+2     6.276657  3.751470    1.279357       26.172505  1.279357   0.834182   
+3     6.228637  3.183568    1.422571       28.600699  1.422571   0.896697   
+4     8.095427  4.355566    1.490810       34.655447  1.490810   0.888096   
+..         ...       ...         ...             ...       ...        ...   
+592  19.897959  3.150694    2.834289       14.035669  2.834289   0.724192   
+593   2.899651  4.661415    1.125834       47.381431  1.125834   0.794405   
+594  14.477372  5.571820    1.650344       42.426407  1.650344   0.814952   
+595  13.119929  5.436080    2.628860       46.647615  2.628860   0.737590   
+596   3.319055  5.179282    1.374781       53.263496  1.374781   0.786876   
+
+     number_of_pixels  
+0                 287  
+1                 523  
+2                 347  
+3                 433  
+4                 503  
+..                ...  
+592                49  
+593              1146  
+594               685  
+595               567  
+596              1354  
+
+[597 rows x 7 columns]
+#+end_example
+
+<<44fa721f-3e83-4bab-baee-891303461d76>>
+** Studying spatial distribution of measurements
+   :PROPERTIES:
+   :CUSTOM_ID: studying-spatial-distribution-of-measurements
+   :END:
+
+<<e6bc1662-e998-428f-a800-c533495ac273>>
+#+begin_src python
+# the [0] is a placeholder for the elongation of the background
+elongation_vector = [0] + table['elongation'].tolist()
+
+elongation_map = cle.replace_intensities(cell_labels, elongation_vector)
+
+show_crop(elongation_map)
+#+end_src
+
+[[file:ccc3bcc65970b27f5dfa9c38b427c8065aaceaa4.png]]
+
+<<07db73cc-14ab-4a96-8eb4-325d0458fd88>>
+#+begin_src python
+area_map = cle.pixel_count_map(cell_labels)
+show_crop(area_map)
+#+end_src
+
+[[file:42c5ef99a233c85d3d961936ecbb5024e6df1d08.png]]
+
+<<c5203937-b73d-4b62-a28f-c285e520c351>>
+#+begin_src python
+touching_neighbor_count_map = cle.touching_neighbor_count_map(cell_labels)
+show_crop(touching_neighbor_count_map)
+#+end_src
+
+[[file:ecab6539bbee6ea7bd7431b95d69095b1e23f1c2.png]]
+
+<<90e92750-5ae1-4e77-b47f-2f241334a388>>
+#+begin_src python
+proximal_neighbor_count_map = cle.proximal_neighbor_count_map(cell_labels, max_distance=30)
+show_crop(proximal_neighbor_count_map)
+#+end_src
+
+[[file:57ad6e4901a9cfb0279ff4d7c1d0bfb6815ff7ff.png]]
+
+<<551a0ff4-b7ef-4f89-a78a-4178dfc5d43d>>
+#+begin_src python
+neighbor_distance_map = cle.average_distance_of_n_nearest_neighbors_map(cell_labels, n=6)
+
+show_crop(neighbor_distance_map, color_map="jet")
+#+end_src
+
+[[file:ca7ffd5118b13888be4eac131c7184a3d90a0575.png]]
+
+<<67390162-17b4-4169-bd53-41000cf4083c>>
+#+begin_src python
+number_of_touching_neighbors = cle.read_intensities_from_map(cell_labels, touching_neighbor_count_map)
+number_of_proximal_neighbors = cle.read_intensities_from_map(cell_labels, proximal_neighbor_count_map)
+neighbor_distances = cle.read_intensities_from_map(cell_labels, neighbor_distance_map)
+
+# Remove place holder for background
+proximal_neighbor_count_vector = np.asarray(number_of_proximal_neighbors)[0,1:].tolist()
+touching_neighbor_count_vector = np.asarray(number_of_touching_neighbors)[0,1:].tolist()
+neighbor_distance_count_vector = np.asarray(neighbor_distances)[0,1:].tolist()
+
+table['proximal_neighbor_count_vector'] = proximal_neighbor_count_vector
+table['touching_neighbor_count_vector'] = touching_neighbor_count_vector
+table['neighbor_distance_count_vector'] = neighbor_distance_count_vector
+
+len(proximal_neighbor_count_vector)
+#+end_src
+
+#+begin_example
+597
+#+end_example
+
+<<f34e3963-8764-4596-aa34-68d0ff33f529>>
+** Studying relationships between parameters
+   :PROPERTIES:
+   :CUSTOM_ID: studying-relationships-between-parameters
+   :END:
+
+<<28b32b54-8923-4558-886a-5c77b7bfbd8d>>
+#+begin_src python
+g = sns.PairGrid(table)
+g.map(sns.scatterplot)
+#+end_src
+
+#+begin_example
+<seaborn.axisgrid.PairGrid at 0x7fd5226b87f0>
+#+end_example
+
+[[file:f5c8d7048980e6b2146b84245d8bbd51107d3284.png]]
+
+<<81f3796c-9d98-4532-85aa-8184d4076474>>
+#+begin_src python
+roundness = table['roundness']
+mean = table['mean']
+
+plt.scatter(mean, roundness)
+plt.xlabel("mean")
+plt.ylabel("roundness")
+plt.show()
+#+end_src
+
+[[file:2fc9a85c858e2a0c50b6c2c5a2951f9025fae3fd.png]]
+
+<<8b59c78e-54ff-471c-9417-84c762d7047b>>
+** Manual clustering using thresholds
+   :PROPERTIES:
+   :CUSTOM_ID: manual-clustering-using-thresholds
+   :END:
+
+<<a6a0080f-daf9-45a8-a2bc-e9bb2e65c310>>
+#+begin_src python
+mean_high_vector = (mean > 8) * 1 + 1
+
+mean_high_map = cle.replace_intensities(cell_labels, np.asarray([0] + mean_high_vector.tolist()))
+#show_crop(mean_high_map)
+
+# cle.imshow(mean_high_map, color_map='jet', min_display_intensity=0, max_display_intensity=3)
+show_crop(mean_high_map, labels=True)
+#+end_src
+
+[[file:9f31d5e0d39eff5e24f93d4b18bb47577ceb97df.png]]
+
+<<8dda1749-da71-46d0-a5a2-42bf22a34ee1>>
+#+begin_src python
+np.min(mean_high_map)
+#+end_src
+
+#+begin_example
+0.0
+#+end_example
+
+<<b39c844f-c28e-427a-8cb7-b0c4e0d6385a>>
+#+begin_src python
+np.max(mean_high_map)
+#+end_src
+
+#+begin_example
+2.0
+#+end_example
+
+<<e46e14b7-62bc-4554-8762-8417b106770f>>
+** Scaling
+   :PROPERTIES:
+   :CUSTOM_ID: scaling
+   :END:
+
+<<8718869f-bd71-40c1-8151-59722bc0b5f7>>
+#+begin_src python
+data = np.asarray([
+    table['mean'],
+    table['roundness'],
+]).T
+
+scaler = StandardScaler()
+scaler.fit(data)
+normalized_data = scaler.transform(data)
+
+plt.scatter(normalized_data[:,0], normalized_data[:,1])
+plt.xlabel("mean")
+plt.ylabel("roundness")
+plt.show()
+#+end_src
+
+[[file:eb542bd14d7fb90a33accf7cda088fca305eb076.png]]
+
+<<4257757b-a058-4fea-a7c8-df53775cac66>>
+** Gaussian mixture model
+   :PROPERTIES:
+   :CUSTOM_ID: gaussian-mixture-model
+   :END:
+
+<<cffe75aa-0346-4c43-befe-ff01e2530108>>
+#+begin_src python
+num_classes = 2
+color_iter = ['navy', 'red', 'darkgreen', 'gold', 'darkorange']
+#+end_src
+
+<<cba5d275-b24d-4e90-9d73-493a8de76b4a>>
+#+begin_src python
+# fit a Gaussian Mixture Model
+gmm = GaussianMixture(n_components=num_classes, covariance_type='full')
+gmm.fit(normalized_data)
+
+# prediction
+gmm_prediction = gmm.predict(normalized_data)
+#+end_src
+
+<<1ed7b2f9-f15d-4b27-9c38-f73ad9fc0d63>>
+#+begin_src python
+for i in range(num_classes):
+    #splot = plt.subplot(2, 1, 1 + index)
+    color = color_iter[i]
+    plt.scatter(normalized_data[gmm_prediction == i, 0], normalized_data[gmm_prediction == i, 1], color=color)
+
+plt.xlabel("mean")
+plt.ylabel("roundness")
+plt.show()
+#+end_src
+
+[[file:509fb4f3d9afbb40691f8f40abdce660c632b90c.png]]
+
+<<6c2d9ed5-7111-49df-a122-393a901fac6f>>
+#+begin_src python
+gmm_prediction_map = cle.replace_intensities(cell_labels, np.asarray([0] + (gmm_prediction + 1).tolist()))
+
+cle.imshow(gmm_prediction_map, labels=True)
+#+end_src
+
+[[file:bef8dbe88694a964ea2494b6d81c0b1ee339b223.png]]
+
+<<6db9dc04-7cb7-4f69-9cb3-701b70fa314c>>
+** K-means clustering
+   :PROPERTIES:
+   :CUSTOM_ID: k-means-clustering
+   :END:
+
+<<04a67643-53bc-465e-81bc-133fc8936df4>>
+#+begin_src python
+kmeans = KMeans(n_clusters=num_classes, random_state=0).fit(normalized_data)
+
+kmeans_prediction = kmeans.predict(normalized_data)
+#+end_src
+
+<<461ceedb-3dde-49d9-b970-21a49c1bdea6>>
+#+begin_src python
+for i in range(num_classes):
+    #splot = plt.subplot(2, 1, 1 + index)
+    color = color_iter[i]
+    plt.scatter(normalized_data[kmeans_prediction == i, 0], normalized_data[kmeans_prediction == i, 1], color=color)
+
+plt.xlabel("mean")
+plt.ylabel("roundness")
+plt.show()
+#+end_src
+
+[[file:6e3a2372e82e9d78600098eb2e84496d726c154c.png]]
+
+<<687896c5-89fc-43ea-9bae-75cbf3344f47>>
+#+begin_src python
+kmeans_prediction_map = cle.replace_intensities(cell_labels, np.asarray([0] + (kmeans_prediction + 1).tolist()))
+
+cle.imshow(kmeans_prediction_map, labels=True)
+#+end_src
+
+[[file:beb3c7a3e87eab98a4a244ab36c46f2820295838.png]]
+
+<<c9699b83-4f61-4f42-84a2-1323ceae34da>>
+** Applying clustering to the whole dataset
+   :PROPERTIES:
+   :CUSTOM_ID: applying-clustering-to-the-whole-dataset
+   :END:
+
+<<2b921e49-facf-4fcb-8f93-29ecbd4b9e61>>
+#+begin_src python
+data = np.asarray([
+    # intensity
+    table['mean'],
+    table['sigma'], 
+    
+    # shape and size
+    table['elongation'], 
+    table['feret_diameter'], 
+    table['flatness'],
+    table['roundness'], 
+    table['number_of_pixels'],
+    
+    # neighborhood statistics
+    table['proximal_neighbor_count_vector'],
+    table['touching_neighbor_count_vector'],
+    table['neighbor_distance_count_vector'],
+]).T
+#+end_src
+
+<<dc8d3c82-e248-4f57-aacf-72380fdc43d6>>
+#+begin_src python
+scaler = StandardScaler()
+scaler.fit(data)
+normalized_data = scaler.transform(data)
+#+end_src
+
+<<23734d8d-08c5-4128-b1ff-9862ea446950>>
+#+begin_src python
+num_classes = 5
+#+end_src
+
+<<dd9c33c9-4d27-494f-87fd-757e51b735e7>>
+#+begin_src python
+kmeans = KMeans(n_clusters=num_classes, random_state=0).fit(normalized_data)
+
+kmeans_prediction = kmeans.predict(normalized_data)
+#+end_src
+
+<<8b73c3e4-2021-4a67-8955-fcc2e529f367>>
+#+begin_src python
+kmeans_prediction_map = cle.replace_intensities(cell_labels, np.asarray([0] + (kmeans_prediction + 1).tolist()))
+
+cle.imshow(kmeans_prediction_map, labels=True)
+#+end_src
+
+[[file:eb7762a22d62a3d405b42d6284b4b62d1bb454be.png]]
+
+<<3750c29b-235c-433e-8aeb-f29135e26dfb>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Apply a Gaussian mixture models with 4 classes to the full dataset and
+visualzie the cell classification result
+
+<<df9c60cd-a531-4668-bb3d-901aa94f3ca3>>
+#+begin_src python
+#+end_src

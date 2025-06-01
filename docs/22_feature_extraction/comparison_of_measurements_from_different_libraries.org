@@ -1,0 +1,241 @@
+<<21c9c7c0-e43a-48d8-9393-3d373d4035c7>>
+* Comparison of measurements from different libraries
+  :PROPERTIES:
+  :CUSTOM_ID: comparison-of-measurements-from-different-libraries
+  :END:
+
+<<bcfc84c9-1709-4d75-840e-2f19d15e39d7>>
+We now compare the implementation of the measurement =perimeter= in
+[[https://github.com/haesleinhuepf/napari-skimage-regionprops][napari-skimage-regionprops]]
+=regionprops_table= and
+[[https://github.com/haesleinhuepf/napari-simpleitk-image-processing][napari-simpleitk-image-processing]]
+=label_statistics=.
+
+<<56f7ea8d-b46d-42f8-ab98-00cced843237>>
+#+begin_src python
+import numpy as np
+import pandas as pd
+from skimage.io import imread
+from pyclesperanto_prototype import imshow
+from skimage import filters
+from skimage import measure
+import matplotlib.pyplot as plt
+from napari_skimage_regionprops import regionprops_table
+from skimage import filters
+from napari_simpleitk_image_processing import label_statistics
+#+end_src
+
+#+begin_example
+C:\Users\maral\mambaforge\envs\feature_blogpost\lib\site-packages\morphometrics\measure\label.py:7: TqdmExperimentalWarning: Using `tqdm.autonotebook.tqdm` in notebook mode. Use `tqdm.tqdm` instead to force console mode (e.g. in jupyter console)
+  from tqdm.autonotebook import tqdm
+#+end_example
+
+<<599a6a28-49da-4161-94e3-b269df3e851e>>
+Therefore, we need an =image= and a =label image=.
+
+<<c0b1e5a3-7cbe-4ceb-adc2-fa46d0fcd736>>
+#+begin_src python
+# load image
+image = imread("../../data/blobs.tif")
+
+# denoising
+blurred_image = filters.gaussian(image, sigma=1)
+
+# binarization
+threshold = filters.threshold_otsu(blurred_image)
+thresholded_image = blurred_image >= threshold
+
+# labeling
+label_image = measure.label(thresholded_image)
+
+# visualization
+imshow(label_image, labels=True)
+#+end_src
+
+[[file:0eeae1b518d1acf7f0ca05db5c6a37d07ab7c057.png]]
+
+<<a64f2c50-b09e-4640-a265-ad51865c6055>>
+We derive the perimeter measurements using the =regionprops_table=
+function
+
+<<8bbc1ec2-1fa3-4455-a6da-07b22eda33f9>>
+#+begin_src python
+skimage_statistics = regionprops_table(image, label_image, perimeter = True)
+skimage_statistics
+#+end_src
+
+#+begin_example
+    label  area  bbox_area  equivalent_diameter  convex_area  max_intensity   
+0       1   429        750            23.371345          479          232.0  \
+1       2   183        231            15.264430          190          224.0   
+2       3   658        756            28.944630          673          248.0   
+3       4   433        529            23.480049          445          248.0   
+4       5   472        551            24.514670          486          248.0   
+..    ...   ...        ...                  ...          ...            ...   
+57     58   213        285            16.468152          221          224.0   
+58     59    79        108            10.029253           84          248.0   
+59     60    88        110            10.585135           92          216.0   
+60     61    52         75             8.136858           56          248.0   
+61     62    48         68             7.817640           53          224.0   
+
+    mean_intensity  min_intensity  perimeter  perimeter_crofton   
+0       191.440559          128.0  89.012193          87.070368  \
+1       179.846995          128.0  53.556349          53.456120   
+2       205.604863          120.0  95.698485          93.409370   
+3       217.515012          120.0  77.455844          76.114262   
+4       213.033898          128.0  83.798990          82.127941   
+..             ...            ...        ...                ...   
+57      184.525822          120.0  52.284271          52.250114   
+58      184.810127          128.0  39.313708          39.953250   
+59      182.727273          128.0  45.692388          46.196967   
+60      189.538462          128.0  30.692388          32.924135   
+61      173.833333          128.0  33.071068          35.375614   
+
+    standard_deviation_intensity  
+0                      29.793138  
+1                      21.270534  
+2                      29.392255  
+3                      35.852345  
+4                      28.741080  
+..                           ...  
+57                     28.255467  
+58                     33.739912  
+59                     24.417173  
+60                     37.867411  
+61                     27.987596  
+
+[62 rows x 11 columns]
+#+end_example
+
+<<c6420a4f-1ed9-4041-930b-5ebe4f6ddece>>
+... and using the =label_statistics= function
+
+<<87275ecd-314c-43c8-bfa2-44169d03391c>>
+#+begin_src python
+simpleitk_statistics = label_statistics(image, label_image, size = False, intensity = False, perimeter = True)
+simpleitk_statistics
+#+end_src
+
+#+begin_example
+    label  perimeter  perimeter_on_border  perimeter_on_border_ratio
+0       1  87.070368                 16.0                   0.183759
+1       2  53.456120                 21.0                   0.392846
+2       3  93.409370                 23.0                   0.246228
+3       4  76.114262                 20.0                   0.262763
+4       5  82.127941                 40.0                   0.487045
+..    ...        ...                  ...                        ...
+57     58  52.250114                  0.0                   0.000000
+58     59  39.953250                 18.0                   0.450527
+59     60  46.196967                 22.0                   0.476222
+60     61  32.924135                 15.0                   0.455593
+61     62  35.375614                 17.0                   0.480557
+
+[62 rows x 4 columns]
+#+end_example
+
+<<679a37aa-bab9-4e97-8693-0ac049b263ec>>
+For this comparison, we are only interested in the column named
+=perimeter=. So we are selecting this column and convert the included
+measurements into a
+[[https://haesleinhuepf.github.io/BioImageAnalysisNotebooks/12_image_analysis_basics/01_Images_as_arrays.html][numpy
+array]]:
+
+<<8c11f3c8-4c8e-4b64-ab1e-575a9f10435e>>
+#+begin_src python
+skimage_perimeter = np.asarray(skimage_statistics['perimeter'])
+simpleitk_perimeter = np.asarray(simpleitk_statistics['perimeter'])
+#+end_src
+
+<<2649592d-2450-4b88-8ad8-cb403edea268>>
+** Scatter plot
+   :PROPERTIES:
+   :CUSTOM_ID: scatter-plot
+   :END:
+
+<<7371caf1-4e49-4d78-8e28-6c312f0f060c>>
+If we now use
+[[https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.plot.html][matplotlib]]
+to plot the two perimeter measurements against each other, we receive
+the following scatter plot:
+
+<<3643d2ff-b502-4b70-9654-4d01221b0861>>
+#+begin_src python
+plt.plot(skimage_perimeter, simpleitk_perimeter, 'o')
+#+end_src
+
+#+begin_example
+[<matplotlib.lines.Line2D at 0x1912b551220>]
+#+end_example
+
+[[file:f0870f1651bfe3c0d230c5b088257b73ac1e0a30.png]]
+
+<<36c75b41-64a0-445f-b9c4-5aaebc42c1f3>>
+If the two libraries would compute the perimeter in the same way, all of
+our datapoints would lie on a straight line. As you can see, they are
+not. This suggests that perimeter is implemented differently in
+[[https://github.com/haesleinhuepf/napari-skimage-regionprops][napari-skimage-regionprops]]
+and
+[[https://github.com/haesleinhuepf/napari-simpleitk-image-processing][napari-simpleitk-image-processing]].
+
+<<ca04bfac-eb60-4900-b59d-0f4148c434f2>>
+** Bland-Altman plot
+   :PROPERTIES:
+   :CUSTOM_ID: bland-altman-plot
+   :END:
+
+<<c604c36c-9442-4bdc-be93-865ad11ce245>>
+The [[https://www.youtube.com/watch?v=PbSrSupnZFQ][Bland-Altman plot]]
+helps to visualize the difference between measurements. We can compute a
+Bland-Altman plot for our two different =perimeter= implementations like
+this:
+
+<<765e41d7-a718-4e08-a3fb-9ea23be4cc5f>>
+#+begin_src python
+# compute mean, diff, md and sd
+mean = (skimage_perimeter + simpleitk_perimeter) / 2
+diff = skimage_perimeter - simpleitk_perimeter
+md = np.mean(diff) # mean of difference
+sd = np.std(diff, axis = 0) # standard deviation of difference
+
+# add mean and diff
+plt.plot(mean, diff, 'o')
+
+# add lines
+plt.axhline(md,           color='gray', linestyle='--')
+plt.axhline(md + 1.96*sd, color='gray', linestyle='--')
+plt.axhline(md - 1.96*sd, color='gray', linestyle='--')
+
+# add title and axes labels
+plt.title('Bland-Altman Plot')
+plt.xlabel('Average Measurement')
+plt.ylabel('Difference of Measurement')
+#+end_src
+
+#+begin_example
+Text(0, 0.5, 'Difference of Measurement')
+#+end_example
+
+[[file:7bd00cfa6ca98af67fd1f763aaf2993c8f36e023.png]]
+
+<<79813f01-4ffd-4690-9e67-cec8adfa26ad>>
+With
+
+- center line = mean difference between the methods
+- two outer lines = confidence interval of agreement (/CI/)
+
+<<e3a45727-b7f6-4a0b-bc58-113d7129bab1>>
+The points do not go towards 0 which means it is not an agreement with
+random relative error, but systematic. This makes a lot of sense,
+because we are comparing here the *implementation* of a measurement.
+
+<<4507a171-2322-49f6-a302-c2ee5cfe19a1>>
+* Exercise
+  :PROPERTIES:
+  :CUSTOM_ID: exercise
+  :END:
+
+<<bb52d4ec-dd0b-44d2-a647-92f6fb14f641>>
+Use the functions =regionprops_table= and =label_statistics= to measure
+=feret_diameter_max= of your label image. Plot the Scatter plot and the
+Bland-Altman plot. Do you think =feret_diameter_max= is implemented
+differently in the two libraries?

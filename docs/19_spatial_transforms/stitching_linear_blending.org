@@ -1,0 +1,126 @@
+<<a9e4bf70-ca93-4e0d-ac32-242c11e3e898>>
+* Stitching images
+  :PROPERTIES:
+  :CUSTOM_ID: stitching-images
+  :END:
+In this notebook we demonstrate how images can be stitched. Stitching is
+commonly necessary when images are acquired in [overlapping] tiles.
+Combining these tiles vertically or horizontally is called stitching.
+
+<<2508b957-31e4-4b83-bc2b-0fedb9afdb28>>
+#+begin_src python
+from skimage.io import imread
+import stackview
+import matplotlib.pyplot as plt
+import pyclesperanto_prototype as cle
+import numpy as np
+#+end_src
+
+<<35e1c5be-e767-4b4d-afc4-5696dd6783b2>>
+After acquiring the images, you typically know how much the images
+overlap. Here we assume that the overlap is given as a number of pixels.
+If you only know the percentage of overlap, you need to compute this
+number by multiplying the percentage with the image size (width or
+height).
+
+<<76f0fd0d-4f25-46ad-b345-d52529fe9757>>
+#+begin_src python
+num_overlap_pixels = 40
+#+end_src
+
+<<909eff9e-25d9-4768-8c4d-a9ce69f93073>>
+#+begin_src python
+image1 = imread("../../data/blobs_stitching1_overlap40.tif")
+image2 = imread("../../data/blobs_stitching2_overlap40.tif")
+fig, ax = plt.subplots(1, 2)
+stackview.imshow(image1, plot=ax[0])
+stackview.imshow(image2, plot=ax[1])
+#+end_src
+
+[[file:dd95bf59a66a52ce2cf5df7abfb0b23e3c813e6f.png]]
+
+<<4be3e432-f8bc-4e61-8c2d-c9cad0abc723>>
+Note that these images contain some overlapping pixels. If we just
+assemble the images side-by-side, we see these pixels twice.
+
+<<e568a1ff-0cf3-44ab-9e87-b8c595c4bfd5>>
+#+begin_src python
+cle.combine_horizontally(image1, image2)
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 40.,  32.,  24., ..., 216., 200., 200.],
+       [ 56.,  40.,  24., ..., 232., 216., 216.],
+       [ 64.,  48.,  24., ..., 240., 232., 232.],
+       ...,
+       [ 72.,  80.,  80., ...,  48.,  48.,  48.],
+       [ 80.,  80.,  80., ...,  48.,  48.,  48.],
+       [ 96.,  88.,  80., ...,  48.,  48.,  48.]], dtype=float32)
+#+end_example
+
+<<e2778435-d01c-472b-a878-74c4a048dee0>>
+Pyclesperanto allows stitching the images with overlap. The overlapping
+region will be blended linearly.
+
+<<ebde299a-a76f-4a22-9053-9097526e2f97>>
+#+begin_src python
+cle.stitch_horizontally_linear_blending(image1, image2, num_pixels_overlap=num_overlap_pixels)
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 40.,  32.,  24., ..., 216., 200., 200.],
+       [ 56.,  40.,  24., ..., 232., 216., 216.],
+       [ 64.,  48.,  24., ..., 240., 232., 232.],
+       ...,
+       [ 72.,  80.,  80., ...,  48.,  48.,  48.],
+       [ 80.,  80.,  80., ...,  48.,  48.,  48.],
+       [ 96.,  88.,  80., ...,  48.,  48.,  48.]], dtype=float32)
+#+end_example
+
+<<752c965f-5e06-4a83-9d79-cbd9931ec2bf>>
+To demonstrate how the linear blending works, we create two synthetic
+images. First we combine them as shown above.
+
+<<083fc3ee-5667-403a-bca2-23356e9f23c9>>
+#+begin_src python
+syn_image1 = np.ones((100, 100))
+syn_image2 = np.ones((100, 100)) * 2
+
+cle.combine_horizontally(syn_image1, syn_image2)
+#+end_src
+
+#+begin_example
+cl.OCLArray([[1., 1., 1., ..., 2., 2., 2.],
+       [1., 1., 1., ..., 2., 2., 2.],
+       [1., 1., 1., ..., 2., 2., 2.],
+       ...,
+       [1., 1., 1., ..., 2., 2., 2.],
+       [1., 1., 1., ..., 2., 2., 2.],
+       [1., 1., 1., ..., 2., 2., 2.]], dtype=float32)
+#+end_example
+
+<<a4e94fa2-85bc-4a0f-a383-4daaeaeb82da>>
+Then we stitch the images using linear blending.
+
+<<c66d067e-f336-467f-b109-ad2f58277b51>>
+#+begin_src python
+cle.stitch_horizontally_linear_blending(syn_image1, syn_image2, num_pixels_overlap=30)
+#+end_src
+
+#+begin_example
+cl.OCLArray([[1., 1., 1., ..., 2., 2., 2.],
+       [1., 1., 1., ..., 2., 2., 2.],
+       [1., 1., 1., ..., 2., 2., 2.],
+       ...,
+       [1., 1., 1., ..., 2., 2., 2.],
+       [1., 1., 1., ..., 2., 2., 2.],
+       [1., 1., 1., ..., 2., 2., 2.]], dtype=float32)
+#+end_example
+
+<<d0ea4823-2331-494f-aedb-5ed2fc8e6959>>
+Note: Computing the registration parameters for optimal overlapping the
+images is currently not supported in pyclesperanto.
+
+<<a37c3bf5-284b-4c75-9f79-567a3cc953e6>>
+#+begin_src python
+#+end_src

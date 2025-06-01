@@ -1,0 +1,93 @@
+<<8bfa86fc-d854-419e-a91f-da1dbc91e390>>
+* Scaling coordinate lists
+  :PROPERTIES:
+  :CUSTOM_ID: scaling-coordinate-lists
+  :END:
+Presume you have a list of coordinates derived from an image. In case
+the image has a specified pixel size, you can convert pixel coordinates
+in physical coordinates.
+
+<<b2f0de47-ecf1-413e-922e-acbe01b8fc19>>
+#+begin_src python
+from skimage.io import imread
+import pyclesperanto_prototype as cle
+import stackview
+#+end_src
+
+<<abfa82f9-6a82-4367-af0f-53991061642e>>
+
+<<d6680458-dbc7-4967-824e-761224c5bad0>>
+#+begin_src python
+image = imread("../../data/blobs.tif")[:50,:50]
+
+label_image = cle.voronoi_otsu_labeling(image, spot_sigma=4)
+
+label_image
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<8b223465-39d0-43b1-bc3c-43df92601503>>
+From the objects in this label image, we can derive centroid
+coordinates.
+
+<<6d35fad4-7c0a-4eb5-89cb-358302adcd8b>>
+#+begin_src python
+centroids = cle.centroids_of_labels(label_image)
+centroids
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 0.7586207,  7.7894735, 17.849672 , 24.59091  , 29.01266  ,
+        43.57143  ],
+       [26.275862 , 44.63158  , 17.79085  ,  4.071429 , 47.02532  ,
+        26.266666 ]], dtype=float32)
+#+end_example
+
+<<00f4ca87-0593-45e7-a7f3-70590256cd48>>
+Such a point list has d times n numbers for d dimensions (commonly 2
+or 3) and n points.
+
+<<3b1979ab-36e9-42fb-865a-4253b004f6fa>>
+#+begin_src python
+centroids.shape
+#+end_src
+
+#+begin_example
+(2, 6)
+#+end_example
+
+<<f3b3541c-ed8f-4095-8c51-a3ca9c4c96fc>>
+In case pixel size is known, we can compute the centroid coordinates in
+physical units.
+
+<<a1ba4332-a51a-45c4-a81d-64e6376e2eed>>
+#+begin_src python
+pixel_size_in_microns = [0.1, 0.1]
+#+end_src
+
+<<b1db7b9a-352b-4d75-afe3-2c5e2359317b>>
+#+begin_src python
+centroids_in_microns = centroids * cle.asarray([pixel_size_in_microns]).T
+
+centroids_in_microns
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0.07586207, 0.77894735, 1.7849673 , 2.459091  , 2.9012659 ,
+        4.357143  ],
+       [2.6275861 , 4.463158  , 1.779085  , 0.40714288, 4.702532  ,
+        2.6266668 ]], dtype=float32)
+#+end_example
+
+<<ffe27c58-9219-4edd-a99d-9151514d98f7>>
+#+begin_src python
+#+end_src

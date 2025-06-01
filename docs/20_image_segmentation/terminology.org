@@ -1,0 +1,204 @@
+<<b45e65ab-187c-4c56-ae35-6fe2128c4180>>
+* Terminology
+  :PROPERTIES:
+  :CUSTOM_ID: terminology
+  :END:
+This notebook serves showing images and segmented images of different
+kind to explain common terminology.
+
+<<25ac31c4-92b1-4632-a3b5-c2a1ffdf32de>>
+#+begin_src python
+from skimage.io import imread, imshow
+import napari_segment_blobs_and_things_with_membranes as nsbatwm
+import stackview
+import numpy as np
+#+end_src
+
+<<aff7f2a1-1609-4a5e-8b87-11cf36290f06>>
+** Intensity images
+   :PROPERTIES:
+   :CUSTOM_ID: intensity-images
+   :END:
+We start with intensity images as they are commonly produced by
+microscopes.
+
+<<3a7a4f3f-81a2-4cdc-bfe4-fbf36586e5e0>>
+#+begin_src python
+input_image = imread("../../data/BBBC022/IXMtest_A02_s9.tif")[:,:,0]
+
+cropped_image = input_image[0:200, 200:400]
+
+imshow(cropped_image, cmap='Greys_r')
+#+end_src
+
+#+begin_example
+C:\Users\haase\mambaforge\envs\bio39\lib\site-packages\skimage\io\_plugins\matplotlib_plugin.py:150: UserWarning: Low image data range; displaying image with stretched contrast.
+  lo, hi, cmap = _get_display_range(image)
+#+end_example
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x2ba68647e20>
+#+end_example
+
+[[file:02af820865086ae2b8f290d47ab92b01d3891257.png]]
+
+<<863deaf0-c6ad-4bcb-b1ea-934118b122a8>>
+** Binary images
+   :PROPERTIES:
+   :CUSTOM_ID: binary-images
+   :END:
+Basic segmentation algorithms lead to binary images. They are
+characterized by having only two different intensities such as =0= and
+=1=.
+
+<<2eb5a47a-f98d-42b4-8c71-460c28b5e848>>
+#+begin_src python
+binary_image = nsbatwm.threshold_otsu(cropped_image)
+binary_image
+#+end_src
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]])
+#+end_example
+
+<<4850d8f4-617a-4a30-9cd3-dd89bde3f5e7>>
+** Instance segmentation
+   :PROPERTIES:
+   :CUSTOM_ID: instance-segmentation
+   :END:
+If each individual object has its own intensity / color, we call it an
+instance segmentation label image. The inistances are labeled with
+integer numbers. The maximum intensity (label) in this image typically
+corresponds to the number of objects.
+
+<<af147fa5-ce5b-4184-98f5-a5fc92a38943>>
+#+begin_src python
+instance_segmentation = nsbatwm.voronoi_otsu_labeling(cropped_image, 
+                                        spot_sigma=5, 
+                                        outline_sigma=1)
+
+instance_segmentation
+#+end_src
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]])
+#+end_example
+
+<<ab0a7241-a868-47ab-81c7-aba4fab1bdbe>>
+When you run this notebook locally, you can hover with your mouse over
+the image and inspect pixel intensities.
+
+<<93c2224d-a994-4cff-ab30-49d0642db886>>
+#+begin_src python
+import stackview
+stackview.picker(instance_segmentation)
+#+end_src
+
+#+begin_example
+{"model_id":"e5ee5a7795a54039ba9eb30a1566f154","version_major":2,"version_minor":0}
+#+end_example
+
+<<bff2f3ad-4288-42d8-9a3f-f70369ee8b32>>
+** Semantic segmentation
+   :PROPERTIES:
+   :CUSTOM_ID: semantic-segmentation
+   :END:
+Semantic segmentation label images can have more than two labels and
+typically label regions where pixels have the same meanings, for
+example: nuclei, nuclear envelope and background.
+
+<<29bc29d4-7997-4278-b6e5-e73b56c5591e>>
+#+begin_src python
+semantic_segmentation = binary_image + nsbatwm.maximum_filter(binary_image).astype(np.uint32) + 1
+semantic_segmentation
+#+end_src
+
+#+begin_example
+StackViewNDArray([[1, 1, 1, ..., 1, 1, 1],
+                  [1, 1, 1, ..., 1, 1, 1],
+                  [1, 1, 1, ..., 1, 1, 1],
+                  ...,
+                  [1, 1, 1, ..., 1, 1, 1],
+                  [1, 1, 1, ..., 1, 1, 1],
+                  [1, 1, 1, ..., 1, 1, 1]], dtype=int64)
+#+end_example
+
+<<9811b205-4973-4b56-b833-7b745ef6cc77>>
+** Sparse annotations
+   :PROPERTIES:
+   :CUSTOM_ID: sparse-annotations
+   :END:
+Annotated label images are typically drawn by humans. When executing
+this notebook locally, you can draw some annotations. If you annotate a
+couple of nuclei precisely, you create a sparse nuclei annotation. Hold
+down the ALT key to erase an annotation.
+
+<<190b7905-02ce-4656-b99e-3acd8e938423>>
+#+begin_src python
+sparse_label_annotation = np.zeros_like(cropped_image, dtype=np.uint32)
+stackview.annotate(cropped_image, sparse_label_annotation)
+#+end_src
+
+#+begin_example
+{"model_id":"046b028af8aa4b13a61c5aafcb2ff501","version_major":2,"version_minor":0}
+#+end_example
+
+<<836fd117-b702-4909-9f7c-ad4e923bf17f>>
+#+begin_src python
+stackview.insight(sparse_label_annotation)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<51dfa64f-816c-4c46-8e38-0a4fa2adfbc7>>
+You can also create a sparse semantic annotation, e.g. by annotating
+some pixels within nuclei and some pixels within the background.
+
+<<1a6fc019-8145-4016-a566-afd09c1262c8>>
+#+begin_src python
+sparse_semantic_annotation = np.zeros_like(cropped_image, dtype=np.uint32)
+stackview.annotate(cropped_image, sparse_semantic_annotation)
+#+end_src
+
+#+begin_example
+{"model_id":"365e1f4fbc9749e9a988e245f9b6f4f0","version_major":2,"version_minor":0}
+#+end_example
+
+<<157f0116-afc8-48fa-928f-841d7b57a13d>>
+#+begin_src python
+stackview.insight(sparse_semantic_annotation)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<eebacd6e-c161-4924-9f3a-288eca0bfc30>>
+#+begin_src python
+#+end_src

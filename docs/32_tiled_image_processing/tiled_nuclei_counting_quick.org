@@ -1,0 +1,179 @@
+<<500b07b7-5f43-40c0-ba80-bc6cd759f9f4>>
+* Tiled image processing, a quick run-through
+  :PROPERTIES:
+  :CUSTOM_ID: tiled-image-processing-a-quick-run-through
+  :END:
+In this notebook we will process a big dataset that has been saved in
+zarr format to count cells in individual tiles using
+[[https://docs.dask.org/en/stable/][dask]] and
+[[https://zarr.readthedocs.io/en/stable/][zarr]]. The underlying
+principles will be explained in the next sections.
+
+<<e6a9300d-1f11-4a3b-94bb-a136ba69f09d>>
+#+begin_src python
+import zarr
+import dask.array as da
+import numpy as np
+from skimage.io import imread
+import pyclesperanto_prototype as cle
+from pyclesperanto_prototype import imshow
+from numcodecs import Blosc
+#+end_src
+
+<<8959f8d4-a6d6-4a2d-b4b7-9378d2ceec01>>
+For demonstration purposes, we use a dataset that is provided by Theresa
+Suckert, OncoRay, University Hospital Carl Gustav Carus, TU Dresden. The
+dataset is licensed
+[[https://creativecommons.org/licenses/by/4.0/][License: CC-BY 4.0]]. We
+are using a cropped version here that was resaved a 8-bit image to be
+able to provide it with the notebook. You find the full size 16-bit
+image in CZI file format
+[[https://zenodo.org/record/4276076#.YX1F-55BxaQ][online]]. The
+biological background is explained in
+[[https://www.sciencedirect.com/science/article/abs/pii/S0167814020301043][Suckert
+et al. 2020]], where we also applied a similar workflow.
+
+When working with big data, you will likely have an image stored in the
+right format to begin with. For demonstration purposes, we save here a
+test image into the zarr format, which is commonly used for handling big
+image data.
+
+<<cc2eeeb8-eb5e-49fc-8569-cdff5e143e5e>>
+#+begin_src python
+# Resave a test image into tiled zarr format
+input_filename = '../../data/P1_H_C3H_M004_17-cropped.tif'
+zarr_filename = '../../data/P1_H_C3H_M004_17-cropped.zarr'
+image = imread(input_filename)[1]
+compressor = Blosc(cname='zstd', clevel=3, shuffle=Blosc.BITSHUFFLE)
+zarray = zarr.array(image, chunks=(100, 100), compressor=compressor)
+zarr.convenience.save(zarr_filename, zarray)
+#+end_src
+
+<<d76246fe-7358-4e0c-8112-1f1fd0af4108>>
+** Loading the zarr-backed image
+   :PROPERTIES:
+   :CUSTOM_ID: loading-the-zarr-backed-image
+   :END:
+Dask brings built-in support for the zarr file format. We can create
+dask arrays directly from a zarr file.
+
+<<2132d10e-1ec5-43eb-9c3c-a4d9358919cc>>
+#+begin_src python
+zarr_image = da.from_zarr(zarr_filename)
+zarr_image
+#+end_src
+
+#+begin_example
+dask.array<from-zarr, shape=(2000, 5000), dtype=uint8, chunksize=(100, 100), chunktype=numpy.ndarray>
+#+end_example
+
+<<c2721aa7-947e-4855-9325-c3e2b4746226>>
+We can apply image processing to this tiled dataset directly.
+
+<<84fd34c2-68fe-4eeb-8f2b-d213226086e0>>
+** Counting nuclei
+   :PROPERTIES:
+   :CUSTOM_ID: counting-nuclei
+   :END:
+For counting the nuclei, we setup a simple image processing workflow. It
+returns an image with a single pixel containing the number of nuclei in
+the given input image. These single pixels will be assembled to a pixel
+count map; an image with much less pixels than the original image, but
+with the advantage that we can look at it - it's no big data
+anymore.cle.exclude_labels_with_map_values_within_range
+
+<<713fcb46-9e8c-4090-a73e-a4d3b60dae24>>
+#+begin_src python
+def count_nuclei(image):
+    """
+    Label objects in a binary image and produce a pixel-count-map image.
+    """
+    # Count nuclei including those which touch the image border
+    labels = cle.voronoi_otsu_labeling(image, spot_sigma=3.5)
+    label_intensity_map = cle.mean_intensity_map(image, labels)
+    
+    high_intensity_labels = cle.exclude_labels_with_map_values_within_range(label_intensity_map, labels, maximum_value_range=20)
+    nuclei_count = high_intensity_labels.max()
+    
+    # Count nuclei excluding those which touch the image border
+    labels_without_borders = cle.exclude_labels_on_edges(high_intensity_labels)
+    nuclei_count_excluding_borders = labels_without_borders.max()
+    
+    # Both nuclei-count including and excluding nuclei at image borders 
+    # are no good approximation. We should exclude the nuclei only on 
+    # half of the borders to get a good estimate.
+    # Alternatively, we just take the average of both counts.
+    result = np.asarray([[(nuclei_count + nuclei_count_excluding_borders) / 2]])
+    
+    return result
+#+end_src
+
+<<6b5420e4-f405-4ab9-b385-87be0b0750ce>>
+Before we can start the computation, we need to deactivate asynchronous
+execution of operations in pyclesperanto.
+[[https://github.com/clEsperanto/pyclesperanto_prototype/issues/163][See
+also related issue]].
+
+<<00cf9b77-0baa-492a-bc63-edf5e798c636>>
+#+begin_src python
+cle.set_wait_for_kernel_finish(True)
+#+end_src
+
+<<251e38da-f93f-4e1b-85bc-d4fb9181c680>>
+For processing tiles using dask, we setup processing blocks with no
+overlap.
+
+<<eeba9ded-3fb3-4dba-81f3-6212c1251cbc>>
+#+begin_src python
+tile_map = da.map_blocks(count_nuclei, zarr_image)
+
+tile_map
+#+end_src
+
+#+begin_example
+dask.array<count_nuclei, shape=(2000, 5000), dtype=float64, chunksize=(100, 100), chunktype=numpy.ndarray>
+#+end_example
+
+<<08cbf9c0-7fe7-4eb7-b104-907cc62cb03b>>
+As the result image is much smaller then the original, we can compute
+the whole result map.
+
+<<c32f321d-90a0-4f3e-90fe-0f876761ea89>>
+#+begin_src python
+result = tile_map.compute()
+#+end_src
+
+<<d49be008-f92f-4eef-891a-d9a9a883eb21>>
+#+begin_src python
+result.shape
+#+end_src
+
+#+begin_example
+(20, 50)
+#+end_example
+
+<<b51ff80c-79f6-497c-a8df-3dfe4fee89ce>>
+Again, as the result map is small, we can just visualize it.
+
+<<64dbfdf3-6663-4949-9446-eb393ecdc288>>
+#+begin_src python
+cle.imshow(result, colorbar=True)
+#+end_src
+
+[[file:65cbdd0ee7ab002dbaebb80b89ada8af7eeb85ec.png]]
+
+<<58e69505-e192-4256-b8d7-a2267ba03ce9>>
+With a quick visual check in the original image, we can see that indeed
+in the top left corner of the image, there are much less cells than in
+the bottom right.
+
+<<47821e67-f35a-431e-a1bc-1800f63b0010>>
+#+begin_src python
+cle.imshow(cle.voronoi_otsu_labeling(image, spot_sigma=3.5), labels=True)
+#+end_src
+
+[[file:fe9ad42b375b3fc29fe1e6d4d2ce2ae7060b0925.png]]
+
+<<b567b6ad-7307-42d2-924d-54caf1ec4396>>
+#+begin_src python
+#+end_src

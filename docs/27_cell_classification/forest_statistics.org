@@ -1,0 +1,190 @@
+<<bcd3a3aa-2533-4218-9d70-e753cfd71373>>
+* Random forest decision making statistics
+  :PROPERTIES:
+  :CUSTOM_ID: random-forest-decision-making-statistics
+  :END:
+After training a random forest classifier, we can study its internal
+mechanics. APOC allows to retrieve the number of decisions in the forest
+based on the given features.
+
+See also
+
+- [[https://scikit-learn.org/stable/auto_examples/ensemble/plot_forest_importances.html][Feature
+  importance]]
+- [[https://towardsdatascience.com/understanding-feature-importance-and-how-to-implement-it-in-python-ff0287b20285][Understanding
+  Feature Importance and How to Implement it in Python (Towards Data
+  Science)]]
+
+<<47856f9e>>
+#+begin_src python
+from skimage.io import imread, imsave
+import pyclesperanto_prototype as cle
+import pandas as pd
+import numpy as np
+import apoc
+import matplotlib.pyplot as plt
+import pandas as pd
+
+cle.select_device('RTX')
+#+end_src
+
+#+begin_example
+<NVIDIA GeForce RTX 3050 Ti Laptop GPU on Platform: NVIDIA CUDA (1 refs)>
+#+end_example
+
+<<91cfd295-6d33-48cd-9dec-c149dd1d4989>>
+For demonstration purposes we use an image from David Legland shared
+under [[https://creativecommons.org/licenses/by/4.0/][CC-BY 4.0]]
+available the
+[[https://github.com/dlegland/mathematical_morphology_with_MorphoLibJ/blob/master/sampleImages/maize_clsm.tif][mathematical_morphology_with_MorphoLibJ]]
+repository.
+
+We also add a label image that was generated in an earlier chapter.
+
+<<72ea2e42>>
+#+begin_src python
+image = cle.push(imread('../../data/maize_clsm.tif'))
+labels = cle.push(imread('../../data/maize_clsm_labels.tif'))
+
+fix, axs = plt.subplots(1,2, figsize=(10,10))
+cle.imshow(image, plot=axs[0])
+cle.imshow(labels, plot=axs[1], labels=True)
+#+end_src
+
+[[file:999b3c4c38108a0de8a992a5d6f91414822e45ee.png]]
+
+<<8dbf07f5-341c-4288-b4e5-77a9758704da>>
+We previously created an object classifier and apply it now to the pair
+of intensity and label images.
+
+<<98749706>>
+#+begin_src python
+classifier = apoc.ObjectClassifier("../../data/maize_cslm_object_classifier.cl")
+classification_map = classifier.predict(labels=labels, image=image)
+
+cle.imshow(classification_map, labels=True, min_display_intensity=0)
+#+end_src
+
+[[file:821b036e2ca2204ab3f57b74349c14c7c6ceda81.png]]
+
+<<2035ac0a-1dee-4acc-abb8-040999eebefe>>
+** Classifier statistics
+   :PROPERTIES:
+   :CUSTOM_ID: classifier-statistics
+   :END:
+The loaded classifier can give us statistical information about its
+inner structure. The random forest classifier consists of many decision
+trees and every decision tree consists of binary decisions on multiple
+levels. E.g. a forest with 10 trees makes 10 decisions on the first
+level, as every tree makes at least this one decision. On the second
+level, every tree can make up to 2 decisions, which results in maximum
+20 decisions on this level. We can now visualize how many decisions on
+every level take specific features into account. The statistics are
+given as two dictionaries which can be visualized using
+[[https://pandas.pydata.org/][pandas]]
+
+<<5c386c32-9fc0-479e-8528-8c7d463c37f6>>
+#+begin_src python
+shares, counts = classifier.statistics()
+#+end_src
+
+<<58e1ab0d-fdc4-48a9-b71b-b73f1bc081c8>>
+First, we display the number of decisions on every level. Again, from
+lower to higher levels, the total number of decisions increases, in this
+table from the left to the right.
+
+<<f1ea0a96-9d27-4f3f-b6e1-84fd1a207fde>>
+#+begin_src python
+pd.DataFrame(counts).T
+#+end_src
+
+#+begin_example
+                                            0   1
+area                                        4  33
+mean_intensity                             32  44
+standard_deviation_intensity               37  44
+touching_neighbor_count                     8  28
+average_distance_of_n_nearest_neighbors=6  19  34
+#+end_example
+
+<<b90f78b9-3879-4a8c-9145-5ff46431976b>>
+The table above tells us that on the first level, 26 trees took
+=mean_intensity= into account, which is the highest number on this
+level. On the second level, 30 decisions were made taking the
+=standard_deviation_intensity= into account. The average distance of
+n-nearest neighbors was taken into account 21-29 times on this level,
+which is close. You could argue that intensity and centroid distances
+between neighbors were the crucial parameters for differentiating
+objects.
+
+Next, we look at the normalized =shares=, which are the counts divided
+by the total number of decisions made per depth level. We visualize this
+in colour to highlight features with high and low values.
+
+<<a76b8dbd-6e2b-4df0-8f68-ad81cf7b8001>>
+#+begin_src python
+def colorize(styler):
+    styler.background_gradient(axis=None, cmap="rainbow")
+    return styler
+
+df = pd.DataFrame(shares).T
+df.style.pipe(colorize)
+#+end_src
+
+#+begin_example
+<pandas.io.formats.style.Styler at 0x297a44cbdc0>
+#+end_example
+
+<<5860a236-11bb-4476-bf47-1827b9f0f302>>
+Adding to our insights described above, we can also see here that the
+distribution of decisions on the levels becomes more uniform the higher
+the level. Hence, one could consider training a classifier with maybe
+just two depth levels.
+
+<<fe8011de-7fa8-488e-921b-0991ac8f91e9>>
+** Feature importance
+   :PROPERTIES:
+   :CUSTOM_ID: feature-importance
+   :END:
+A more common concept to study relevance of extracted features is the
+[[https://scikit-learn.org/stable/auto_examples/ensemble/plot_forest_importances.html][feature
+importance]], which is computed from the classifier statistics shown
+above and may be easier to interpret as it is a single number describing
+each feature.
+
+<<49e03e8e-c3d3-428d-a85a-f8a333ecac1a>>
+#+begin_src python
+feature_importance = classifier.feature_importances()
+feature_importance = {k:[v] for k, v in feature_importance.items()}
+feature_importance
+#+end_src
+
+#+begin_example
+{'area': [0.1023460967511782],
+ 'mean_intensity': [0.27884719464885743],
+ 'standard_deviation_intensity': [0.34910187501327306],
+ 'touching_neighbor_count': [0.09231893555382481],
+ 'average_distance_of_n_nearest_neighbors=6': [0.1773858980328665]}
+#+end_example
+
+<<4ce60575-5b32-44ee-bf41-bdc1b44bec72>>
+#+begin_src python
+def colorize(styler):
+    styler.background_gradient(axis=None, cmap="rainbow")
+    return styler
+
+df = pd.DataFrame(feature_importance).T
+df.style.pipe(colorize)
+#+end_src
+
+#+begin_example
+<pandas.io.formats.style.Styler at 0x2978c297b80>
+#+end_example
+
+<<4415632f-1d01-45d8-913c-371c69e2dfb7>>
+#+begin_src python
+#+end_src
+
+<<add7301c-428c-4846-af6f-1fea83be3f8d>>
+#+begin_src python
+#+end_src

@@ -1,0 +1,122 @@
+<<ec5edcd0-dca7-441b-9c35-9b369cda4609>>
+* densMAP
+  :PROPERTIES:
+  :CUSTOM_ID: densmap
+  :END:
+The densMAP is a dimensionality reduction technique adapted from the
+UMAP explained in the section before. The densMAP has the advantage that
+it to some degree preserves the density of the data points while
+creating the manifold.
+
+See also
+
+- [[https://umap-learn.readthedocs.io/en/latest/densmap_demo.html][Better
+  Preserving Local Density with DensMAP (UMAP documentation)]]
+
+<<6d525eba-821a-4d46-ac74-63bedc456969>>
+#+begin_src python
+from skimage.data import human_mitosis
+from napari_segment_blobs_and_things_with_membranes import voronoi_otsu_labeling
+from napari_simpleitk_image_processing import label_statistics
+from sklearn.preprocessing import StandardScaler
+import numpy as np
+import umap
+import seaborn
+import pyclesperanto_prototype as cle
+import matplotlib.pyplot as plt
+#+end_src
+
+<<98c4560e-f868-43e6-862d-61343392fc97>>
+As example dataset we use the same Tribolium dataset as in the trailer.
+
+<<d4c66a37-a80e-46f6-aaf8-6cfc0946782a>>
+#+begin_src python
+# Load data
+image = cle.imread("../../data/Lund-25MB.tif")
+
+# Segment nuclei
+background_subtracted = cle.top_hat_box(image, radius_x=5, radius_y=5)
+labels = cle.voronoi_otsu_labeling(background_subtracted, spot_sigma=1)
+
+# Feature extraction
+nuclei_statistics = label_statistics(image, labels, 
+                                     intensity=True, 
+                                     size=True, 
+                                     shape=True, 
+                                     perimeter=True,
+                                     moments=True)
+
+# Feature selection
+selected_table = nuclei_statistics[
+    [
+        "mean",
+        "variance",
+        "elongation",
+    ]
+]
+selected_statistics = selected_table.values
+
+# Standard scaling
+scaled_statistics = StandardScaler().fit_transform(selected_statistics)
+#+end_src
+
+<<ab1ca157-c8dc-4754-8dd2-fe88b931f3b5>>
+** densMAP
+   :PROPERTIES:
+   :CUSTOM_ID: densmap
+   :END:
+
+<<52ae9440-eb62-4db0-bff8-cf4d6c05dac8>>
+#+begin_src python
+reducer_u = umap.UMAP(densmap=True, random_state=42)
+embedding_u = reducer_u.fit_transform(scaled_statistics)
+type(embedding_u), embedding_u.shape
+#+end_src
+
+#+begin_example
+(numpy.ndarray, (1200, 2))
+#+end_example
+
+<<3bd23079-7d64-4631-b678-0e748d893f1c>>
+#+begin_src python
+seaborn.scatterplot(x=embedding_u[:, 0], 
+                    y=embedding_u[:, 1])
+#+end_src
+
+#+begin_example
+<AxesSubplot:>
+#+end_example
+
+[[file:a5801942e7c01d0347806173434c4f10acef404d.png]]
+
+<<6e302f6a-484b-4078-abf2-d11b47e8206d>>
+** Comparison to UMAP
+   :PROPERTIES:
+   :CUSTOM_ID: comparison-to-umap
+   :END:
+Comparing the densMAP to the UMAP in this particular case, the points
+appear indeed denser. However, also outliers reside in the densMAP,
+which are not apparent in the corresponding UMAP
+
+<<a4873b2b-1b95-4154-b92b-72ab71d871b5>>
+#+begin_src python
+reducer_d = umap.UMAP(random_state=42)
+embedding_d = reducer_d.fit_transform(scaled_statistics)
+type(embedding_d), embedding_d.shape
+#+end_src
+
+#+begin_example
+(numpy.ndarray, (1200, 2))
+#+end_example
+
+<<3fb812ec-49c4-4a26-b890-baeab024876e>>
+#+begin_src python
+seaborn.scatterplot(x=embedding_d[:, 0], 
+                    y=embedding_d[:, 1])
+#+end_src
+
+#+begin_example
+<AxesSubplot:>
+#+end_example
+
+[[file:9e2d10684801eac851c2e5a0b84f8459bfed8b81.png]]

@@ -1,0 +1,83 @@
+<<d3dc3d9e-631c-4e40-ac2c-6ec7ed8e64c9>>
+* Versions of libraries
+  :PROPERTIES:
+  :CUSTOM_ID: versions-of-libraries
+  :END:
+The field Generative Artificial Intelligence is moving fast and code
+libraries are updated quickly. To make the notebooks in this chapter as
+reproducible as possible, we're here documenting which versions of
+libraries were used.
+
+<<25eb6a15-daad-48bf-83c5-2472119c892f>>
+#+begin_src python
+import openai
+openai.__version__
+#+end_src
+
+#+begin_example
+'1.5.0'
+#+end_example
+
+<<ef0fcc12-e690-47cf-8156-9e9875000181>>
+#+begin_src python
+import langchain
+langchain.__version__
+#+end_src
+
+#+begin_example
+'0.0.350'
+#+end_example
+
+<<70d9129d-cbb6-4ca9-b8ff-f2d233b6b9be>>
+#+begin_src python
+import bia_bob
+bia_bob.__version__
+#+end_src
+
+#+begin_example
+'0.6.2'
+#+end_example
+
+<<bb0ec417-3942-4bcc-b707-5069d92f3901>>
+#+begin_src python
+import torch
+torch.__version__
+#+end_src
+
+#+begin_example
+'2.1.2'
+#+end_example
+
+<<2633016a-a927-4167-8315-1ced2e6f7643>>
+#+begin_src python
+import diffusers
+diffusers.__version__
+#+end_src
+
+#+begin_example
+'0.24.0'
+#+end_example
+
+<<471e68d5-7b09-4bea-9575-23503af4bde2>>
+#+begin_src python
+import darth_d
+darth_d.__version__
+#+end_src
+
+#+begin_example
+'0.4.0'
+#+end_example
+
+<<94c248a6-1a22-4fd3-8f71-7250d6859402>>
+#+begin_src python
+import skimage
+skimage.__version__
+#+end_src
+
+#+begin_example
+'0.22.0'
+#+end_example
+
+<<2134b756-0b4f-4329-978e-6e08c6965eae>>
+#+begin_src python
+#+end_src

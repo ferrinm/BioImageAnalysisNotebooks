@@ -1,0 +1,377 @@
+<<ranging-theology>>
+(lists-and-tuples)=
+
+* Lists and tuples
+  :PROPERTIES:
+  :CUSTOM_ID: lists-and-tuples
+  :END:
+Variables can also contain multiple entries of values. We call those
+lists and tuples. Some programmers also call them vectors or arrays;
+arrays of values. We already know one kind of array, strings. Strings
+are lists of characters.
+
+See also
+
+- [[https://physics.nyu.edu/pine/pymanual/html/chap3/chap3_arrays.html][Arrays]]
+- [[https://www.geeksforgeeks.org/find-average-list-python/][Average is
+  list]]
+- [[https://www.scaler.com/topics/array-in-python/][Array in Python]]
+
+You can access elements in an array using square brackets =[]= which
+allow you access an element at a given index. Indexing starts at 0.
+Thus, the first element of an array is element number 0. The following
+string contains 5 characters and thus, element with index 0, 1, 2, 3 and
+4 can be accessed:
+
+<<divine-cartoon>>
+#+begin_src python
+word = "Hello"
+#+end_src
+
+<<mental-height>>
+#+begin_src python
+word[0]
+#+end_src
+
+#+begin_example
+'H'
+#+end_example
+
+<<medical-beverage>>
+#+begin_src python
+word[1]
+#+end_src
+
+#+begin_example
+'e'
+#+end_example
+
+<<collected-cleaning>>
+#+begin_src python
+word[2]
+#+end_src
+
+#+begin_example
+'l'
+#+end_example
+
+<<honest-tribe>>
+#+begin_src python
+word[3]
+#+end_src
+
+#+begin_example
+'l'
+#+end_example
+
+<<electronic-sauce>>
+#+begin_src python
+word[4]
+#+end_src
+
+#+begin_example
+'o'
+#+end_example
+
+<<b12b60fa-fc21-4240-9f35-dc7ba84f050b>>
+When accessing an index that is not in the list, we receive an error:
+
+<<former-balloon>>
+#+begin_src python
+word[5]
+#+end_src
+
+#+begin_example
+---------------------------------------------------------------------------
+IndexError                                Traceback (most recent call last)
+Input In [8], in <module>
+----> 1 word[5]
+
+IndexError: string index out of range
+#+end_example
+
+<<robust-therapist>>
+* Numeric lists
+  :PROPERTIES:
+  :CUSTOM_ID: numeric-lists
+  :END:
+Another type of array are numeric lists. They are common to store
+measurements of experiments for example:
+
+<<critical-hearing>>
+#+begin_src python
+measurements = [5.5, 6.3, 7.2, 8.0, 8.8]
+#+end_src
+
+<<presidential-brush>>
+#+begin_src python
+measurements[0]
+#+end_src
+
+#+begin_example
+5.5
+#+end_example
+
+<<sweet-munich>>
+#+begin_src python
+measurements[1]
+#+end_src
+
+#+begin_example
+6.3
+#+end_example
+
+<<military-vision>>
+Changing entries in lists works like this:
+
+<<hairy-tomato>>
+#+begin_src python
+measurements[1] = 25
+#+end_src
+
+<<usual-leeds>>
+#+begin_src python
+measurements[1]
+#+end_src
+
+#+begin_example
+25
+#+end_example
+
+<<antique-collins>>
+You can also append entries to lists:
+
+<<multiple-coffee>>
+#+begin_src python
+measurements.append(10.2)
+#+end_src
+
+<<moved-consultation>>
+Lists can also be reversed:
+
+<<fitting-december>>
+#+begin_src python
+measurements
+#+end_src
+
+#+begin_example
+[5.5, 25, 7.2, 8.0, 8.8, 10.2]
+#+end_example
+
+<<literary-designation>>
+#+begin_src python
+measurements.reverse()
+#+end_src
+
+<<united-joint>>
+#+begin_src python
+measurements
+#+end_src
+
+#+begin_example
+[10.2, 8.8, 8.0, 7.2, 25, 5.5]
+#+end_example
+
+<<periodic-toyota>>
+Just like strings, you can also concatenate arrays:
+
+<<gorgeous-harbor>>
+#+begin_src python
+more_measurements = [12.3, 14.5, 28.3]
+#+end_src
+
+<<latest-rachel>>
+#+begin_src python
+measurements + more_measurements
+#+end_src
+
+#+begin_example
+[10.2, 8.8, 8.0, 7.2, 25, 5.5, 12.3, 14.5, 28.3]
+#+end_example
+
+<<tested-literature>>
+When working with numeric lists, you can use some of python's built-in
+functions to do basic statistics on your measurements
+
+<<entitled-incident>>
+#+begin_src python
+# minimum value in the list
+min(measurements)
+#+end_src
+
+#+begin_example
+5.5
+#+end_example
+
+<<checked-factor>>
+#+begin_src python
+# maximum value in the list
+max(measurements)
+#+end_src
+
+#+begin_example
+25
+#+end_example
+
+<<irish-space>>
+#+begin_src python
+# sum of all elements in the list
+sum(measurements)
+#+end_src
+
+#+begin_example
+64.7
+#+end_example
+
+<<established-school>>
+#+begin_src python
+# number of elements in the list
+len(measurements)
+#+end_src
+
+#+begin_example
+6
+#+end_example
+
+<<spectacular-blocking>>
+#+begin_src python
+# average of all elements in the list
+sum(measurements) / len(measurements)
+#+end_src
+
+#+begin_example
+10.783333333333333
+#+end_example
+
+<<favorite-canvas>>
+* Mixed type lists
+  :PROPERTIES:
+  :CUSTOM_ID: mixed-type-lists
+  :END:
+You can also store values of different types in a list
+
+<<chief-people>>
+#+begin_src python
+mixed_list = [22, 5.6, "Cat", 'Dog']
+#+end_src
+
+<<listed-shape>>
+#+begin_src python
+mixed_list[0]
+#+end_src
+
+#+begin_example
+22
+#+end_example
+
+<<exclusive-correction>>
+#+begin_src python
+mixed_list[3]
+#+end_src
+
+#+begin_example
+'Dog'
+#+end_example
+
+<<geographic-allah>>
+#+begin_src python
+type(mixed_list[3])
+#+end_src
+
+#+begin_example
+str
+#+end_example
+
+<<sublime-naples>>
+* Tuples
+  :PROPERTIES:
+  :CUSTOM_ID: tuples
+  :END:
+Tuples are lists which cannot be changed:
+
+<<ambient-institution>>
+#+begin_src python
+immutable = (4, 3, 7.8)
+#+end_src
+
+<<careful-shell>>
+#+begin_src python
+immutable[1]
+#+end_src
+
+#+begin_example
+3
+#+end_example
+
+<<confused-sympathy>>
+#+begin_src python
+immutable[1] = 5
+#+end_src
+
+#+begin_example
+---------------------------------------------------------------------------
+TypeError                                 Traceback (most recent call last)
+Input In [31], in <module>
+----> 1 immutable[1] = 5
+
+TypeError: 'tuple' object does not support item assignment
+#+end_example
+
+<<civic-cameroon>>
+You can convert tubles to lists and lists to tuples:
+
+<<stone-continuity>>
+#+begin_src python
+type(immutable)
+#+end_src
+
+#+begin_example
+tuple
+#+end_example
+
+<<equal-european>>
+#+begin_src python
+mutable = list(immutable)
+#+end_src
+
+<<turned-cemetery>>
+#+begin_src python
+type(mutable)
+#+end_src
+
+#+begin_example
+list
+#+end_example
+
+<<upset-bandwidth>>
+#+begin_src python
+again_immuntable = tuple(mutable)
+#+end_src
+
+<<tested-contrary>>
+#+begin_src python
+type(again_immuntable)
+#+end_src
+
+#+begin_example
+tuple
+#+end_example
+
+<<supreme-proceeding>>
+* Exercise
+  :PROPERTIES:
+  :CUSTOM_ID: exercise
+  :END:
+Assume you did measurements on multiple days. Compute average
+measurement of this week?
+
+<<sublime-unemployment>>
+#+begin_src python
+measurements_monday = [2.3, 3.1, 5.6]
+measurements_tuesday = [1.8, 7.0]
+measurements_wednesday = [4.5, 1.5, 6.4, 3.2]
+measurements_thursday = [1.9, 2.0]
+measurements_friday = [4.4]
+#+end_src
+
+<<stable-stage>>

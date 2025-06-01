@@ -1,0 +1,89 @@
+<<798022dd-fa69-4ddd-9049-922c5583275c>>
+* Writing good code
+  :PROPERTIES:
+  :CUSTOM_ID: writing-good-code
+  :END:
+** Writing readable code
+   :PROPERTIES:
+   :CUSTOM_ID: writing-readable-code
+   :END:
+Technically, python allows us to write code like this.
+
+<<80e01b1a-431c-4c2b-ae1c-3a889d2f81d5>>
+#+begin_src python
+a=5;b=3;c=8;d=(a+b)/c;print("Yin" if d==5 else "Yang")
+#+end_src
+
+#+begin_example
+Yang
+#+end_example
+
+<<bd574e9a-d2a5-43a6-acf8-4af73b00181f>>
+However, for readability, it is recommended to write individual
+statements in individual lines. Also put empty lines between sections
+and introduce comments to explain why things are done.
+
+<<af8aa5aa-4a9d-4f0a-8776-0a29878f23ba>>
+#+begin_src python
+# initialize program
+a=5
+b=3
+c=8
+
+# compute result before we can evaluate it
+d=(a+b)/c
+#+end_src
+
+<<a25300a1-f85b-4c9a-8629-5780b6e8aeb2>>
+If you work with Jupyter notebooks, print out intermediate results to
+allow the reader to see what's happening.
+
+<<81b2dca6-2e25-46e7-9ad6-bee83b2256ad>>
+#+begin_src python
+d
+#+end_src
+
+#+begin_example
+1.0
+#+end_example
+
+<<1d7342d7-7e76-437c-bee3-21fa509b31c8>>
+Consider writing spaces between variables, operators and numbers,
+because this is easier toreadthanthat,right?
+
+<<024f1ec4-79e8-4559-ac1e-2d8df7602b8b>>
+#+begin_src python
+d = (a + b) / c
+d
+#+end_src
+
+#+begin_example
+1.0
+#+end_example
+
+<<30bb9bbc-5153-4bd6-aa81-6bdf479e221c>>
+Some people are ok with such short statements:
+
+<<4fb1a25d-0669-4b1e-b0d2-9ae27bf00317>>
+#+begin_src python
+print("Yin" if d==5 else "Yang")
+#+end_src
+
+#+begin_example
+Yang
+#+end_example
+
+<<e87712f2-e265-4434-9b1b-2a01d089241d>>
+Others prefer to write code out.
+
+<<5db81d1a-0671-4485-b501-9c324bb2527f>>
+#+begin_src python
+if d == 5:
+    print("Yin")
+else:
+    print("Yang")
+#+end_src
+
+#+begin_example
+Yang
+#+end_example

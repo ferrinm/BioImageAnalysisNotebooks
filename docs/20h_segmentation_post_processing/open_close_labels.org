@@ -1,0 +1,179 @@
+<<8e4ba882-7c37-4d6d-9bd6-700ae0a4e173>>
+** Label image refinement
+   :PROPERTIES:
+   :CUSTOM_ID: label-image-refinement
+   :END:
+Similar to morphological operations on binary imagges, it is also
+possible to refine label images. This notebook shows how to do this.
+
+See also
+
+- [[https://scikit-image.org/docs/dev/auto_examples/segmentation/plot_expand_labels.html][scikit-image's
+  Expand segmentation labels without overlap tutorial]]
+
+<<0029748b>>
+#+begin_src python
+import pyclesperanto_prototype as cle
+import numpy as np
+from skimage.io import imread
+#+end_src
+
+<<6656d5ca-daf5-4fab-af81-4d789a647ee8>>
+#+begin_src python
+label_image = cle.gauss_otsu_labeling(imread("../../data/mitosis_mod.tif"), outline_sigma=0)
+label_image
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 0,  0,  0, ..., 13, 13, 13],
+       [ 0,  0,  0, ..., 13, 13, 13],
+       [ 0,  0,  0, ..., 13, 13, 13],
+       ...,
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0]], dtype=uint32)
+#+end_example
+
+<<a87b767c-a145-4f7c-b57a-18317332d03f>>
+** Eroding labels
+   :PROPERTIES:
+   :CUSTOM_ID: eroding-labels
+   :END:
+When eroding labels, we need to be careful that objects might split into
+two. This could be intentional, e.g. to differentiate touching nuclei
+like in the example above.
+
+<<f4055854-7bcc-4801-b4d4-a619d8891e32>>
+#+begin_src python
+eroded_label_image = cle.erode_labels(label_image,
+                                      radius=2,
+                                      relabel_islands=False)
+eroded_label_image
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 9, 9],
+       [0, 0, 0, ..., 0, 9, 9],
+       [0, 0, 0, ..., 0, 0, 9],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<3dc03bc2-6620-46fa-96ca-462b61e56cf6>>
+#+begin_src python
+eroded_label_image2 = cle.erode_labels(label_image,
+                                      radius=2,
+                                      relabel_islands=True)
+eroded_label_image2
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 0,  0,  0, ...,  0, 10, 10],
+       [ 0,  0,  0, ...,  0, 10, 10],
+       [ 0,  0,  0, ...,  0,  0, 10],
+       ...,
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0]], dtype=uint32)
+#+end_example
+
+<<ebf221cc-053e-46d3-9231-d076fe8745d2>>
+** Dilating labels
+   :PROPERTIES:
+   :CUSTOM_ID: dilating-labels
+   :END:
+We can then dilate the labels again to come back to their original size
+approximately. This might also be useful in case segmented objects are
+too small in general.
+
+<<8fe52a86-2d94-46f9-9ed0-104fbfaa7822>>
+#+begin_src python
+dilated_label_image = cle.dilate_labels(eroded_label_image2, 
+                                        radius=2)
+dilated_label_image
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 0,  0,  0, ..., 10, 10, 10],
+       [ 0,  0,  0, ..., 10, 10, 10],
+       [ 0,  0,  2, ..., 10, 10, 10],
+       ...,
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0]], dtype=uint32)
+#+end_example
+
+<<edef6274-eb5a-464d-9bdc-286482ee0183>>
+** Opening and closing labels
+   :PROPERTIES:
+   :CUSTOM_ID: opening-and-closing-labels
+   :END:
+Opening and closing for label images is similar like for binary images.
+The only difference is that when labels touch, they cannot expand
+anymore.
+
+Note that opening labels may make small labels disappear.
+
+<<70597b80-7510-474c-bca2-00b0c0c95edc>>
+#+begin_src python
+opened_label_image = cle.opening_labels(label_image,
+                                        radius=2)
+opened_label_image
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 9, 9, 9],
+       [0, 0, 0, ..., 9, 9, 9],
+       [0, 0, 2, ..., 9, 9, 9],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<b4075c1e-48ee-4b79-abae-6ae19d27a6d1>>
+#+begin_src python
+closed_label_image = cle.closing_labels(label_image,
+                                        radius=2)
+closed_label_image
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 0,  0,  0, ..., 13, 13, 13],
+       [ 0,  0,  0, ..., 13, 13, 13],
+       [ 0,  0,  0, ..., 13, 13, 13],
+       ...,
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0]], dtype=uint32)
+#+end_example
+
+<<47e1b07a-7c2d-4d66-841f-04b7ac3237e2>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Use the operations introduced above to make small objects disappear in
+this label image.
+
+<<b89c0347-8ae2-4d55-865d-43ac3d27286d>>
+#+begin_src python
+label_blobs = cle.asarray(imread("../../data/blobs_labeled.tif")).astype(np.uint32)
+label_blobs
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 5, 5, 5],
+       [0, 0, 0, ..., 5, 5, 5],
+       [0, 0, 0, ..., 5, 5, 5],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<239603f3-3993-48d3-a618-616055e7c3c7>>
+#+begin_src python
+#+end_src

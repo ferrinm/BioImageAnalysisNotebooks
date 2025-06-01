@@ -1,0 +1,159 @@
+<<e4a5187a-1ffb-4164-83c9-472a3ed525cd>>
+* Prompting tasks for pandas
+  :PROPERTIES:
+  :CUSTOM_ID: prompting-tasks-for-pandas
+  :END:
+In this notebook we use bob to explore and plot some tabular data using
+[[https://pandas.pydata.org/][pandas]].
+
+<<61d91b32-ec3a-413f-a665-c327471d8057>>
+#+begin_src python
+from bia_bob import bob
+#+end_src
+
+<<8dfce434-9f86-48cb-8e87-fb45037e79be>>
+In this example we use a [[https://zenodo.org/records/5898311][videogame
+sales dataset by Gregory Smith]] which is licensed
+[[https://creativecommons.org/licenses/by/4.0/legalcode][CC-BY 4.0]].
+
+<<f924eb45-f99d-4755-9849-7125bc4ddbb5>>
+#+begin_src python
+%%bob
+write python code that
+* opens the file vgsales.csv using pandas
+* if the file doesn't exist, open it from https://zenodo.org/records/5898311/files/vgsales.csv?download=1 
+  and save it as vgsales.csv
+#+end_src
+
+#+begin_example
+<IPython.core.display.Markdown object>
+#+end_example
+
+<<ea107335-b5d7-4b32-8fa9-62aabd92cfaf>>
+#+begin_src python
+import pandas as pd
+
+try:
+    # Try to open the file
+    df = pd.read_csv('vgsales.csv')
+except FileNotFoundError:
+    # If the file doesn't exist, download it and save as 'vgsales.csv'
+    url = 'https://zenodo.org/records/5898311/files/vgsales.csv?download=1'
+    df = pd.read_csv(url)
+    df.to_csv('vgsales.csv')
+
+# Print the first few rows of the dataframe
+print(df.head())
+#+end_src
+
+#+begin_example
+   Rank                      Name Platform    Year         Genre Publisher  \
+0     1                Wii Sports      Wii  2006.0        Sports  Nintendo   
+1     2         Super Mario Bros.      NES  1985.0      Platform  Nintendo   
+2     3            Mario Kart Wii      Wii  2008.0        Racing  Nintendo   
+3     4         Wii Sports Resort      Wii  2009.0        Sports  Nintendo   
+4     5  Pokemon Red/Pokemon Blue       GB  1996.0  Role-Playing  Nintendo   
+
+   NA_Sales  EU_Sales  JP_Sales  Other_Sales  Global_Sales  
+0     41.49     29.02      3.77         8.46         82.74  
+1     29.08      3.58      6.81         0.77         40.24  
+2     15.85     12.88      3.79         3.31         35.82  
+3     15.75     11.01      3.28         2.96         33.00  
+4     11.27      8.89     10.22         1.00         31.37  
+#+end_example
+
+<<d62ddb2a-f39a-4211-ab31-ae3717621899>>
+#+begin_src python
+%%bob 
+group and sort the data by Year and 
+draw a bar plot of Global_Sales
+#+end_src
+
+#+begin_example
+<IPython.core.display.Markdown object>
+#+end_example
+
+<<d8e1d740-8fcc-489d-b64b-075f219d852b>>
+#+begin_src python
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Group the data by 'Year' and calculate the sum of 'Global_Sales'
+grouped_data = df.groupby('Year')['Global_Sales'].sum()
+
+# Sort the data in ascending order by year
+sorted_data = grouped_data.sort_values(ascending=True)
+
+# Plot a bar plot of the 'Global_Sales' values
+plt.bar(sorted_data.index, sorted_data.values)
+plt.xlabel('Year')
+plt.ylabel('Global Sales')
+plt.title('Global Sales per Year')
+
+# Adjust the x-axis labels for better visibility
+plt.xticks(rotation=45)
+
+# Show the plot
+plt.show()
+#+end_src
+
+[[file:975e0857da95fb672cdab6a20c95d5a37e88c8f0.png]]
+
+<<51702500-d8c7-4e06-9c09-cc0dbcbe60f6>>
+#+begin_src python
+%%bob
+Select the 10 datasets with the highest Global_Sales
+#+end_src
+
+#+begin_example
+<IPython.core.display.Markdown object>
+#+end_example
+
+<<45abd226-6161-4007-b3a9-77385b50d2b0>>
+#+begin_src python
+# Sort the dataset based on 'Global_Sales' in descending order
+sorted_data = df.sort_values(by='Global_Sales', ascending=False)
+
+# Select the first 10 datasets with highest 'Global_Sales'
+top_10_datasets = sorted_data.head(10)
+
+# Display the selected datasets
+print(top_10_datasets)
+#+end_src
+
+#+begin_example
+   Rank                       Name Platform    Year         Genre Publisher  \
+0     1                 Wii Sports      Wii  2006.0        Sports  Nintendo   
+1     2          Super Mario Bros.      NES  1985.0      Platform  Nintendo   
+2     3             Mario Kart Wii      Wii  2008.0        Racing  Nintendo   
+3     4          Wii Sports Resort      Wii  2009.0        Sports  Nintendo   
+4     5   Pokemon Red/Pokemon Blue       GB  1996.0  Role-Playing  Nintendo   
+5     6                     Tetris       GB  1989.0        Puzzle  Nintendo   
+6     7      New Super Mario Bros.       DS  2006.0      Platform  Nintendo   
+7     8                   Wii Play      Wii  2006.0          Misc  Nintendo   
+8     9  New Super Mario Bros. Wii      Wii  2009.0      Platform  Nintendo   
+9    10                  Duck Hunt      NES  1984.0       Shooter  Nintendo   
+
+   NA_Sales  EU_Sales  JP_Sales  Other_Sales  Global_Sales  
+0     41.49     29.02      3.77         8.46         82.74  
+1     29.08      3.58      6.81         0.77         40.24  
+2     15.85     12.88      3.79         3.31         35.82  
+3     15.75     11.01      3.28         2.96         33.00  
+4     11.27      8.89     10.22         1.00         31.37  
+5     23.20      2.26      4.22         0.58         30.26  
+6     11.38      9.23      6.50         2.90         30.01  
+7     14.03      9.20      2.93         2.85         29.02  
+8     14.59      7.06      4.70         2.26         28.62  
+9     26.93      0.63      0.28         0.47         28.31  
+#+end_example
+
+<<dfe7f45f-5d34-4017-9f55-865578c81480>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Use =%%bob= to determine the most sold game.
+
+<<24f5f690-5fbb-485a-a324-0328e3ecfb03>>
+#+begin_src python
+#+end_src

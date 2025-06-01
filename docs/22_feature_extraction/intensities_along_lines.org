@@ -1,0 +1,177 @@
+<<e15f122a-100f-40e5-98dc-ea2abc12f965>>
+* Descriptive statistics of [many] lines in an image
+  :PROPERTIES:
+  :CUSTOM_ID: descriptive-statistics-of-many-lines-in-an-image
+  :END:
+When studying intensity along many lines in an image, this can be done
+in parallel on a GPU. This notebook demonstrates this using just two
+lines for illustration purposes. It can be assumed that reading out
+hundreds or thousands of lines in parallel makes sense on GPUs
+performance-wise.
+
+<<46a6a489-2297-40c1-b6f0-0a1f6c173505>>
+#+begin_src python
+import pyclesperanto_prototype as cle
+from skimage.data import cells3d
+import numpy as np
+#+end_src
+
+<<c5171a45-1740-46d3-bff4-0aaa07a872e3>>
+To demonstrate a potential use-case, we take a close look at an image of
+cells expressing a membrane marker.
+
+<<fa2c408a-ad34-4014-801b-64458260df75>>
+#+begin_src python
+membranes = cells3d()[30, 0, 110:150, 110:150]
+cle.imshow(membranes)
+#+end_src
+
+[[file:454b21da9ce71c91dbf7c9a9bae99636a5920917.png]]
+
+<<95e2b20f-4ce8-4cb6-a683-2f1bb341f00c>>
+We define coordinates of four points which will be connected to two
+lines. The connection will be done using a /touch/ matrix which allows
+connecting n points with n points.
+
+<<cfb13046-d223-4078-a716-a08d0f0c45b5>>
+#+begin_src python
+coords = np.asarray([
+    [0, 17],  # line 1 start (x, y)
+    [10, 24], # line 1 end
+    [20, 21], # line 2
+    [35, 21]
+]).T
+#+end_src
+
+<<179540e5-b19d-407e-9244-96148275006f>>
+#+begin_src python
+connection_matrix = cle.symmetric_maximum_matrix(np.asarray([
+    [0, 0, 0, 0, 0],
+    [0, 0, 1, 0, 0], # this connects the two points of line 1
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 1], # this connects the two points of line 2
+    [0, 0, 0, 0, 0]
+]))
+connection_matrix
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0., 0., 0., 0., 0.],
+       [0., 0., 1., 0., 0.],
+       [0., 1., 0., 0., 0.],
+       [0., 0., 0., 0., 1.],
+       [0., 0., 0., 1., 0.]], dtype=float32)
+#+end_example
+
+<<2836fc2d-0a26-4cbf-9a5d-bc331fe495fa>>
+First we visualize these lines on top of the membrane image.
+
+<<a8e99829-fb61-4818-9c2d-842fef7ed99a>>
+#+begin_src python
+mesh = cle.create_like(membranes)
+mesh = cle.touch_matrix_to_mesh(coords, connection_matrix, mesh)
+
+cle.imshow(membranes, continue_drawing=True)
+cle.imshow(mesh, alpha=0.5, colormap='jet')
+#+end_src
+
+[[file:15d7c13a6d112c5ea5c829c88d7103e4e7708ddc.png]]
+
+<<ecf96b21-c27f-4585-8cdf-a448fe08c186>>
+** Measure the mean intensity along lines
+   :PROPERTIES:
+   :CUSTOM_ID: measure-the-mean-intensity-along-lines
+   :END:
+Next we use the matrix configured above to measure the mean average
+intensity along the lines. We also need to specify how many samples will
+be taken along the lines.
+
+<<c2e349f5-421d-4cea-851d-2b2b07aea39e>>
+#+begin_src python
+num_samples = 10
+
+mean_intensity_matrix = cle.generate_mean_intensity_between_points_matrix(
+                                membranes, coords, connection_matrix, num_samples=num_samples)
+mean_intensity_matrix
+#+end_src
+
+#+begin_example
+cl.OCLArray([[   0. ,    0. ,    0. ,    0. ,    0. ],
+       [   0. ,    0. , 7317.8,    0. ,    0. ],
+       [   0. , 7317.8,    0. ,    0. ,    0. ],
+       [   0. ,    0. ,    0. ,    0. , 4482.6],
+       [   0. ,    0. ,    0. , 4482.6,    0. ]], dtype=float32)
+#+end_example
+
+<<b7f51b57-9786-4b79-9c25-b445fe92d603>>
+We can visualize these measurements also again as lines. As we pass
+points and connections between points as matrix, this is technically a
+mesh.
+
+<<abc648a1-922d-44e2-ad8d-a3683d007a08>>
+#+begin_src python
+mean_intensity_mesh = cle.create_like(membranes)
+mean_intensity_mesh = cle.touch_matrix_to_mesh(coords, mean_intensity_matrix, mean_intensity_mesh)
+mean_intensity_mesh
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       ...,
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.]], dtype=float32)
+#+end_example
+
+<<1dab378d-fed0-4dfc-928c-12491944466a>>
+We can also visualize this quantitative mesh on top of the original
+membrane image.
+
+<<e9839af0-8933-4beb-8e7c-dbe04ac2826b>>
+#+begin_src python
+cle.imshow(membranes, continue_drawing=True)
+cle.imshow(mean_intensity_mesh, alpha=0.5, colormap='jet', colorbar=True)
+#+end_src
+
+[[file:fd4303787b4127b61dfba6f79765c833ec69aab8.png]]
+
+<<f2a9e8ca-a90c-446b-9bb7-1979cd65640d>>
+** Measuring the standard deviation intensity along a line
+   :PROPERTIES:
+   :CUSTOM_ID: measuring-the-standard-deviation-intensity-along-a-line
+   :END:
+The same procedure also works for measuring the standard deviation along
+the lines.
+
+<<fe55dc5c-561c-44a3-a496-85cd04b5b4d3>>
+#+begin_src python
+stddev_intensity_matrix = cle.generate_standard_deviation_intensity_between_points_matrix(
+                                membranes, coords, connection_matrix)
+stddev_intensity_matrix
+#+end_src
+
+#+begin_example
+cl.OCLArray([[   0.     ,    0.     ,    0.     ,    0.     ,    0.     ],
+       [   0.     ,    0.     ,  572.79144,    0.     ,    0.     ],
+       [   0.     ,  572.79144,    0.     ,    0.     ,    0.     ],
+       [   0.     ,    0.     ,    0.     ,    0.     , 3758.1768 ],
+       [   0.     ,    0.     ,    0.     , 3758.1772 ,    0.     ]],
+      dtype=float32)
+#+end_example
+
+<<a383d8f3-b9c6-4098-ab63-767f88c1ab15>>
+#+begin_src python
+stddev_intensity_mesh = cle.create_like(membranes)
+stddev_intensity_mesh = cle.touch_matrix_to_mesh(coords, stddev_intensity_matrix, stddev_intensity_mesh)
+
+cle.imshow(membranes, continue_drawing=True)
+cle.imshow(stddev_intensity_mesh, alpha=0.5, colormap='jet', colorbar=True)
+#+end_src
+
+[[file:efa9d4b7d6d62b1d6bb9c12d8dc8eaddfdefb876.png]]
+
+<<7241e405-0a78-4057-b2b8-4b3f2eb07833>>
+#+begin_src python
+#+end_src

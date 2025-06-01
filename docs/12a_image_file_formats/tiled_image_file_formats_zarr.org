@@ -1,0 +1,133 @@
+<<500b07b7-5f43-40c0-ba80-bc6cd759f9f4>>
+* Tiled image file formats: zarr
+  :PROPERTIES:
+  :CUSTOM_ID: tiled-image-file-formats-zarr
+  :END:
+When working with big image data, special file formats such as the
+[[https://zarr.readthedocs.io/en/stable/][zarr]] format are commonly
+used. Zarr stores image data in chunks. Instead of loading a huge image
+data set from disk and then tiling it, it is possible to load individual
+zarr tiles, process them and save the result back to disc. In that way
+one can process big images without ever loading the big image into
+memory.
+
+Using these formats brings additional challenges, for example re-saving
+the big image into small zarr-based tiles must happen on a computer that
+is capable of opening the big image to begin with. This notebook shows
+how to do this in a slightly unrealistic scenario: We're loading the
+dataset first to resave it as tiles and by the end, we load these tiles
+from disk and visualize them. In a realistic scenario, these two steps
+would not be possible. Depending on the scenario, those two steps must
+be improvised.
+
+See also
+
+- [[https://gist.github.com/GenevieveBuckley/d94351adcc61cb5237a6c0a540c14cf6][Genevieve
+  Buckley's gist: save_as_zarr.ipynb]]
+- [[https://docs.dask.org/en/stable/generated/dask.array.from_zarr.html#dask.array.from_zarr][dask.array.from_zarr]]
+
+<<e6a9300d-1f11-4a3b-94bb-a136ba69f09d>>
+#+begin_src python
+import zarr
+import dask.array as da
+import numpy as np
+from skimage.io import imread, imshow
+from numcodecs import Blosc
+#+end_src
+
+<<8959f8d4-a6d6-4a2d-b4b7-9378d2ceec01>>
+For demonstration purposes, we use a dataset that is provided by Theresa
+Suckert, OncoRay, University Hospital Carl Gustav Carus, TU Dresden. The
+dataset is licensed
+[[https://creativecommons.org/licenses/by/4.0/][License: CC-BY 4.0]]. We
+are using a cropped version here that was resaved a 8-bit image to be
+able to provide it with the notebook. You find the full size 16-bit
+image in CZI file format
+[[https://zenodo.org/record/4276076#.YX1F-55BxaQ][online]].
+
+<<cc2eeeb8-eb5e-49fc-8569-cdff5e143e5e>>
+#+begin_src python
+image = imread('../../data/P1_H_C3H_M004_17-cropped.tif')[1]
+
+# for testing purposes, we crop the image even more.
+# comment out the following line to run on the whole 5000x2000 pixels
+image = image[1000:1500, 1000:1500]
+
+image.shape
+#+end_src
+
+#+begin_example
+(500, 500)
+#+end_example
+
+<<3f400ae8-6d26-4e85-bb16-4ed04c9307d7>>
+#+begin_src python
+imshow(image)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x2ca194abf70>
+#+end_example
+
+[[file:2288df32bbf9f8d0115510b48a2f3aa146a4ffd4.png]]
+
+<<536663a5-bce9-4219-aae8-fbe2d8e9316d>>
+** Saving as zarr
+   :PROPERTIES:
+   :CUSTOM_ID: saving-as-zarr
+   :END:
+We will now resaved our big image to the
+[[https://zarr.readthedocs.io/en/stable/][zarr]] file format.
+
+<<cf633a7b-e900-4ed7-bcb9-dda6bac47096>>
+#+begin_src python
+#compress AND change the numpy array into a zarr array
+compressor = Blosc(cname='zstd', clevel=3, shuffle=Blosc.BITSHUFFLE)
+
+chunk_size = (100, 100)
+
+zarray = zarr.array(image, chunks=chunk_size, compressor=compressor)
+#+end_src
+
+<<dff9aadf-c72f-4fc1-8ea5-35b9c90c187a>>
+#+begin_src python
+zarr_filename = '../../data/P1_H_C3H_M004_17-cropped.zarr'
+zarr.convenience.save(zarr_filename, zarray)
+#+end_src
+
+<<5b0e5a23-cdf3-4b5a-88fc-7b3bb9240c33>>
+You will then see that a folder is created with the given name. In that
+folder many files will be located. Each of these files correspond to an
+image tile.
+
+<<0d2ef602-739d-4496-8279-29ad87587b54>>
+** Loading zarr
+   :PROPERTIES:
+   :CUSTOM_ID: loading-zarr
+   :END:
+Just for demonstration purposes, we will load the zarr backed tiled
+image and visualize it. When working with big data, this step might not
+be possible.
+
+<<a3cc5730-0ce5-4b62-95cc-e75bdd4f334e>>
+#+begin_src python
+zarr_result = da.from_zarr(zarr_filename)
+zarr_result
+#+end_src
+
+#+begin_example
+dask.array<from-zarr, shape=(500, 500), dtype=uint8, chunksize=(100, 100), chunktype=numpy.ndarray>
+#+end_example
+
+<<d46694cc-4f11-4960-a1cc-d0248916e567>>
+#+begin_src python
+result = zarr_result.compute()
+
+imshow(result)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x2ca19586b80>
+#+end_example
+
+[[file:2288df32bbf9f8d0115510b48a2f3aa146a4ffd4.png]]

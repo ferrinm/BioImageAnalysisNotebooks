@@ -1,0 +1,128 @@
+<<c702f5b3-388a-45d9-bb5d-fde8f3b0f21c>>
+* Smoothing labels
+  :PROPERTIES:
+  :CUSTOM_ID: smoothing-labels
+  :END:
+In this notebook we will demonstrate how to fine-tune outlines of labels
+by smoothing them. The operation is related to erosion and dilation of
+labels. It is however not exactly what opening does. It differs by not
+leaving gaps behind but filling them with the closest labels.
+
+<<de9bd90b-74ee-479f-ab76-badd2479375a>>
+#+begin_src python
+import numpy as np
+import pyclesperanto_prototype as cle
+import matplotlib.pyplot as plt
+#+end_src
+
+<<252b3f9c-2184-496a-8640-9d0021d7cc00>>
+A potential use-case is fine-tuning cell segmentation results. Thus, we
+take a look at a segmentation of cells based on membranes.
+
+<<20e78e5e-bb1d-4b1f-a065-8a45315c86e9>>
+#+begin_src python
+membranes = cle.imread("../../data/membranes.tif")
+membranes
+#+end_src
+
+#+begin_example
+cl.OCLArray([[4496., 5212., 6863., ..., 2917., 2680., 2642.],
+       [4533., 5146., 7555., ..., 2843., 2857., 2748.],
+       [4640., 6082., 8452., ..., 3372., 3039., 3128.],
+       ...,
+       [1339., 1403., 1359., ..., 4458., 4314., 4795.],
+       [1473., 1560., 1622., ..., 3967., 4531., 4204.],
+       [1380., 1368., 1649., ..., 3091., 3558., 3682.]], dtype=float32)
+#+end_example
+
+<<450218df-5118-4d03-bfc7-585517639ada>>
+#+begin_src python
+labels = cle.imread("../../data/membranes_labeled.tif").astype(np.uint32)
+labels
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 5,  5,  5, ...,  3,  3,  3],
+       [ 5,  5,  5, ...,  3,  3,  3],
+       [ 5,  5,  5, ...,  3,  3,  3],
+       ...,
+       [26, 26, 26, ..., 28, 28, 28],
+       [26, 26, 26, ..., 28, 28, 28],
+       [26, 26, 26, ..., 28, 28, 28]], dtype=uint32)
+#+end_example
+
+<<59465a6b-6e51-4706-8d25-713dcd15da5e>>
+The =smooth_labels= function allows to straighten the outlines of the
+labels.
+
+<<c5312691-1ed3-4e2c-8037-7425d7df0c45>>
+#+begin_src python
+cle.smooth_labels(labels, radius=5)
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 5,  5,  5, ...,  3,  3,  3],
+       [ 5,  5,  5, ...,  3,  3,  3],
+       [ 5,  5,  5, ...,  3,  3,  3],
+       ...,
+       [25, 25, 25, ..., 22, 22, 22],
+       [25, 25, 25, ..., 27, 22, 22],
+       [25, 25, 25, ..., 27, 27, 22]], dtype=uint32)
+#+end_example
+
+<<8140e668-808c-4349-83ae-d74e833793e1>>
+The following code block is a modified version of the code that was used
+to generate the video in
+[[https://twitter.com/haesleinhuepf/status/1492215964305436673][this
+tweet]] where we discussed the name of the filter.
+
+<<1fe3a5c3-1cb5-44f7-adb0-12302bed791c>>
+#+begin_src python
+# for r in range(20):
+for r in range(0, 20, 5):
+    print("radius =", r)
+    
+    fig, ax = plt.subplots(1,3, figsize=(10,10))
+    
+    cle.imshow(labels, labels=True, plot=ax[0])
+    cle.imshow(cle.opening_labels(labels, radius=r), labels=True, plot=ax[1])
+    cle.imshow(cle.smooth_labels(labels, radius=r), labels=True, plot=ax[2])
+    
+    ax[0].set_title("Original")
+    ax[1].set_title("Opening r=" + str(r))
+    ax[2].set_title("????ing r=" + str(r))
+    # plt.savefig("temp/" + str(r).zfill(2) + ".tif", dpi=300)
+    plt.show()
+#+end_src
+
+#+begin_example
+radius = 0
+#+end_example
+
+[[file:25a3c0fd85fede9a488fcd8dbee1c27530cfb3cf.png]]
+
+#+begin_example
+radius = 5
+#+end_example
+
+[[file:74dba4484d5ae011b57c1f8ee422dd6686aeb6fd.png]]
+
+#+begin_example
+radius = 10
+#+end_example
+
+[[file:eb862b5621b774fb1397a3e63002e012282d0880.png]]
+
+#+begin_example
+radius = 15
+#+end_example
+
+[[file:ce0f772a73d7dbf9a57e647eb17f7336a016404a.png]]
+
+<<5aebc2d8-5a53-4913-a9b6-2949b3e6837b>>
+#+begin_src python
+#+end_src
+
+<<f31d2788-3aaa-4454-b877-5c4cf4d71648>>
+#+begin_src python
+#+end_src

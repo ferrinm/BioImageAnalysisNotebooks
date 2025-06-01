@@ -1,0 +1,252 @@
+<<500b07b7-5f43-40c0-ba80-bc6cd759f9f4>>
+* Map area of objects in tiles
+  :PROPERTIES:
+  :CUSTOM_ID: map-area-of-objects-in-tiles
+  :END:
+In this notebook, we will segment nuclei in tiles and measure their
+area. We will then save the resulting area map again as tiles in a zarr
+file. This strategy can be used to process data that as a whole does not
+fit in computer memory.
+
+<<e6a9300d-1f11-4a3b-94bb-a136ba69f09d>>
+#+begin_src python
+import zarr
+import dask.array as da
+import numpy as np
+from skimage.io import imread
+import pyclesperanto_prototype as cle
+from pyclesperanto_prototype import imshow
+from numcodecs import Blosc
+#+end_src
+
+<<8959f8d4-a6d6-4a2d-b4b7-9378d2ceec01>>
+For demonstration purposes, we use a dataset that is provided by Theresa
+Suckert, OncoRay, University Hospital Carl Gustav Carus, TU Dresden. The
+dataset is licensed
+[[https://creativecommons.org/licenses/by/4.0/][License: CC-BY 4.0]]. We
+are using a cropped version here that was resaved a 8-bit image to be
+able to provide it with the notebook. You find the full size 16-bit
+image in CZI file format
+[[https://zenodo.org/record/4276076#.YX1F-55BxaQ][online]].
+
+<<cc2eeeb8-eb5e-49fc-8569-cdff5e143e5e>>
+#+begin_src python
+image = imread('../../data/P1_H_C3H_M004_17-cropped.tif')[1]
+
+# for testing purposes, we crop the image even more.
+# comment out the following line to run on the whole 5000x2000 pixels
+image = image[1000:1500, 1000:1500]
+
+#compress AND change the numpy array into a zarr array
+compressor = Blosc(cname='zstd', clevel=3, shuffle=Blosc.BITSHUFFLE)
+
+# Convert image into zarr array
+chunk_size = (100, 100)
+zarray = zarr.array(image, chunks=chunk_size, compressor=compressor)
+
+# save zarr to disk
+zarr_filename = '../../data/P1_H_C3H_M004_17-cropped.zarr'
+zarr.convenience.save(zarr_filename, zarray)
+#+end_src
+
+<<d76246fe-7358-4e0c-8112-1f1fd0af4108>>
+** Object area maps in tiles
+   :PROPERTIES:
+   :CUSTOM_ID: object-area-maps-in-tiles
+   :END:
+Dask brings built-in support for the zarr file format. We can create
+dask arrays directly from a zarr file.
+
+<<2132d10e-1ec5-43eb-9c3c-a4d9358919cc>>
+#+begin_src python
+zarr_image = da.from_zarr(zarr_filename)
+zarr_image
+#+end_src
+
+#+begin_example
+dask.array<from-zarr, shape=(500, 500), dtype=uint8, chunksize=(100, 100), chunktype=numpy.ndarray>
+#+end_example
+
+<<c2721aa7-947e-4855-9325-c3e2b4746226>>
+We can apply image processing to this tiled dataset directly.
+
+<<cba0b2e9-c7ac-43dc-b5b3-b0aadb43b425>>
+#+begin_src python
+def area_map(image):
+    """
+    Label objects in a binary image and produce a pixel-count-map image.
+    """
+    print("Processing image of size", image.shape)
+    
+    labels = cle.voronoi_otsu_labeling(image, spot_sigma=3.5)
+    result = cle.pixel_count_map(labels)
+    
+    print(result.shape)
+    
+    return np.asarray(result)
+#+end_src
+
+<<40c716df-6dbf-4b94-a1e6-a090d142a395>>
+** Testing tiled image processing
+   :PROPERTIES:
+   :CUSTOM_ID: testing-tiled-image-processing
+   :END:
+We should test our area mapping algorithm on a single tile. Actually, in
+a real scenario, the image processing workflow is developed on
+individual tiles, e.g. in a notebook like this one. As soon as we are
+sure that the algorithm works, we can apply it to all tiles.
+
+<<697eb25f-e546-48e2-a744-a63e8db189bb>>
+#+begin_src python
+test_image = image[100:200,100:200]
+
+imshow(test_image)
+
+test_result = area_map(test_image)
+
+imshow(test_result, colorbar=True)
+#+end_src
+
+[[file:7041bdc288a1e6de2965363b4e86ae0cac614e34.png]]
+
+#+begin_example
+Processing image of size (100, 100)
+(100, 100)
+#+end_example
+
+[[file:e5730368766ce2b2d4f64e81266404ba765c9268.png]]
+
+<<06b8f44e-d521-4d74-9f57-465c447b6d20>>
+** Applying the tiled image processing to a zarr-backed dataset
+   :PROPERTIES:
+   :CUSTOM_ID: applying-the-tiled-image-processing-to-a-zarr-backed-dataset
+   :END:
+Applying the function to our zarr dataset will also result in a dask
+array.
+
+<<84842017-8acd-466b-b344-5c5b0dc2082c>>
+#+begin_src python
+overlap_width = 30
+
+tile_map = da.map_overlap(area_map, zarr_image, depth=overlap_width, boundary=0)
+
+tile_map
+#+end_src
+
+#+begin_example
+Processing image of size (0, 0)
+Processing image of size (1, 1)
+(1, 1)
+Processing image of size (0, 0)
+#+end_example
+
+#+begin_example
+dask.array<_trim, shape=(500, 500), dtype=float32, chunksize=(100, 100), chunktype=numpy.ndarray>
+#+end_example
+
+<<2743263e-87d7-4f1e-98e4-1d91001a26db>>
+Before we can start the computation, we need to deactivate asynchronous
+execution of operations in pyclesperanto.
+[[https://github.com/clEsperanto/pyclesperanto_prototype/issues/163][See
+also related issue]].
+
+<<62da18c5-4023-45ea-8c5f-9ec47588e3ef>>
+#+begin_src python
+cle.set_wait_for_kernel_finish(True)
+#+end_src
+
+<<95b44846-7b72-4ed2-96cc-11c03e16c800>>
+When we invoke saving the results to disk, the processing will happen on
+individual tiles.
+
+<<4166a08a-b7be-4bf5-b861-c166779f796f>>
+#+begin_src python
+processed_zarr_filename = '../../data/P1_H_C3H_M004_17-processed.zarr'
+
+tile_map.to_zarr(processed_zarr_filename, overwrite=True)
+#+end_src
+
+#+begin_example
+Processing image of size (160, 160)
+Processing image of size (160, 160)
+Processing image of size (160, 160)
+Processing image of size (160, 160)
+Processing image of size (160, 160)
+Processing image of size Processing image of size (160, 160)
+(160, 160)
+Processing image of size (160, 160)
+Processing image of size (160, 160)
+Processing image of size (160, 160)
+(160, 160)
+Processing image of size (160, 160)
+(160, 160)
+(160, 160)
+(160, 160)
+Processing image of size Processing image of size (160, 160)
+(160, 160)
+(160, 160)
+(160, 160)
+(160, 160)
+Processing image of size (160, 160)
+Processing image of size(160, 160) 
+(160, 160)
+Processing image of size (160, 160)
+(160, 160)
+Processing image of size (160, 160)
+Processing image of size (160, 160)
+Processing image of size (160, 160)
+(160, 160)
+Processing image of size (160, 160)
+(160, 160)
+Processing image of size (160, 160)
+(160, 160)
+(160, 160)
+(160, 160)
+(160, 160)Processing image of sizeProcessing image of size(160, 160)
+ (160, 160)
+ 
+(160, 160)
+Processing image of size (160, 160)
+Processing image of size (160, 160)
+(160, 160)
+(160, 160)
+(160, 160)
+(160, 160)
+(160, 160)
+(160, 160)
+(160, 160)
+(160, 160)
+(160, 160)
+#+end_example
+
+<<0d2ef602-739d-4496-8279-29ad87587b54>>
+** Loading zarr
+   :PROPERTIES:
+   :CUSTOM_ID: loading-zarr
+   :END:
+Just for demonstration purposes, we will load the zarr backed tiled
+image and visualize it. When working with big data, this step might not
+be possible.
+
+<<a3cc5730-0ce5-4b62-95cc-e75bdd4f334e>>
+#+begin_src python
+zarr_result = da.from_zarr(processed_zarr_filename)
+zarr_result
+#+end_src
+
+#+begin_example
+dask.array<from-zarr, shape=(500, 500), dtype=float32, chunksize=(100, 100), chunktype=numpy.ndarray>
+#+end_example
+
+<<d46694cc-4f11-4960-a1cc-d0248916e567>>
+#+begin_src python
+result = zarr_result.compute()
+
+cle.imshow(result)
+#+end_src
+
+[[file:1f873c36f72c8a011400a73a40fa4c50196a31ce.png]]
+
+<<b567b6ad-7307-42d2-924d-54caf1ec4396>>
+#+begin_src python
+#+end_src

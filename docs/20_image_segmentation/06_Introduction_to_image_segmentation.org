@@ -1,0 +1,108 @@
+* Image segmentation
+  :PROPERTIES:
+  :CUSTOM_ID: image-segmentation
+  :END:
+Image segmentation is the process of separating an image into multiple
+regions.
+
+See also
+
+- [[https://scipy-lectures.org/advanced/image_processing/index.html#basic-image][Image
+  manipulation and processing using Numpy and Scipy by Emmanuelle
+  Gouillart and Gaël Varoquaux]]
+- [[https://scikit-image.org/docs/dev/user_guide/tutorial_segmentation.html][Tutorial
+  on image segmentation with scikit-image]]
+
+Let's start again by defining an image as a two dimensional array and
+visualize it using pyclesperanto.
+
+#+begin_src python
+import numpy as np
+from pyclesperanto_prototype import imshow
+import matplotlib.pyplot as plt
+#+end_src
+
+#+begin_src python
+image = np.asarray([
+    [1, 0, 2, 1, 0, 0, 0],
+    [0, 3, 1, 0, 1, 0, 1],
+    [0, 5, 5, 1, 0, 1, 0],
+    [0, 6, 6, 5, 1, 0, 2],
+    [0, 0, 5, 6, 3, 0, 1],
+    [0, 1, 2, 1, 0, 0, 1],
+    [1, 0, 1, 0, 0, 1, 0]
+])
+#+end_src
+
+#+begin_src python
+imshow(image, colorbar=True)
+#+end_src
+
+[[file:a0a7d781a9e7fb69de5ba38906b0248d963fcf42.png]]
+
+** Binary images
+   :PROPERTIES:
+   :CUSTOM_ID: binary-images
+   :END:
+The most basic way of that is binarization, turning the image into a
+"positive" and a "negative" region. Typically, binary images are used
+for that, which could for example contain two different pixel values
+=True= and =False= representing "positive" and "negative", respectively.
+Technically, every image can be interpreted as a binary image using the
+rationale "Every pixel is considered positive that is neither =False=
+nor =0=."
+
+** Image thresholding
+   :PROPERTIES:
+   :CUSTOM_ID: image-thresholding
+   :END:
+A very basic algorithm for separating low intensity regions from high
+intensity regions in the image is thresholding. We will now make a new
+image containing =True= and =False= as pixel values depending on if the
+original image had intensity lower or higher a given threshold. As this
+image has just two different pixel values, it is a binary image:
+
+#+begin_src python
+threshold = 4
+
+binary_image = image > threshold
+#+end_src
+
+#+begin_src python
+binary_image
+#+end_src
+
+#+begin_example
+array([[False, False, False, False, False, False, False],
+       [False, False, False, False, False, False, False],
+       [False,  True,  True, False, False, False, False],
+       [False,  True,  True,  True, False, False, False],
+       [False, False,  True,  True, False, False, False],
+       [False, False, False, False, False, False, False],
+       [False, False, False, False, False, False, False]])
+#+end_example
+
+#+begin_src python
+imshow(binary_image)
+#+end_src
+
+[[file:2d7c36fff913d5ddcae933fa02004d0642145fbd.png]]
+
+[[https://matplotlib.org/][Matplotlib]] might be more flexible when
+visualizing images, e.g. for drawing outlines around regions of
+interest:
+
+#+begin_src python
+# create a new plot
+fig, axes = plt.subplots(1,1)
+
+# add two images
+axes.imshow(image, cmap=plt.cm.gray)
+axes.contour(binary_image, [0.5], linewidths=1.2, colors='r')
+#+end_src
+
+#+begin_example
+<matplotlib.contour.QuadContourSet at 0x1a542ce37f0>
+#+end_example
+
+[[file:43fc7d231538427084ad7c05ee62807094f06f3c.png]]

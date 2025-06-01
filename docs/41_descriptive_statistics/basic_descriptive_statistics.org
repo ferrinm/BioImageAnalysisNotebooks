@@ -1,0 +1,137 @@
+<<f6dc47ed-b5c4-4e23-8af3-365fa5aea930>>
+* Descriptive statistics
+  :PROPERTIES:
+  :CUSTOM_ID: descriptive-statistics
+  :END:
+The term
+[[https://en.wikipedia.org/wiki/Descriptive_statistics][descriptive
+statistics]] refers to methods that allow summarizing collections of
+data. To demonstrate the most important methods, we start by defining a
+dataset first.
+
+<<52c2d369-3c34-42f1-860d-4b15aa0a56fb>>
+#+begin_src python
+measurements = [5, 2, 6, 4, 8, 6, 2, 5, 1, 3, 3, 6]
+#+end_src
+
+<<495cce67-9f45-4b36-842d-404747ba43a1>>
+** Measurements of central tendency
+   :PROPERTIES:
+   :CUSTOM_ID: measurements-of-central-tendency
+   :END:
+We can measure the /location/ of our =measurement= in space using
+[[https://numpy.org/doc/stable/reference/routines.statistics.html][numpy's
+statistics functions]] and Python's
+[[https://docs.python.org/3/library/statistics.html][statistics
+module]].
+
+<<afe45a7b-d925-46b6-b2c3-8fdcbdafae5c>>
+#+begin_src python
+import numpy as np
+import statistics as st
+#+end_src
+
+<<ae6d6f1d-da15-4fb3-9021-bfffa18b6e76>>
+#+begin_src python
+np.mean(measurements)
+#+end_src
+
+#+begin_example
+4.25
+#+end_example
+
+<<5c8785a5-8f3e-43f3-abb6-ab798d2d0e8e>>
+#+begin_src python
+np.median(measurements)
+#+end_src
+
+#+begin_example
+4.5
+#+end_example
+
+<<068fadac-1e6d-4449-b074-6b320ff85bbf>>
+#+begin_src python
+st.mode(measurements)
+#+end_src
+
+#+begin_example
+6
+#+end_example
+
+<<b14d6e91-b0b8-4acf-8fa4-616aca040bb8>>
+** Measurements of spread
+   :PROPERTIES:
+   :CUSTOM_ID: measurements-of-spread
+   :END:
+Numpy also allows measuring the spread of =measurements=.
+
+<<21cc5cfa-6e48-481b-a9d1-a51e114976b5>>
+#+begin_src python
+np.std(measurements)
+#+end_src
+
+#+begin_example
+2.0052015692526606
+#+end_example
+
+<<90a53582-7f8b-4c46-9360-224ea142acc3>>
+#+begin_src python
+np.var(measurements)
+#+end_src
+
+#+begin_example
+4.020833333333333
+#+end_example
+
+<<959c06f8-05eb-481c-9fbd-32b965e7cd40>>
+#+begin_src python
+np.min(measurements), np.max(measurements)
+#+end_src
+
+#+begin_example
+(1, 8)
+#+end_example
+
+<<b2501f96-4f16-488f-9b9b-74d62309d471>>
+#+begin_src python
+np.percentile(measurements, [25, 50, 75])
+#+end_src
+
+#+begin_example
+array([2.75, 4.5 , 6.  ])
+#+end_example
+
+<<c5465b23-6818-4456-b07b-42e479431a96>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Find out if the median of a sample dataset is always a number within the
+sample. Use these three examples to elaborate on this:
+
+<<acc54c8e-5b77-4f56-8bee-c6d0c5a13bbb>>
+#+begin_src python
+example1 = [3, 4, 5]
+#+end_src
+
+<<0789f045-0782-4587-ab26-7ea96a38b662>>
+#+begin_src python
+#+end_src
+
+<<bd27b8de-db9b-48f9-b6c9-78dea2958319>>
+#+begin_src python
+example2 = [3, 4, 4, 5]
+#+end_src
+
+<<1a4cfe20-e174-43e6-8bdd-7bb0d70c2474>>
+#+begin_src python
+#+end_src
+
+<<9b679e86-3ffb-49ce-ac36-a2bcb2607004>>
+#+begin_src python
+example3 = [3, 4, 5, 6]
+#+end_src
+
+<<56d926f8-81b9-4b22-9392-12c2fa568adb>>
+#+begin_src python
+#+end_src

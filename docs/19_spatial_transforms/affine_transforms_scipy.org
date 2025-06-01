@@ -1,0 +1,88 @@
+<<cutting-integer>>
+* Affine transforms using Scipy
+  :PROPERTIES:
+  :CUSTOM_ID: affine-transforms-using-scipy
+  :END:
+In this section we demonstrate how to apply an affine transform using
+[[https://scipy.org][scipy]].
+
+<<signal-waste>>
+#+begin_src python
+import numpy as np
+from skimage.io import imread, imshow
+from scipy import ndimage as ndi
+#+end_src
+
+<<cfdda484-a7b3-497d-922e-145c67c2db6a>>
+#+begin_src python
+image = imread('../../data/Haase_MRT_tfl3d1.tif')
+#+end_src
+
+<<seasonal-walker>>
+#+begin_src python
+imshow(image[100])
+image.shape
+#+end_src
+
+#+begin_example
+(192, 256, 256)
+#+end_example
+
+[[file:11d3a6272e52cdb9c3043d22a886f7b17485aa92.png]]
+
+<<1d82a3bb-7d9b-4857-9a21-493dbd91e77d>>
+[[https://en.wikipedia.org/wiki/Affine_transformation#Image_transformation][Affine
+transforms]] are typically defines using transform matrices.
+
+For example, we can enter a scaling factor into such a matrix like in
+the following. Typically, the inverse transform is managed in these
+matrices. In the case of scaling, we need to enter a scaling factor of
+=0.5= in case we want to increase the image size by factor =2=. The
+reason is that the affine transform matrix defines the transform that
+needs to be applied from every pixel in the target image to every pixel
+in the source image. If the target image is twice as large as the
+source, we need to multiply target pixel coordinates with =0.5= to
+determine the corresponding source pixel coordinates.
+
+<<quarterly-growth>>
+#+begin_src python
+# scaling by factor 1 / s
+s = 0.5
+matrix = np.asarray([
+    [s, 0, 0, 0],
+    [0, s, 0, 0],
+    [0, 0, s, 0],
+    [0, 0, 0, 1],
+])
+#+end_src
+
+<<935370af-8cab-4900-864e-af5e5c76dd7a>>
+Before applying the transform, we also need to calculate the output
+image size (shape) and create that output image:
+
+<<e79171b3-2522-4fda-9ec1-e97ab1f4b346>>
+#+begin_src python
+output_shape = tuple((np.asarray(image.shape) / s).astype(int))
+scaled = np.ndarray(output_shape)
+scaled.shape
+#+end_src
+
+#+begin_example
+(384, 512, 512)
+#+end_example
+
+<<uniform-segment>>
+#+begin_src python
+result = ndi.affine_transform(image, matrix, output=scaled, output_shape=output_shape)
+#+end_src
+
+<<excited-binding>>
+#+begin_src python
+imshow(scaled[200], cmap="Greys_r", vmin=0)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x14efd955df0>
+#+end_example
+
+[[file:0a1a0540784e4b30e86433e26c3642470fec17b1.png]]

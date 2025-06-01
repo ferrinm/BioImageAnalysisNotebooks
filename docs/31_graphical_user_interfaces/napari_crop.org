@@ -1,0 +1,151 @@
+<<a9d2672b-1791-4e99-8520-f1d3707a7cb2>>
+* Interactive cropping with napari
+  :PROPERTIES:
+  :CUSTOM_ID: interactive-cropping-with-napari
+  :END:
+When cropping three-dimensional data it might make sense to do this
+interactively, e.g. using napari. For scripting convenience, we use a
+napari plugin, called
+[[https://github.com/biapol/napari-crop][napari-crop]].
+
+See also
+
+- [[https://napari.org/tutorials/fundamentals/shapes.html][napari shapes
+  layer tutorial]]
+- [[https://napari.org/magicgui/][magicgui]]
+
+<<e3eb3853-17e1-495b-a6b7-bf3f8c72ee89>>
+#+begin_src python
+import napari
+from napari.utils import nbscreenshot
+from skimage.io import imread
+from magicgui import magicgui
+
+# The following is a private function. The interface 
+# may be changed in the future. If you copy that code 
+# it breaks at some point, please come back to this  
+# notebook and check how to update your code.
+from napari_crop._function import crop_region
+#+end_src
+
+<<12b22a20-ab5d-47a9-9726-3702b957999c>>
+We start by loading a dataset and showing it in napari.
+
+<<f34d94d5-82ea-4468-afd0-2d4f4e08d294>>
+#+begin_src python
+# Start a napari viewer
+viewer = napari.Viewer()
+
+# open an image and store it in a layer
+image_layer = viewer.open("../../data/Haase_MRT_tfl3d1.tif")
+
+# select a center plane for viewing
+viewer.dims.current_step = [100, 0, 0]
+
+# show napari window as screenshot in the notebook
+nbscreenshot(viewer)
+#+end_src
+
+#+begin_example
+C:\Users\rober\Anaconda3\envs\bio_39\lib\site-packages\napari\plugins\_plugin_manager.py:494: UserWarning: Plugin 'napari-accelerated-pixel-and-object-classification' provided a non-callable type to `napari_experimental_provide_function`: <class 'magicgui._magicgui.MagicFactory'>. Function widget ignored.
+  warn(message=warn_message)
+#+end_example
+
+[[file:16b7c21e4020bfef71f85573ff9bd91f63b78007.png]]
+
+<<95fb2611-eaa5-4b9e-8209-a91eef4ec2c4>>
+Next, we put a circle shape in a new shapes layer into the viewer.
+
+<<9173a783-f91c-4ac0-80d2-aa1929cfa59e>>
+#+begin_src python
+def make_circle(circle_center_x, circle_center_y, circle_radius):
+    """Helper function to create circles"""
+    current_z_slice = viewer.dims.current_step[0]
+
+    return [[current_z_slice, circle_center_y - circle_radius, circle_center_x - circle_radius],
+           [current_z_slice, circle_center_y - circle_radius, circle_center_x + circle_radius],
+           [current_z_slice, circle_center_y + circle_radius, circle_center_x - circle_radius],
+           [current_z_slice, circle_center_y + circle_radius, circle_center_x + circle_radius]]
+
+elipses = make_circle(80, 100, 50)
+    
+# add shapes to viewer
+shapes_layer = viewer.add_shapes(elipses, shape_type='ellipse', edge_width=2)
+
+nbscreenshot(viewer)
+#+end_src
+
+[[file:d2b9dfdf8cf90313756634b9b34a0f1be9cf52c4.png]]
+
+<<5c7a3db4-55fd-4a88-b9a8-e9ebcab47776>>
+Next, we attach a graphical user-interface (GUI) for cropping a region.
+
+<<d12de5af-a444-4dcb-b920-907b34a07f73>>
+#+begin_src python
+# make a graphical user interface
+crop_gui = magicgui(crop_region)
+
+# attach it to the viewer window
+viewer.window.add_dock_widget(crop_gui)
+
+nbscreenshot(viewer)
+#+end_src
+
+[[file:42d19d5a5728a21741d24452ecdd687fda4d64c8.png]]
+
+<<04eec753-daeb-4469-822a-749e14c59afd>>
+After attaching the GUI, we can also click the =Run= button and crop out
+a region like this:
+
+<<ac1c0d45-bb17-47fc-b711-e9938b05e0b4>>
+#+begin_src python
+crop_gui()
+
+nbscreenshot(viewer)
+#+end_src
+
+[[file:db600b7ecaed75d127b57505ce759639aae6d55c.png]]
+
+<<f64b4cec-24bd-42fc-8e98-fdb0a797a497>>
+We can also reposition the circle and crop again.
+
+<<031f2c70-ce62-449f-89dd-623f2d1c9295>>
+#+begin_src python
+# reposition the selected circle
+elipses = make_circle(120, 150, 50)
+shapes_layer.data = elipses
+
+# duplicate last cropped layer, because cropping again would overwrite it
+viewer.add_image(viewer.layers[2].data)
+
+# crop again
+crop_gui()
+
+# crop one more circle
+shapes_layer.data = make_circle(170, 150, 50)
+viewer.add_image(viewer.layers[2].data)
+crop_gui()
+
+nbscreenshot(viewer)
+#+end_src
+
+[[file:da99f6aedb908658e4386c091377490c4e174b51.png]]
+
+<<59c4e891-0b25-4695-8ae5-31d476ecd940>>
+By the end, we remove the image and shapes layers and take a look at the
+crops side by side.
+
+<<2719e1c7-4e51-49b9-81c2-f6002fe2bd0c>>
+#+begin_src python
+# Remove the first two layers
+viewer.layers.remove(viewer.layers[0])
+viewer.layers.remove(viewer.layers[0])
+
+# toggle grid view
+viewer.grid.enabled = True
+viewer.grid.stride = 1
+
+nbscreenshot(viewer)
+#+end_src
+
+[[file:6bf957ae9caf42c3253140d3c3e23841465652ef.png]]

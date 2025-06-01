@@ -1,0 +1,75 @@
+* Counting bright objects in images
+  :PROPERTIES:
+  :CUSTOM_ID: counting-bright-objects-in-images
+  :END:
+A common use case for image processing in the biology context is
+counting blobs of high signal intensity surrounded by a low intensity
+background. Thresholding is the method of choice in this scenario. We
+demonstrate it with Otsu's thresholding method (Otsu et al., IEEE
+Transactions on Systems, Man, and Cybernetics, Vol. 9 (1), 1979)
+
+#+begin_src python
+import pyclesperanto_prototype as cle
+
+from skimage.io import imread, imsave, imshow
+import matplotlib
+import numpy as np
+
+# initialize GPU
+cle.select_device("GTX")
+#+end_src
+
+#+begin_example
+<Apple M1 Max on Platform: Apple (2 refs)>
+#+end_example
+
+#+begin_src python
+# load data
+image = imread('../../data/blobs.tif')
+print("Loaded image size: " + str(image.shape))
+
+cle.imshow(image)
+#+end_src
+
+#+begin_example
+Loaded image size: (254, 256)
+#+end_example
+
+[[file:9ddf7bda81969b6ef9d1d4c29b70e47df2fde17d.png]]
+
+We just setup a simple image processing workflow that leads to a label
+image.
+
+#+begin_src python
+# process the image
+blurred = cle.gaussian_blur(image, sigma_x=1, sigma_y=1)
+binary = cle.threshold_otsu(blurred)
+labeled = cle.connected_components_labeling_box(binary)
+
+# show result
+cle.imshow(labeled, labels=True)
+#+end_src
+
+[[file:8526449a8fbf6924519cd10ea6fa9c6834877e0d.png]]
+
+The maximum intensity in a label image corresponds to the number of
+objects.
+
+#+begin_src python
+num_labels = cle.maximum_of_all_pixels(labeled)
+print("Number of objects in the image: " + str(num_labels))
+#+end_src
+
+#+begin_example
+Number of objects in the image: 62.0
+#+end_example
+
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Remove the labels that touch the image border and count the objects
+again.
+
+#+begin_src python
+#+end_src

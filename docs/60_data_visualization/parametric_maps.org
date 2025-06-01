@@ -1,0 +1,443 @@
+(data_visualization.parametric_maps)=
+
+* Parametric maps
+  :PROPERTIES:
+  :CUSTOM_ID: parametric-maps
+  :END:
+This notebook demonstrates how parametric maps can be made. In such
+parametric images, pixel intensity corresponds to measurements of the
+objects, for example area.
+
+#+begin_src python
+import numpy as np
+import pyclesperanto_prototype as cle
+from skimage.io import imread, imsave
+from skimage.measure import regionprops, regionprops_table
+from skimage.util import map_array
+from napari_simpleitk_image_processing import label_statistics
+#+end_src
+
+Starting point for drawing parametric maps is always a label image.
+
+#+begin_src python
+binary = cle.artificial_objects_2d()
+labels = cle.voronoi_otsu_labeling(binary, spot_sigma=5)
+
+cle.imshow(labels, labels=True)
+#+end_src
+
+[[file:277c094f9af036ac62fae97f4c5cdc5d32e03981.png]]
+
+** Parametric maps using scikit-image
+   :PROPERTIES:
+   :CUSTOM_ID: parametric-maps-using-scikit-image
+   :END:
+You can also compute your own measurement for each object and then
+visualize it in a parametric map image. Consider using
+[[https://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.regionprops][scikit-image's
+=regionprops()=]] for computing the measurements.
+
+#+begin_src python
+statistics_table = regionprops_table(cle.pull(labels), properties=('label', 'area',))
+#+end_src
+
+** Area map
+   :PROPERTIES:
+   :CUSTOM_ID: area-map
+   :END:
+
+#+begin_src python
+remapped = map_array(
+        cle.pull(labels),
+        statistics_table['label'],
+        statistics_table['area'],
+        )
+
+cle.imshow(remapped, colorbar=True, color_map="jet")
+#+end_src
+
+[[file:af6b24f3f211e7f2119a85a99b43c9f342f468c2.png]]
+
+** Parametric maps in pyclesperanto
+   :PROPERTIES:
+   :CUSTOM_ID: parametric-maps-in-pyclesperanto
+   :END:
+
+Alternatively, we can use the function =cle.replace_intensities= for
+making these parametric maps. It expects a label image and a list of
+measurements ordered by label, starting with a measurement corresponding
+to background (index 0). In the list of measurements, no label should be
+missing. Consider to [[image-segmentation:relabel-sequential][relabel
+the label image sequentially]] if necessary.
+
+#+begin_src python
+statistics = regionprops(cle.pull(labels))
+#+end_src
+
+#+begin_src python
+# we're appending a [0] for the "measurement" of the background and attach all values behind
+area = [0] + [s.area for s in statistics]
+
+area_map2 = cle.replace_intensities(labels, area)
+
+cle.imshow(area_map2, colorbar=True, color_map="jet")
+#+end_src
+
+[[file:af6b24f3f211e7f2119a85a99b43c9f342f468c2.png]]
+
+** Pixel count map
+   :PROPERTIES:
+   :CUSTOM_ID: pixel-count-map
+   :END:
+pyclesperanto comes with some maps built-in. For example the pixel count
+map derived from a label image expresses area or volume of objects in
+colour.
+
+#+begin_src python
+pixel_count_map = cle.label_pixel_count_map(labels)
+
+cle.imshow(pixel_count_map, color_map='jet', colorbar=True)
+#+end_src
+
+#+begin_example
+/Users/haase/code/pyclesperanto_prototype/pyclesperanto_prototype/_tier9/_statistics_of_labelled_pixels.py:283: RuntimeWarning: invalid value encountered in true_divide
+  region_props['mean_max_distance_to_centroid_ratio'] = region_props['max_distance_to_centroid'] / region_props[
+/Users/haase/code/pyclesperanto_prototype/pyclesperanto_prototype/_tier9/_statistics_of_labelled_pixels.py:285: RuntimeWarning: invalid value encountered in true_divide
+  region_props['mean_max_distance_to_mass_center_ratio'] = region_props['max_distance_to_mass_center'] / region_props[
+#+end_example
+
+[[file:af6b24f3f211e7f2119a85a99b43c9f342f468c2.png]]
+
+** Parametric maps using SimpleITK-based measurements
+   :PROPERTIES:
+   :CUSTOM_ID: parametric-maps-using-simpleitk-based-measurements
+   :END:
+Furthermore, also [[https://simpleitk.readthedocs.io/][SimpleITK]] comes
+with quantitative measurements for labeled images. For convenience
+reasons, we will use the scriptable napari plugin
+[[https://github.com/haesleinhuepf/napari-simpleitk-image-processing][napari-simpleitk-image-processing]]
+for deriving measurements.
+
+#+begin_src python
+statistics_sitk = label_statistics(labels, labels, size=True, shape=True, perimeter=True, intensity=False)
+
+print(statistics_sitk.keys())
+#+end_src
+
+#+begin_example
+dict_keys(['label', 'elongation', 'feret_diameter', 'flatness', 'roundness', 'equivalent_ellipsoid_diameter_0', 'equivalent_ellipsoid_diameter_1', 'equivalent_spherical_perimeter', 'equivalent_spherical_radius', 'number_of_pixels', 'number_of_pixels_on_border', 'perimeter', 'perimeter_on_border', 'perimeter_on_border_ratio'])
+#+end_example
+
+** Number of pixels map
+   :PROPERTIES:
+   :CUSTOM_ID: number-of-pixels-map
+   :END:
+
+#+begin_src python
+# we're appending a [0] for the "measurement" of the background and attach all values behind
+number_of_pixels = [0] + statistics_sitk['number_of_pixels']
+
+number_of_pixels_map = cle.replace_intensities(labels, number_of_pixels)
+
+cle.imshow(number_of_pixels_map, colorbar=True, color_map="jet")
+#+end_src
+
+[[file:af6b24f3f211e7f2119a85a99b43c9f342f468c2.png]]
+
+** Extension ratio map
+   :PROPERTIES:
+   :CUSTOM_ID: extension-ratio-map
+   :END:
+The extension ratio is a shape descriptor derived from the maximum
+distance of pixels to their object's centroid divided by the average
+distance of pixels to the centroid. It alllows to differentiate
+elongated from roundish objects.
+
+#+begin_src python
+extension_ratio_map = cle.extension_ratio_map(labels)
+
+cle.imshow(extension_ratio_map, 
+           color_map='jet', 
+           colorbar=True, 
+           min_display_intensity=1.5, 
+           max_display_intensity=2.5)
+#+end_src
+
+[[file:98e2351bdf7aa586564985eab5a621c1b9481602.png]]
+
+** Mean / minimum / maximum / standard-deviation intensity map
+   :PROPERTIES:
+   :CUSTOM_ID: mean--minimum--maximum--standard-deviation-intensity-map
+   :END:
+If we use additionally an intensity image, we can also produce
+parametric images showing intensity measurements.
+
+#+begin_src python
+blobs = cle.scale(imread('../../data/blobs.tif'), factor_x=2, factor_y=2, auto_size=True)
+
+cle.imshow(blobs)
+#+end_src
+
+[[file:9d554a83fee5d352e6e53b14ce7f7be14efb5900.png]]
+
+#+begin_src python
+mean_intensity_map = cle.label_mean_intensity_map(blobs, labels)
+cle.imshow(mean_intensity_map, 
+           color_map='jet', 
+           colorbar=True,
+           min_display_intensity=100, 
+           max_display_intensity=250)
+#+end_src
+
+[[file:5a3287a393f7872c8e39065218c3182ad1d793fc.png]]
+
+#+begin_src python
+maximum_intensity_map = cle.maximum_intensity_map(blobs, labels)
+cle.imshow(maximum_intensity_map, 
+           color_map='jet', 
+           colorbar=True, 
+           min_display_intensity=200, 
+           max_display_intensity=270)
+#+end_src
+
+[[file:7250f337476c5e2cebc69b800a36e6e2fa76801f.png]]
+
+#+begin_src python
+stddev_intensity_map = cle.standard_deviation_intensity_map(blobs, labels)
+cle.imshow(stddev_intensity_map, color_map='jet', colorbar=True)
+#+end_src
+
+[[file:ee8fc6979b945552484b1493ee1a2fd0e75addee.png]]
+
+** Aspect ratio map
+   :PROPERTIES:
+   :CUSTOM_ID: aspect-ratio-map
+   :END:
+
+#+begin_src python
+# we're appending a [0] for the "measurement" of the background and attach all values behind
+aspect_ratio = [0]
+
+for s in statistics:
+    if s.minor_axis_length:
+        aspect_ratio.append(s.major_axis_length / s.minor_axis_length)
+    else:
+        aspect_ratio.append(0) # note: an aspect ratio of 0 is an "invalid" value
+#+end_src
+
+#+begin_src python
+aspect_ratio_map = cle.replace_intensities(labels, aspect_ratio)
+
+cle.imshow(aspect_ratio_map, colorbar=True, color_map="jet")
+#+end_src
+
+[[file:0b8eb8d2c5ce9da836dce9d072c7fa81cc01fae3.png]]
+
+** Elongation map
+   :PROPERTIES:
+   :CUSTOM_ID: elongation-map
+   :END:
+
+#+begin_src python
+# we're appending a [0] for the "measurement" of the background and attach all values behind
+eccentricity = [0] + [s.eccentricity for s in statistics]
+
+eccentricity_map = cle.replace_intensities(labels, eccentricity)
+
+cle.imshow(eccentricity_map, colorbar=True, color_map="jet")
+#+end_src
+
+[[file:60ba3bc54eda28709a1037d8c84e4680b24cf0bb.png]]
+
+** Extent map
+   :PROPERTIES:
+   :CUSTOM_ID: extent-map
+   :END:
+
+#+begin_src python
+# we're appending a [0] for the "measurement" of the background and attach all values behind
+extent = [0] + [s.extent for s in statistics]
+
+extent_map = cle.replace_intensities(labels, extent)
+
+cle.imshow(extent_map, colorbar=True, color_map="jet")
+#+end_src
+
+[[file:023ddea14e9657177c1311343088da2b745eeeb3.png]]
+
+** Feret diameter map
+   :PROPERTIES:
+   :CUSTOM_ID: feret-diameter-map
+   :END:
+
+#+begin_src python
+# we're appending a [0] for the "measurement" of the background and attach all values behind
+feret_diameter = [0] + [s.feret_diameter_max for s in statistics]
+
+feret_diameter_map = cle.replace_intensities(labels, feret_diameter)
+
+cle.imshow(feret_diameter_map, colorbar=True, color_map="jet")
+#+end_src
+
+[[file:f75889fd2a8b8a30cd7d24444ceb62dbd0771d80.png]]
+
+** Orientation map
+   :PROPERTIES:
+   :CUSTOM_ID: orientation-map
+   :END:
+
+#+begin_src python
+# we're appending a [0] for the "measurement" of the background and attach all values behind
+orientation = [0] + [s.orientation for s in statistics]
+
+orientation_map = cle.replace_intensities(labels, orientation)
+
+cle.imshow(orientation_map, colorbar=True, color_map="jet")
+#+end_src
+
+[[file:3cad14c05be1f2d87167b8838ad01255b5ae6fdf.png]]
+
+** Perimeter map
+   :PROPERTIES:
+   :CUSTOM_ID: perimeter-map
+   :END:
+
+#+begin_src python
+# we're appending a [0] for the "measurement" of the background and attach all values behind
+perimeter_ski = [0] + [s.perimeter for s in statistics]
+
+perimeter_ski_map = cle.replace_intensities(labels, perimeter_ski)
+
+cle.imshow(perimeter_ski_map, colorbar=True, color_map="jet")
+#+end_src
+
+[[file:308245fab16c1e2f2db768f901c0440ffe34eca5.png]]
+
+** Solidity map
+   :PROPERTIES:
+   :CUSTOM_ID: solidity-map
+   :END:
+
+#+begin_src python
+# we're appending a [0] for the "measurement" of the background and attach all values behind
+solidity = [0] + [s.solidity for s in statistics]
+
+solidity_map = cle.replace_intensities(labels, solidity)
+
+cle.imshow(solidity_map, colorbar=True, color_map="jet")
+#+end_src
+
+[[file:ce2b6605cbfee7f168eb19ea10d614462c141c50.png]]
+
+** Elongation map
+   :PROPERTIES:
+   :CUSTOM_ID: elongation-map
+   :END:
+
+#+begin_src python
+# we're appending a [0] for the "measurement" of the background and attach all values behind
+elongation = [0] + statistics_sitk['elongation']
+
+elongation_map = cle.replace_intensities(labels, elongation)
+
+cle.imshow(elongation_map, colorbar=True, color_map="jet")
+#+end_src
+
+[[file:0b8eb8d2c5ce9da836dce9d072c7fa81cc01fae3.png]]
+
+** Flatness map
+   :PROPERTIES:
+   :CUSTOM_ID: flatness-map
+   :END:
+
+#+begin_src python
+# we're appending a [0] for the "measurement" of the background and attach all values behind
+flatness = [0] + statistics_sitk['flatness']
+
+flatness_map = cle.replace_intensities(labels, flatness)
+
+cle.imshow(flatness_map, colorbar=True, color_map="jet")
+#+end_src
+
+[[file:0b8eb8d2c5ce9da836dce9d072c7fa81cc01fae3.png]]
+
+** Roundness map
+   :PROPERTIES:
+   :CUSTOM_ID: roundness-map
+   :END:
+
+#+begin_src python
+# we're appending a [0] for the "measurement" of the background and attach all values behind
+roundness = [0] + statistics_sitk['roundness']
+
+roundness_map = cle.replace_intensities(labels, roundness)
+
+cle.imshow(roundness_map, colorbar=True, color_map="jet")
+#+end_src
+
+[[file:67bcb5f2d1f58ec164cc2888b5b0fc5d102ffd3d.png]]
+
+** Perimeter map
+   :PROPERTIES:
+   :CUSTOM_ID: perimeter-map
+   :END:
+
+#+begin_src python
+# we're appending a [0] for the "measurement" of the background and attach all values behind
+perimeter_sitk = [0] + statistics_sitk['perimeter']
+
+perimeter_sitk_map = cle.replace_intensities(labels, perimeter_sitk)
+
+cle.imshow(perimeter_sitk_map, colorbar=True, color_map="jet")
+#+end_src
+
+[[file:2ddc229a66b87c59dc391d9ad734c6b3e013a76d.png]]
+
+** Quality assurance
+   :PROPERTIES:
+   :CUSTOM_ID: quality-assurance
+   :END:
+If you generate a parametric image with the "label" column, the
+parametric image should actually be equal to the label input image.
+
+#+begin_src python
+# we're appending a [0] for the "measurement" of the background and attach all values behind
+label = [0] + statistics_sitk['label']
+
+label_map = cle.replace_intensities(labels, label)
+
+cle.imshow(label_map, labels=True)
+#+end_src
+
+[[file:277c094f9af036ac62fae97f4c5cdc5d32e03981.png]]
+
+#+begin_src python
+label_difference = labels - label_map
+
+cle.imshow(label_difference)
+#+end_src
+
+[[file:1a0bb6c59ec17ff9c77566d593bf11ca2bf9cf24.png]]
+
+#+begin_src python
+label_difference.min(), label_difference.max()
+#+end_src
+
+#+begin_example
+(0.0, 0.0)
+#+end_example
+
+When comparing perimeter measurements from scikit-image and SimpleITK,
+we could see small differences. Here we can visualize which objects are
+affected and to what degree.
+
+#+begin_src python
+perimeter_difference = perimeter_sitk_map - perimeter_ski_map
+
+cle.imshow(perimeter_difference, colorbar=True, color_map="jet")
+#+end_src
+
+[[file:2500dfe47428f018383865100247b6b6968645ed.png]]
+
+#+begin_src python
+#+end_src

@@ -1,0 +1,30 @@
+<<16e46eea-5bb7-4850-8920-5c8e9942c345>>
+* Load and show an image
+  :PROPERTIES:
+  :CUSTOM_ID: load-and-show-an-image
+  :END:
+
+<<4fb1909a-4ab3-48f6-836a-8b7c1a6bee6b>>
+#+begin_src python
+import pyclesperanto_prototype as cle
+#+end_src
+
+<<b1fabaf1-a80f-4bb1-8288-ad7707249e6d>>
+#+begin_src python
+image = cle.imread("../../data/blobs.tif")
+image
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 40.,  32.,  24., ..., 216., 200., 200.],
+       [ 56.,  40.,  24., ..., 232., 216., 216.],
+       [ 64.,  48.,  24., ..., 240., 232., 232.],
+       ...,
+       [ 72.,  80.,  80., ...,  48.,  48.,  48.],
+       [ 80.,  80.,  80., ...,  48.,  48.,  48.],
+       [ 96.,  88.,  80., ...,  48.,  48.,  48.]], dtype=float32)
+#+end_example
+
+<<3868a1f3-86f0-4757-b551-9132eca2a2c3>>
+#+begin_src python
+#+end_src

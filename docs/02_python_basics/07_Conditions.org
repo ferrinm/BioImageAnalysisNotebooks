@@ -1,0 +1,227 @@
+<<casual-purpose>>
+* Conditions
+  :PROPERTIES:
+  :CUSTOM_ID: conditions
+  :END:
+The =if= statement can be used to execute code conditionally. That means
+only if an expression is true.
+
+See also:
+
+- [[https://www.datacamp.com/community/tutorials/elif-statements-python][if...elif...else
+  in Python]]
+
+Let's take a look at some expressions first
+
+<<sensitive-graham>>
+#+begin_src python
+3 > 4
+#+end_src
+
+#+begin_example
+False
+#+end_example
+
+<<spare-official>>
+#+begin_src python
+a = 3
+b = 4
+
+a > b
+#+end_src
+
+#+begin_example
+False
+#+end_example
+
+<<olive-supervisor>>
+#+begin_src python
+a < b
+#+end_src
+
+#+begin_example
+True
+#+end_example
+
+<<gorgeous-summit>>
+#+begin_src python
+# not equal
+a != b
+#+end_src
+
+#+begin_example
+True
+#+end_example
+
+<<assisted-governor>>
+#+begin_src python
+# equal
+a == b
+#+end_src
+
+#+begin_example
+False
+#+end_example
+
+<<looking-activation>>
+#+begin_src python
+# Note: Do not mix it up with this:
+a = b
+#+end_src
+
+<<complimentary-blade>>
+** The =if= statement
+   :PROPERTIES:
+   :CUSTOM_ID: the-if-statement
+   :END:
+After using =if= in combination with an expression, you need to put a
+colon =:= and following code must be indented:
+
+<<cathedral-circumstances>>
+#+begin_src python
+if 3 < 4:
+    print("Math is great.")
+#+end_src
+
+#+begin_example
+Math is great.
+#+end_example
+
+<<provincial-pulse>>
+#+begin_src python
+if 3 > 4:
+    print("Math is weird.")
+#+end_src
+
+<<affecting-robert>>
+You can also write more sophisticated comparisons:
+
+<<noble-safety>>
+#+begin_src python
+c = 10
+
+if 4 < c < 20:
+    print("C is between 4 and 20.")
+#+end_src
+
+#+begin_example
+C is between 4 and 20.
+#+end_example
+
+<<minute-exclusion>>
+Or combine expressions using =and= and =or=:
+
+<<stuffed-intermediate>>
+#+begin_src python
+if c > 4 and c < 10:
+    print("C is between 4 and 20.")
+#+end_src
+
+<<democratic-cutting>>
+If you want to check if an element is in an array, do it like this:
+
+<<disciplinary-spelling>>
+#+begin_src python
+animals = ['cat', 'dog', 'mouse']
+
+if 'cat' in animals:
+    print('Our list of animals contains a cat')
+#+end_src
+
+#+begin_example
+Our list of animals contains a cat
+#+end_example
+
+<<vietnamese-instrument>>
+You can also analyse strings. For example check if they start or end
+with certain characters:
+
+<<demanding-scott>>
+#+begin_src python
+filename = "cells.tif"
+
+if filename.endswith("tif"):
+    print("The file is an image!")
+#+end_src
+
+#+begin_example
+The file is an image!
+#+end_example
+
+<<naked-penny>>
+** The =if-else= statement
+   :PROPERTIES:
+   :CUSTOM_ID: the-if-else-statement
+   :END:
+If you have two different pieces of code that should be executed
+alternatively, use =if-else=:
+
+<<sophisticated-forum>>
+#+begin_src python
+quality_in_percent = 89
+
+if quality_in_percent > 90:    
+    print("Our quality is high enough.")
+else:
+    print("We need to improve our quality.")
+#+end_src
+
+#+begin_example
+We need to improve our quality.
+#+end_example
+
+<<shared-ground>>
+** The =elif= statement
+   :PROPERTIES:
+   :CUSTOM_ID: the-elif-statement
+   :END:
+For executing code depending on multiple conditions, use the
+=elif=-statement:
+
+<<compound-alliance>>
+#+begin_src python
+# determining the exam grade depending on 
+number_of_correct_points = 23
+number_of_total_points = 30
+
+# compute percentage
+percentage = number_of_correct_points / number_of_total_points * 100
+
+if percentage > 95:
+    grade = 1
+elif percentage > 80:
+    grade = 2
+elif percentage > 60:
+    grade = 3
+elif percentag > 50:
+    grade = 4
+else:
+    grade = 5
+    
+print("You scored", number_of_correct_points, "out of", number_of_total_points)
+print("Your grade is", grade)
+#+end_src
+
+#+begin_example
+You scored 23 out of 30
+Your grade is 3
+#+end_example
+
+<<italic-motor>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Write python code that prints out the daytime, e.g. "morning", "noon",
+"afternoon", "evening" and "night" depending on a given time.
+
+<<hawaiian-bryan>>
+#+begin_src python
+# it's 12:15
+time_hours = 12
+time_minutes = 15
+#+end_src
+
+<<biblical-style>>
+#+begin_src python
+#+end_src

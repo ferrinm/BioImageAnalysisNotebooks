@@ -1,0 +1,120 @@
+* Visualizing region properties in napari
+  :PROPERTIES:
+  :CUSTOM_ID: visualizing-region-properties-in-napari
+  :END:
+Visualizing quantitative measurements of regions in color on top of the
+regions is a common task when using napari. The napari plugin
+[[https://github.com/haesleinhuepf/napari-skimage-regionprops][napari-skimage-regionprops]]
+brings some convenience in drawing such parametric images.
+
+See also
+
+- [[file:data_visualization.parametric_maps][Parameteric images]]
+
+#+begin_src python
+from skimage.io import imread
+from skimage.filters import threshold_otsu
+from skimage.measure import label, regionprops_table
+import napari
+from napari_skimage_regionprops import visualize_measurement_on_labels, add_table
+#+end_src
+
+We start with loading an image and visualizing it in napari.
+
+#+begin_src python
+image = imread('../../data/blobs.tif')
+#+end_src
+
+#+begin_src python
+# Create an empty viewer
+viewer = napari.Viewer()
+#+end_src
+
+#+begin_example
+/Users/haase/opt/anaconda3/envs/bio_39/lib/python3.9/site-packages/napari_tools_menu/__init__.py:168: FutureWarning: Public access to Window.qt_viewer is deprecated and will be removed in
+v0.5.0. It is considered an "implementation detail" of the napari
+application, not part of the napari viewer model. If your use case
+requires access to qt_viewer, please open an issue to discuss.
+  self.tools_menu = ToolsMenu(self, self.qt_viewer.viewer)
+#+end_example
+
+#+begin_src python
+# Add a new layer containing an image
+viewer.add_image(image)
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:0b10bc6ba90ea4e1be009d9d2b6b5e295af25e0b.png]]
+
+Next, we segment blobs in the image and create a label image.
+
+#+begin_src python
+# segment and label blobs
+threshold = threshold_otsu(image)
+binary_image = image > threshold
+label_image = label(binary_image)
+
+# add labels to viewer
+label_layer = viewer.add_labels(label_image)
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:02a6c34195fb471bbc120bbc4c64b1a09e4f4ff4.png]]
+
+** Quantitative measurements
+   :PROPERTIES:
+   :CUSTOM_ID: quantitative-measurements
+   :END:
+We now extract quantitative measurements from the label image, e.g. by
+measuring the =area= of the labeled objects. For that we use
+scikit-image's
+[[https://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.regionprops_table][=regionprops_table=
+function]]. We save those statistical measurements in the label layer's
+=properties= so that napari and napari-plugins can post-process the
+data.
+
+#+begin_src python
+# measure region properties
+statistics = regionprops_table(label_image, properties=['area'])
+
+# save properties in the labels layer for later reuse
+label_layer.properties = statistics
+#+end_src
+
+We then use the scriptable napari plugin
+[[https://github.com/haesleinhuepf/napari-skimage-regionprops][napari-skimage-regionprops]]
+to visualize the measurements in a =parametric_image= and add that image
+to the napari viewer as well.
+
+#+begin_src python
+parametric_image = visualize_measurement_on_labels(label_layer, 'area')
+
+viewer.add_image(parametric_image, colormap='jet')
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:4f010134dbfe8a858a84aadf20234f4bbb3fa685.png]]
+
+We can also visualize the measurements as table using the =add_table=
+function of the same napari plugin.
+
+#+begin_src python
+add_table(label_layer, viewer)
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:24b28847f4305a12ca2cb60c4fe55139f4e8d303.png]]
+
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Measure the aspect ratio of the objects and visualize the values in
+color.
+
+#+begin_src python
+#+end_src

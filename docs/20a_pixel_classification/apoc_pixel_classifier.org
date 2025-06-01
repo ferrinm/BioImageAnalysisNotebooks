@@ -1,0 +1,78 @@
+<<ce720e69>>
+(pixel_classification.apoc)=
+
+* Pixel classification on OpenCL-compatible GPUs
+  :PROPERTIES:
+  :CUSTOM_ID: pixel-classification-on-opencl-compatible-gpus
+  :END:
+Alternatively to object or "instance" segmentation, we can also do
+semantic segmentation by classifying pixels.
+
+Let's start with loading an example image and some ground truth:
+
+<<030613f9>>
+#+begin_src python
+from skimage.io import imread
+import matplotlib.pyplot as plt
+import numpy as np
+import apoc
+import pyclesperanto_prototype as cle
+
+image = imread('../../data/blobs.tif')
+cle.imshow(image)
+#+end_src
+
+[[file:0691d67b662888d48b2a43a629bababf0db05cb3.png]]
+
+<<f9ce5403>>
+#+begin_src python
+manual_annotations = imread('../../data/blobs_annotations.tif')
+
+from skimage.io import imshow
+cle.imshow(manual_annotations, labels=True)
+#+end_src
+
+[[file:1577ed209a36ea930d7465a0e5426191cdb10429.png]]
+
+<<f0299779>>
+** Training
+   :PROPERTIES:
+   :CUSTOM_ID: training
+   :END:
+We now train a PixelClassifier, which is under the hood a
+[[https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html][scikit-learn
+RandomForestClassifier]]. After training, the classifier will be
+converted to
+[[https://github.com/clEsperanto/clij-opencl-kernels][clij-compatible
+OpenCL code]] and save to disk under a given filename.
+
+<<8c162a7f>>
+#+begin_src python
+# define features: original image, a blurred version and an edge image
+features = "original gaussian_blur=2 sobel_of_gaussian_blur=2"
+
+# this is where the model will be saved
+cl_filename = 'my_model.cl'
+
+apoc.erase_classifier(cl_filename)
+clf = apoc.PixelClassifier(opencl_filename=cl_filename)
+clf.train(features, manual_annotations, image)
+#+end_src
+
+<<5e231f60>>
+** Prediction
+   :PROPERTIES:
+   :CUSTOM_ID: prediction
+   :END:
+The classifier can then be used to classify all pixels in the given
+image. Starting point is again, the feature stack. Thus, the user must
+make sure that the same features are used for training and for
+prediction.
+
+<<efe2721c>>
+#+begin_src python
+result = clf.predict(image=image)
+cle.imshow(result, labels=True)
+#+end_src
+
+[[file:f55fa410d3dbb97c8de4807d06430d7822947ba5.png]]

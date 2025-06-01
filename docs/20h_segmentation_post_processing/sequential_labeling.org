@@ -1,0 +1,171 @@
+<<e8248096-a84a-4bd2-b7ef-a82c7f7cf2a8>>
+(image-segmentation:relabel-sequential)=
+
+* Sequential object (re-)labeling
+  :PROPERTIES:
+  :CUSTOM_ID: sequential-object-re-labeling
+  :END:
+As mentioned above, depending on the use-case it might be important to
+label objects in an image subsequently. It could for example be that a
+post-processing algorithm for label images crashes in case we pass a
+label image with missing labels. Hence, we should know how to relabel an
+image sequentially.
+
+<<b36594e9-bb16-401b-8fd1-9b53b9467f70>>
+#+begin_src python
+import numpy as np
+from skimage.io import imread
+from skimage.segmentation import relabel_sequential
+import pyclesperanto_prototype as cle
+#+end_src
+
+<<4835213a-332f-4cfc-aa99-3b1db0893025>>
+Our starting point is a label image with labels 1-8, where some labels
+are not present:
+
+<<bb8c2c52-55b6-406c-bb4a-ffd5705ed195>>
+#+begin_src python
+label_image = imread("../../data/label_map_with_index_gaps.tif")
+cle.imshow(label_image, labels=True)
+#+end_src
+
+[[file:4168e9ca5c4747e46d627fc768be6465356d044a.png]]
+
+<<2178fa92-5b4e-4ace-bcd1-1158f5446c48>>
+When measuring the maximum intensity in the image, we can see that this
+label image containing 4 labels is obviously not sequentially labeled.
+
+<<45e0cc56-d8af-4c91-b150-54685a7c9432>>
+#+begin_src python
+np.max(label_image)
+#+end_src
+
+#+begin_example
+8
+#+end_example
+
+<<2112511b-2314-4c47-97b1-c79ab0987f7f>>
+We can use the =unique= function to figure out which labels are present:
+
+<<018477c8-6219-4764-8af9-cd31cc2d3289>>
+#+begin_src python
+np.unique(label_image)
+#+end_src
+
+#+begin_example
+array([0, 1, 2, 4, 8], dtype=uint8)
+#+end_example
+
+<<c473353f-3a44-4a5d-b941-e7820fb9b3c3>>
+** Sequential labeling
+   :PROPERTIES:
+   :CUSTOM_ID: sequential-labeling
+   :END:
+We can now relabel this image and remove these gaps using
+[[https://scikit-image.org/docs/dev/api/skimage.segmentation.html#skimage.segmentation.relabel_sequential][scikit-image's
+=relabel_sequential()= function]]. We're entering the =_= as additional
+return variables as we're not interested in them. This is necessary
+because the =relabel_sequential= function returns three things, but we
+only need the first.
+
+<<ca80dc93-0bb4-47c7-baad-ec8227da6ee5>>
+#+begin_src python
+relabeled, _, _ = relabel_sequential(label_image)
+
+cle.imshow(relabeled, labels=True)
+#+end_src
+
+[[file:af0ffdf8af7696cc7b4204f7dcf2a7b161daa537.png]]
+
+<<cbe5f912-73e7-49f5-9dc1-e621a416f397>>
+Afterwards, the unique labels should be sequential:
+
+<<2dfa897e-4777-42d9-b0c4-2da192ba56ff>>
+#+begin_src python
+np.unique(relabeled)
+#+end_src
+
+#+begin_example
+array([0, 1, 2, 3, 4], dtype=uint8)
+#+end_example
+
+<<0b567dd2-669e-4ae2-927b-ef848020e628>>
+Also pyclesperanto has a function for relabeling label images
+sequentially. The result is supposed identical to the result in
+scikit-image. It just doesn't return the additional values.
+
+<<4227c8ef-3d49-491f-8442-27334cdb9f41>>
+#+begin_src python
+relabeled1 = cle.relabel_sequential(label_image)
+
+cle.imshow(relabeled1, labels=True)
+#+end_src
+
+[[file:af0ffdf8af7696cc7b4204f7dcf2a7b161daa537.png]]
+
+<<808de5dc-8d62-4443-9b65-1a508531c01c>>
+** Reverting sequential labeling
+   :PROPERTIES:
+   :CUSTOM_ID: reverting-sequential-labeling
+   :END:
+In some cases we apply an operation to a label image that returns a new
+label image with less labels that are sequentially labeled but the
+label-identity is lost. This happens for example when excluding labels
+from the label image that are too small.
+
+<<20d3d763-de55-41c7-b323-3cbeb3f3a2bd>>
+#+begin_src python
+large_labels = cle.exclude_small_labels(relabeled, maximum_size=260)
+
+cle.imshow(large_labels, labels=True, max_display_intensity=4)
+#+end_src
+
+[[file:c2a621ca84b997a040790230ac065c489dd6c0dc.png]]
+
+<<7368c923-f77f-4385-9b7b-494ea2e16075>>
+#+begin_src python
+np.unique(large_labels)
+#+end_src
+
+#+begin_example
+array([0, 1, 2], dtype=uint32)
+#+end_example
+
+<<21249e67-33ee-414d-acac-fecbe2df3996>>
+To restore the original label identities, we need to multiply a binary
+image representing the remaining labels with the original label image.
+
+<<0452cb83-10db-4ae5-96e9-50b122813fc4>>
+#+begin_src python
+binary_remaining_labels = large_labels > 0
+
+cle.imshow(binary_remaining_labels)
+#+end_src
+
+[[file:84bb06c06081b9b57c1765764b4ff8b3a851cbee.png]]
+
+<<6d7b565d-1c6f-4e16-88e7-066cfbed4aa5>>
+#+begin_src python
+large_labels_with_original_identity = binary_remaining_labels * relabeled
+
+cle.imshow(large_labels_with_original_identity, labels=True, max_display_intensity=4)
+#+end_src
+
+[[file:8fe6bb178447ae674d3ae1fea01fe84bbe82292d.png]]
+
+<<533d0716-ee9a-4871-8cee-f4446db28b64>>
+#+begin_src python
+np.unique(large_labels_with_original_identity)
+#+end_src
+
+#+begin_example
+array([0., 1., 3.], dtype=float32)
+#+end_example
+
+<<e0971158-a816-4bd6-ad4a-23f8f62aa4d4>>
+We can now conclude that labels with identities 2 and 4 were too small
+and thus, excluded.
+
+<<2d738ea2-bcd7-4c96-84e1-81c6136e4d7e>>
+#+begin_src python
+#+end_src

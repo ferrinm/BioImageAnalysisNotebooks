@@ -1,0 +1,542 @@
+<<aae3bd80-16e5-4bed-b09e-5ee84f25d33e>>
+* Statistics using SimpleITK
+  :PROPERTIES:
+  :CUSTOM_ID: statistics-using-simpleitk
+  :END:
+We can use [[https://simpleitk.readthedocs.io/][SimpleITK]] for
+extracting features from label images. For convenience reasons we use
+the
+[[https://github.com/haesleinhuepf/napari-simpleitk-image-processing][napari-simpleitk-image-processing]]
+library.
+
+<<36ad16e3>>
+#+begin_src python
+import numpy as np
+import pandas as pd
+from skimage.io import imread
+from pyclesperanto_prototype import imshow
+from skimage import measure
+import pyclesperanto_prototype as cle
+from skimage import filters
+from napari_simpleitk_image_processing import label_statistics
+#+end_src
+
+<<7e1c47f4>>
+#+begin_src python
+# load image
+image = imread("../../data/blobs.tif")
+
+# denoising
+blurred_image = filters.gaussian(image, sigma=1)
+
+# binarization
+threshold = filters.threshold_otsu(blurred_image)
+thresholded_image = blurred_image >= threshold
+
+# labeling
+label_image = measure.label(thresholded_image)
+
+# visualization
+imshow(label_image, labels=True)
+#+end_src
+
+[[file:0eeae1b518d1acf7f0ca05db5c6a37d07ab7c057.png]]
+
+<<2b76cf8f>>
+** Measurements/ region properties
+   :PROPERTIES:
+   :CUSTOM_ID: measurements-region-properties
+   :END:
+
+<<cd9b8b7c-d2d2-4fbf-9b9f-946b1a585225>>
+We are now using the very handy function =label_statistics= which
+provides a table of features. Let us check first what we need to provide
+for this function:
+
+<<720b6ce2-e330-4127-9c45-1073502312f4>>
+#+begin_src python
+label_statistics?
+#+end_src
+
+#+begin_example
+Signature:
+label_statistics(
+    intensity_image: 'napari.types.ImageData',
+    label_image: 'napari.types.LabelsData',
+    size: bool = True,
+    intensity: bool = True,
+    perimeter: bool = False,
+    shape: bool = False,
+    position: bool = False,
+    moments: bool = False,
+    napari_viewer: 'napari.Viewer' = None,
+) -> 'pandas.DataFrame'
+Docstring:
+Measure intensity/shape/... statistics per label
+
+Parameters
+----------
+intensity_image: ndarray, optional
+    Can be None
+label_image: ndarray
+    Must be subsequently labeled
+size: bool, optional
+intensity: bool, optional
+perimeter: bool, optional
+shape: bool, optional
+position: bool, optional
+moments: bool, optional
+napari_viewer: napari.Viewer, optional
+
+Returns
+-------
+pandas DataFrame, in case napari_viewr is None, otherwise the DataFrame will be added to
+the passed label_image's layer.features
+
+
+See Also
+--------
+..[0] https://simpleitk.org/doxygen/latest/html/classitk_1_1simple_1_1LabelShapeStatisticsImageFilter
+..[1] http://insightsoftwareconsortium.github.io/SimpleITK-Notebooks/Python_html/35_Segmentation_Shape_Analysis.html
+File:      c:\users\maral\mambaforge\envs\feature_blogpost\lib\site-packages\napari_simpleitk_image_processing\_simpleitk_image_processing.py
+Type:      function
+#+end_example
+
+<<561451f5-67d3-4fa6-824f-e061980fc597>>
+Feature categories which are set to =True= are measured by default. In
+this case, the categories are =size= and =intensity=. But the rest might
+be also interesting to investigate. So we need to set them to =True= as
+well:
+
+<<267088d1>>
+#+begin_src python
+df = pd.DataFrame(label_statistics(image, label_image,  
+                              shape=True, 
+                              perimeter=True, 
+                              position=True,
+                              moments=True))
+
+df
+#+end_src
+
+#+begin_example
+    label  maximum        mean  median  minimum      sigma       sum   
+0       1    232.0  191.440559   200.0    128.0  29.827923   82128.0  \
+1       2    224.0  179.846995   184.0    128.0  21.328889   32912.0   
+2       3    248.0  205.604863   208.0    120.0  29.414615  135288.0   
+3       4    248.0  217.515012   232.0    120.0  35.893817   94184.0   
+4       5    248.0  213.033898   224.0    128.0  28.771575  100552.0   
+..    ...      ...         ...     ...      ...        ...       ...   
+57     58    224.0  184.525822   192.0    120.0  28.322029   39304.0   
+58     59    248.0  184.810127   184.0    128.0  33.955505   14600.0   
+59     60    216.0  182.727273   184.0    128.0  24.557101   16080.0   
+60     61    248.0  189.538462   192.0    128.0  38.236858    9856.0   
+61     62    224.0  173.833333   176.0    128.0  28.283770    8344.0   
+
+       variance  bbox_0  bbox_1  ...  number_of_pixels_on_border  perimeter   
+0    889.704987      10       0  ...                          16  87.070368  \
+1    454.921516      53       0  ...                          21  53.456120   
+2    865.219581      95       0  ...                          23  93.409370   
+3   1288.366094     144       0  ...                          20  76.114262   
+4    827.803519     237       0  ...                          39  82.127941   
+..          ...     ...     ...  ...                         ...        ...   
+57   802.137302      39     232  ...                           0  52.250114   
+58  1152.976306     170     248  ...                          18  39.953250   
+59   603.051202     117     249  ...                          22  46.196967   
+60  1462.057315     227     249  ...                          15  32.924135   
+61   799.971631      66     250  ...                          17  35.375614   
+
+    perimeter_on_border  perimeter_on_border_ratio  principal_axes0   
+0                  16.0                   0.183759         0.905569  \
+1                  21.0                   0.392846        -0.042759   
+2                  23.0                   0.246228         0.989650   
+3                  20.0                   0.262763         0.902854   
+4                  40.0                   0.487045         0.999090   
+..                  ...                        ...              ...   
+57                  0.0                   0.000000         0.976281   
+58                 18.0                   0.450527        -0.012197   
+59                 22.0                   0.476222        -0.014920   
+60                 15.0                   0.455593        -0.013675   
+61                 17.0                   0.480557         0.030675   
+
+    principal_axes1  principal_axes2  principal_axes3  principal_moments0   
+0          0.424199        -0.424199         0.905569           17.336255  \
+1         -0.999085         0.999085        -0.042759            8.637199   
+2          0.143505        -0.143505         0.989650           49.994764   
+3          0.429947        -0.429947         0.902854           33.290649   
+4          0.042642        -0.042642         0.999090           24.209327   
+..              ...              ...              ...                 ...   
+57         0.216509        -0.216509         0.976281           13.084485   
+58        -0.999926         0.999926        -0.012197            2.075392   
+59        -0.999889         0.999889        -0.014920            1.815666   
+60        -0.999906         0.999906        -0.013675            1.592570   
+61        -0.999529         0.999529         0.030675            0.917610   
+
+    principal_moments1  
+0            75.599678  
+1            27.432794  
+2            56.996778  
+3            37.542552  
+4            60.391416  
+..                 ...  
+57           21.981750  
+58           20.902016  
+59           29.359308  
+60           12.843450  
+61           17.904873  
+
+[62 rows x 33 columns]
+#+end_example
+
+<<8294dbed-9684-4207-a904-da967f83c467>>
+These are all columns that are available:
+
+<<fa083df5-9c61-4513-9723-bed43e8e20d3>>
+#+begin_src python
+print(df.keys())
+#+end_src
+
+#+begin_example
+Index(['label', 'maximum', 'mean', 'median', 'minimum', 'sigma', 'sum',
+       'variance', 'bbox_0', 'bbox_1', 'bbox_2', 'bbox_3', 'centroid_0',
+       'centroid_1', 'elongation', 'feret_diameter', 'flatness', 'roundness',
+       'equivalent_ellipsoid_diameter_0', 'equivalent_ellipsoid_diameter_1',
+       'equivalent_spherical_perimeter', 'equivalent_spherical_radius',
+       'number_of_pixels', 'number_of_pixels_on_border', 'perimeter',
+       'perimeter_on_border', 'perimeter_on_border_ratio', 'principal_axes0',
+       'principal_axes1', 'principal_axes2', 'principal_axes3',
+       'principal_moments0', 'principal_moments1'],
+      dtype='object')
+#+end_example
+
+<<ea23a512>>
+#+begin_src python
+df.describe()
+#+end_src
+
+#+begin_example
+           label     maximum        mean      median     minimum      sigma   
+count  62.000000   62.000000   62.000000   62.000000   62.000000  62.000000  \
+mean   31.500000  233.548387  190.429888  196.258065  125.161290  28.767558   
+std    18.041619   19.371838   15.382559   19.527144    4.602898   6.091478   
+min     1.000000  152.000000  146.285714  144.000000  112.000000   6.047432   
+25%    16.250000  232.000000  182.969505  186.000000  120.000000  26.561523   
+50%    31.500000  240.000000  190.749492  200.000000  128.000000  29.089645   
+75%    46.750000  248.000000  199.725305  208.000000  128.000000  32.583571   
+max    62.000000  248.000000  220.026144  240.000000  136.000000  38.374793   
+
+                 sum     variance      bbox_0      bbox_1  ...   
+count      62.000000    62.000000   62.000000   62.000000  ...  \
+mean    69534.451613   864.079980  121.532258  112.629032  ...   
+std     42911.182492   311.860596   80.574925   76.921129  ...   
+min      1024.000000    36.571429    0.000000    0.000000  ...   
+25%     36010.000000   705.524752   53.000000   43.250000  ...   
+50%     71148.000000   846.217207  121.000000  110.500000  ...   
+75%     99962.000000  1061.691674  197.250000  172.250000  ...   
+max    177944.000000  1472.624704  251.000000  250.000000  ...   
+
+       number_of_pixels_on_border   perimeter  perimeter_on_border   
+count                   62.000000   62.000000            62.000000  \
+mean                     5.564516   67.071263             5.580645   
+std                      9.667625   23.507575             9.724986   
+min                      0.000000    9.155272             0.000000   
+25%                      0.000000   52.551616             0.000000   
+50%                      0.000000   68.204464             0.000000   
+75%                     12.500000   84.307520            12.500000   
+max                     39.000000  125.912897            40.000000   
+
+       perimeter_on_border_ratio  principal_axes0  principal_axes1   
+count                  62.000000        62.000000        62.000000  \
+mean                    0.102864         0.703539        -0.114112   
+std                     0.173858         0.459158         0.537821   
+min                     0.000000        -0.651619        -0.999926   
+25%                     0.000000         0.752633        -0.624188   
+50%                     0.000000         0.937869         0.040942   
+75%                     0.184963         0.994807         0.318631   
+max                     0.487045         1.000000         0.660963   
+
+       principal_axes2  principal_axes3  principal_moments0   
+count        62.000000        62.000000           62.000000  \
+mean          0.114112         0.703539           20.742486   
+std           0.537821         0.459158           13.092549   
+min          -0.660963        -0.651619            0.489796   
+25%          -0.318631         0.752633           11.068721   
+50%          -0.040942         0.937869           18.744728   
+75%           0.624188         0.994807           29.519182   
+max           0.999926         1.000000           49.994764   
+
+       principal_moments1  
+count           62.000000  
+mean            43.535735  
+std             32.666912  
+min              0.571429  
+25%             22.027192  
+50%             35.367902  
+75%             56.938641  
+max            186.225041  
+
+[8 rows x 33 columns]
+#+end_example
+
+<<7b3f73da-bf47-4c0d-a9d4-00650f5484d0>>
+** Specific measures
+   :PROPERTIES:
+   :CUSTOM_ID: specific-measures
+   :END:
+SimpleITK offers some non-standard measurements which deserve additional
+documentation
+
+<<f9c5d7c5-2094-4396-bae7-23088c4478e3>>
+*** =number_of_pixels_on_border=
+    :PROPERTIES:
+    :CUSTOM_ID: number_of_pixels_on_border
+    :END:
+
+<<525ed2ff-dd8e-4b58-8831-ef6457ed93dd>>
+First, we check its range on the above example image.
+
+<<95f76aa6-508d-42ba-8f1f-3d9e7f54053d>>
+#+begin_src python
+number_of_pixels_on_border = df['number_of_pixels_on_border'].tolist()
+np.min(number_of_pixels_on_border), np.max(number_of_pixels_on_border)
+#+end_src
+
+#+begin_example
+(0, 39)
+#+end_example
+
+<<3812a897-ee0f-4878-8433-968cab68fcdc>>
+Next, we visualize the measurement in space.
+
+<<ff634315-b5b2-4034-a6c6-4c68471ffa51>>
+#+begin_src python
+number_of_pixels_on_border_map = cle.replace_intensities(label_image, [0] + number_of_pixels_on_border)
+number_of_pixels_on_border_map
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 0.,  0.,  0., ..., 39., 39., 39.],
+       [ 0.,  0.,  0., ..., 39., 39., 39.],
+       [ 0.,  0.,  0., ..., 39., 39., 39.],
+       ...,
+       [ 0.,  0.,  0., ...,  0.,  0.,  0.],
+       [ 0.,  0.,  0., ...,  0.,  0.,  0.],
+       [ 0.,  0.,  0., ...,  0.,  0.,  0.]], dtype=float32)
+#+end_example
+
+<<7cb52971-cffa-4cec-ae79-a770fd46267d>>
+The visualization suggests that =number_of_pixels_on_border= is the
+count of pixels within a label that is located at the image border.
+
+<<ead03047-2ad9-4542-923e-394d99195043>>
+*** =perimeter_on_border=
+    :PROPERTIES:
+    :CUSTOM_ID: perimeter_on_border
+    :END:
+
+<<3377a017-28d9-4574-8e98-a08085f247a1>>
+#+begin_src python
+perimeter_on_border = df['perimeter_on_border'].tolist()
+np.min(perimeter_on_border), np.max(perimeter_on_border)
+
+perimeter_on_border_map = cle.replace_intensities(label_image, [0] + perimeter_on_border)
+perimeter_on_border_map
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 0.,  0.,  0., ..., 40., 40., 40.],
+       [ 0.,  0.,  0., ..., 40., 40., 40.],
+       [ 0.,  0.,  0., ..., 40., 40., 40.],
+       ...,
+       [ 0.,  0.,  0., ...,  0.,  0.,  0.],
+       [ 0.,  0.,  0., ...,  0.,  0.,  0.],
+       [ 0.,  0.,  0., ...,  0.,  0.,  0.]], dtype=float32)
+#+end_example
+
+<<57f191bd-9c2c-4185-b72a-33c319e677a5>>
+The visualization suggests that =perimeter_on_border= is the perimeter
+of labels that are located at the image border.
+
+<<8757ccc3-80ea-45b4-8c82-e19eddb3296b>>
+*** =perimeter_on_border_ratio=
+    :PROPERTIES:
+    :CUSTOM_ID: perimeter_on_border_ratio
+    :END:
+In this context, the [[][SimpleITK documentation]] points to a
+[[https://www.insight-journal.org/browse/publication/176][publication]]
+which mentiones "'SizeOnBorder' is the number of pixels in the objects
+which are on the border of the image." While the documentation is wage,
+the =perimeter_on_border_ratio= may be related.
+
+<<4e2c732b-a5c1-4ce2-a7bf-1b7e5ae74ce2>>
+#+begin_src python
+perimeter_on_border_ratio = df['perimeter_on_border_ratio'].tolist()
+np.min(perimeter_on_border_ratio), np.max(perimeter_on_border_ratio)
+
+perimeter_on_border_ratio_map = cle.replace_intensities(label_image, [0] + perimeter_on_border_ratio)
+perimeter_on_border_ratio_map
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0.        , 0.        , 0.        , ..., 0.48704496, 0.48704496,
+        0.48704496],
+       [0.        , 0.        , 0.        , ..., 0.48704496, 0.48704496,
+        0.48704496],
+       [0.        , 0.        , 0.        , ..., 0.48704496, 0.48704496,
+        0.48704496],
+       ...,
+       [0.        , 0.        , 0.        , ..., 0.        , 0.        ,
+        0.        ],
+       [0.        , 0.        , 0.        , ..., 0.        , 0.        ,
+        0.        ],
+       [0.        , 0.        , 0.        , ..., 0.        , 0.        ,
+        0.        ]], dtype=float32)
+#+end_example
+
+<<9484d6b8-1816-409c-8910-f0f343196e3c>>
+The visualization reinforces our assumption that the
+=perimeter_on_border_ratio= indeed is related to the amount the object
+touches the image border.
+
+<<29cf8778-1e48-46c9-9728-5e3c15977ad7>>
+*** =principal axes=
+    :PROPERTIES:
+    :CUSTOM_ID: principal-axes
+    :END:
+
+<<72172e61-2304-4344-bf85-8dd736fcd150>>
+In our example, we have =principal_axes0= - =principal_axes3=
+
+<<1dd8dac7-877f-45bf-8063-59f35b9861ea>>
+#+begin_src python
+principal_axes_0 = df['principal_axes0'].tolist()
+np.min(principal_axes_0), np.max(principal_axes_0)
+
+principal_axes_0_map = cle.replace_intensities(label_image, [0] + principal_axes_0)
+principal_axes_0_map
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0.        , 0.        , 0.        , ..., 0.99909043, 0.99909043,
+        0.99909043],
+       [0.        , 0.        , 0.        , ..., 0.99909043, 0.99909043,
+        0.99909043],
+       [0.        , 0.        , 0.        , ..., 0.99909043, 0.99909043,
+        0.99909043],
+       ...,
+       [0.        , 0.        , 0.        , ..., 0.        , 0.        ,
+        0.        ],
+       [0.        , 0.        , 0.        , ..., 0.        , 0.        ,
+        0.        ],
+       [0.        , 0.        , 0.        , ..., 0.        , 0.        ,
+        0.        ]], dtype=float32)
+#+end_example
+
+<<b2741272-640e-4988-8feb-965736b63fc0>>
+(=principal_axes3= looks the same)
+
+<<008a8386-64b3-4eef-b0b8-1b7e881d38c4>>
+#+begin_src python
+principal_axes_1 = df['principal_axes1'].tolist()
+np.min(principal_axes_1), np.max(principal_axes_1)
+
+principal_axes_1_map = cle.replace_intensities(label_image, [0] + principal_axes_1)
+principal_axes_1_map
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0.        , 0.        , 0.        , ..., 0.04264205, 0.04264205,
+        0.04264205],
+       [0.        , 0.        , 0.        , ..., 0.04264205, 0.04264205,
+        0.04264205],
+       [0.        , 0.        , 0.        , ..., 0.04264205, 0.04264205,
+        0.04264205],
+       ...,
+       [0.        , 0.        , 0.        , ..., 0.        , 0.        ,
+        0.        ],
+       [0.        , 0.        , 0.        , ..., 0.        , 0.        ,
+        0.        ],
+       [0.        , 0.        , 0.        , ..., 0.        , 0.        ,
+        0.        ]], dtype=float32)
+#+end_example
+
+<<bfd536b1-43db-494f-bb68-dde1d6abb5f6>>
+#+begin_src python
+principal_axes_2 = df['principal_axes2'].tolist()
+np.min(principal_axes_2), np.max(principal_axes_2)
+
+principal_axes_2_map = cle.replace_intensities(label_image, [0] + principal_axes_2)
+principal_axes_2_map
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 0.        ,  0.        ,  0.        , ..., -0.04264205,
+        -0.04264205, -0.04264205],
+       [ 0.        ,  0.        ,  0.        , ..., -0.04264205,
+        -0.04264205, -0.04264205],
+       [ 0.        ,  0.        ,  0.        , ..., -0.04264205,
+        -0.04264205, -0.04264205],
+       ...,
+       [ 0.        ,  0.        ,  0.        , ...,  0.        ,
+         0.        ,  0.        ],
+       [ 0.        ,  0.        ,  0.        , ...,  0.        ,
+         0.        ,  0.        ],
+       [ 0.        ,  0.        ,  0.        , ...,  0.        ,
+         0.        ,  0.        ]], dtype=float32)
+#+end_example
+
+<<723b2b36-f427-43dd-9e9b-d46e8446aae1>>
+*** =principal moments=
+    :PROPERTIES:
+    :CUSTOM_ID: principal-moments
+    :END:
+
+<<c3c5394f-bcb8-4d89-ab2c-8e9ecf8b15e5>>
+#+begin_src python
+principal_moments_0 = df['principal_moments0'].tolist()
+np.min(principal_moments_0), np.max(principal_moments_0)
+
+principal_moments_0_map = cle.replace_intensities(label_image, [0] + principal_moments_0)
+principal_moments_0_map
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 0.      ,  0.      ,  0.      , ..., 24.209328, 24.209328,
+        24.209328],
+       [ 0.      ,  0.      ,  0.      , ..., 24.209328, 24.209328,
+        24.209328],
+       [ 0.      ,  0.      ,  0.      , ..., 24.209328, 24.209328,
+        24.209328],
+       ...,
+       [ 0.      ,  0.      ,  0.      , ...,  0.      ,  0.      ,
+         0.      ],
+       [ 0.      ,  0.      ,  0.      , ...,  0.      ,  0.      ,
+         0.      ],
+       [ 0.      ,  0.      ,  0.      , ...,  0.      ,  0.      ,
+         0.      ]], dtype=float32)
+#+end_example
+
+<<aecfbe48-9a0e-4b37-8bc7-780c729df273>>
+#+begin_src python
+principal_moments_1 = df['principal_moments1'].tolist()
+np.min(principal_moments_1), np.max(principal_moments_1)
+
+principal_moments_1_map = cle.replace_intensities(label_image, [0] + principal_moments_1)
+principal_moments_1_map
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 0.      ,  0.      ,  0.      , ..., 60.391415, 60.391415,
+        60.391415],
+       [ 0.      ,  0.      ,  0.      , ..., 60.391415, 60.391415,
+        60.391415],
+       [ 0.      ,  0.      ,  0.      , ..., 60.391415, 60.391415,
+        60.391415],
+       ...,
+       [ 0.      ,  0.      ,  0.      , ...,  0.      ,  0.      ,
+         0.      ],
+       [ 0.      ,  0.      ,  0.      , ...,  0.      ,  0.      ,
+         0.      ],
+       [ 0.      ,  0.      ,  0.      , ...,  0.      ,  0.      ,
+         0.      ]], dtype=float32)
+#+end_example

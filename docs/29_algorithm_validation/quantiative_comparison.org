@@ -1,0 +1,374 @@
+<<a167c16f-6769-4425-9244-38c30aaa4d16>>
+* Quantitative labeling comparison
+  :PROPERTIES:
+  :CUSTOM_ID: quantitative-labeling-comparison
+  :END:
+Segmentation algorithms may produce different results. These differences
+may or may not be crucial, depending on the purpose of the scientific
+analysis these algorithms are used for.
+
+In this notebook we will check if the number of segmented objects is
+different using Otsu's thresholding method on blobs.tif and we will
+check if the area measurements are different between these two
+algorithms. The visual comparison performed before suggests that there
+should be a difference in area measurements.
+
+<<689b4b03-fb4c-4854-b5dd-5c2d45bfe3fe>>
+#+begin_src python
+import numpy as np
+from skimage.io import imread, imsave
+import matplotlib.pyplot as plt
+import pandas as pd
+from skimage.measure import regionprops
+from pyclesperanto_prototype import imshow
+from scipy.stats import describe
+from scipy.stats import ttest_ind
+from statsmodels.stats.weightstats import ttost_ind
+#+end_src
+
+<<a3d1485b-8b39-4453-b6da-6f61c11e6170>>
+Just as a recap, we take a quick look at the two label images. One was
+produced in ImageJ, the other using scikit-image.
+
+<<29d71c2d-3007-47ad-b23b-e8b6d03edce5>>
+#+begin_src python
+blobs_labels_imagej = imread("blobs_labels_imagej.tif")
+blobs_labels_skimage = imread("blobs_labels_skimage.tif")
+
+imshow(blobs_labels_imagej, labels=True)
+imshow(blobs_labels_skimage, labels=True)
+#+end_src
+
+[[file:43f62691d05bb75444dc813eaf0434e5c5731ae3.png]]
+
+[[file:ad2a1683e9ed6362cada9b1fc6c2bc27a88bcb0b.png]]
+
+<<3df8c5f2-7b81-44e7-8c86-60ddcec53495>>
+** Comparing label counts
+   :PROPERTIES:
+   :CUSTOM_ID: comparing-label-counts
+   :END:
+First, we will count the number of objects in the two images. If the
+images are labeled subsequently, which means every integer label between
+0 and the maximum of the labels exits, the maximum intensity in these
+label images corresponds to the number of labels present in the image.
+
+<<712da4dc-1d9d-45cd-96ea-b51aedd93586>>
+#+begin_src python
+blobs_labels_imagej.max(), blobs_labels_skimage.max()
+#+end_src
+
+#+begin_example
+(63, 64)
+#+end_example
+
+<<f423f115-8e58-4944-9a17-d23fd68347ad>>
+If the images are not subsequently labeled, we should first determine
+the unique sets of labels and count them. If background intensity (=0=)
+is present, these two numbers will be higher by one than the maximum.
+
+<<afb5d1fe-6ca8-4f09-8f74-2e3a95979fa4>>
+#+begin_src python
+len(np.unique(blobs_labels_imagej)), len(np.unique(blobs_labels_skimage))
+#+end_src
+
+#+begin_example
+(64, 65)
+#+end_example
+
+<<a380aaa1-47cb-41f4-adc8-b7465a85f8b9>>
+Comparing label counts from one single image gives limited insights. It
+shall be recommended to compare counts from multiple images and apply
+statistical tests as shown below. With these error analysis methods one
+can get deeper insights into how different the algorithms are.
+
+<<4cc39a8e-7b0c-49b5-b34b-40879343e0d4>>
+** Quantitative comparison
+   :PROPERTIES:
+   :CUSTOM_ID: quantitative-comparison
+   :END:
+Depending on the desired scientific analysis, the found number of
+objects may not be relevant, but the area of the found objects might be.
+Hence, we shoud compare how different area measurements between the
+algorithms are. Also this should actually be done using multiplel
+images. We demonstrate it with the single image to make it easisly
+reproducible.
+
+First, we derive area measurements from the label images and take a
+quick look.
+
+<<16851b28-dcca-49d1-a916-3a464842e82f>>
+#+begin_src python
+imagej_statistics = regionprops(blobs_labels_imagej)
+imagej_areas = [p.area for p in imagej_statistics]
+print(imagej_areas)
+#+end_src
+
+#+begin_example
+[415, 181, 646, 426, 465, 273, 74, 264, 221, 25, 485, 639, 92, 216, 432, 387, 503, 407, 257, 345, 149, 399, 407, 245, 494, 272, 659, 171, 350, 527, 581, 10, 611, 184, 584, 20, 260, 871, 461, 228, 158, 387, 398, 233, 364, 629, 364, 558, 62, 158, 450, 598, 525, 197, 544, 828, 267, 201, 1, 87, 73, 49, 46]
+#+end_example
+
+<<1f223eae-aa90-4754-9b6c-256ce0981f20>>
+#+begin_src python
+skimage_statistics = regionprops(blobs_labels_skimage)
+skimage_areas = [p.area for p in skimage_statistics]
+print(skimage_areas)
+#+end_src
+
+#+begin_example
+[433, 185, 658, 434, 477, 285, 81, 278, 231, 30, 501, 660, 99, 228, 448, 401, 520, 425, 271, 350, 159, 412, 426, 260, 506, 289, 676, 175, 361, 545, 610, 14, 641, 195, 593, 22, 268, 902, 473, 239, 167, 413, 415, 244, 377, 652, 379, 578, 69, 170, 472, 613, 543, 204, 555, 858, 281, 215, 3, 1, 81, 90, 53, 49]
+#+end_example
+
+<<27ab82e2-79ec-4420-a060-d870ff3294c2>>
+Just to confirm our insights from above, we check the number of
+measurements
+
+<<92061541-35ca-405d-bacc-6023950fc85a>>
+#+begin_src python
+len(imagej_areas), len(skimage_areas)
+#+end_src
+
+#+begin_example
+(63, 64)
+#+end_example
+
+<<4c1a4753-9ece-40ab-b52c-7a1994941b26>>
+A simple and yet powerful approach for comparing quantitative
+measurements visually, is to draw histograms of the measurements, e.g.
+using
+[[https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.hist.html][matplotlib's
+=hist= method]]. This method works for non-paired data and for paired
+datasets.
+
+<<1b0418ab-a354-4759-88f7-bf089c2d7001>>
+#+begin_src python
+plt.hist(imagej_areas)
+#+end_src
+
+#+begin_example
+(array([10.,  5., 11.,  5., 12.,  6.,  7.,  5.,  0.,  2.]),
+ array([  1.,  88., 175., 262., 349., 436., 523., 610., 697., 784., 871.]),
+ <BarContainer object of 10 artists>)
+#+end_example
+
+[[file:631bfaeba1e4358454d0e1e4a6b49cda1d30bc5c.png]]
+
+<<a3bfbc18-ec03-48e8-823d-8dcd1e9c2436>>
+#+begin_src python
+plt.hist(skimage_areas)
+#+end_src
+
+#+begin_example
+(array([11.,  5., 11.,  6., 11.,  6.,  7.,  5.,  0.,  2.]),
+ array([  1. ,  91.1, 181.2, 271.3, 361.4, 451.5, 541.6, 631.7, 721.8,
+        811.9, 902. ]),
+ <BarContainer object of 10 artists>)
+#+end_example
+
+[[file:5ff01f836e06815e1ab973f6b186a0735e083b4d.png]]
+
+<<4cd42978-2a36-4cf9-9dd7-4ec83aa9b3fe>>
+The histograms look very similar, and small differences can be
+identified.
+
+We can nicer to read overview by using scipy's
+[[https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.describe.html][=describe=
+method]].
+
+<<7d6823a3-f469-4455-ae5d-4e2650384dd8>>
+#+begin_src python
+describe(imagej_areas)
+#+end_src
+
+#+begin_example
+DescribeResult(nobs=63, minmax=(1, 871), mean=339.8888888888889, variance=43858.100358422926, skewness=0.2985582216973995, kurtosis=-0.5512673189985389)
+#+end_example
+
+<<0873164b-6dd9-4a7f-9969-61bb1673495c>>
+#+begin_src python
+describe(skimage_areas)
+#+end_src
+
+#+begin_example
+DescribeResult(nobs=64, minmax=(1, 902), mean=347.546875, variance=47422.15649801587, skewness=0.29237468285874324, kurtosis=-0.5465739129172253)
+#+end_example
+
+<<2521b057-5f45-44ae-835a-af2e9a5e5b50>>
+A bit easier to read is the output of
+[[https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.describe.html][pandas'
+=describe= mwethod]]. In order to make it work for our data, we need to
+create to pandas DataFrames and concatenate them. This is necessary
+because we have measurements with different lengths
+([[https://stackoverflow.com/questions/27126511/add-columns-different-length-pandas/33404243][read
+more]]).
+
+<<24b5d511-d5bb-4bcd-bdef-86fb1753fd40>>
+#+begin_src python
+table1 = {
+    "ImageJ": imagej_areas
+}
+table2 = {
+    "scikit-image": skimage_areas
+}
+
+df = pd.concat([pd.DataFrame(table1), pd.DataFrame(table2)], axis=1)
+df.describe()
+#+end_src
+
+#+begin_example
+           ImageJ  scikit-image
+count   63.000000     64.000000
+mean   339.888889    347.546875
+std    209.423256    217.766289
+min      1.000000      1.000000
+25%    182.500000    182.500000
+50%    350.000000    355.500000
+75%    489.500000    502.250000
+max    871.000000    902.000000
+#+end_example
+
+<<82450e3a-3283-4814-841b-550cae0e3fac>>
+** Student's t-test - testing for differences
+   :PROPERTIES:
+   :CUSTOM_ID: students-t-test---testing-for-differences
+   :END:
+We now know that the mean of the measurements are different. We should
+determine if the differences between the measurements are significant.
+
+We can use the
+[[https://en.wikipedia.org/wiki/Student%27s_t-test][Student's t-test]]
+for that using the null-hypothesis: Means of measurements are different.
+We use the
+[[https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.ttest_ind.html][=ttest_ind=
+method]] because we do not have paired datasets.
+
+<<97ab434a-8008-48ef-b00b-1b6a14af87e8>>
+#+begin_src python
+ttest_ind(imagej_areas, skimage_areas)
+#+end_src
+
+#+begin_example
+Ttest_indResult(statistic=-0.20194436015007275, pvalue=0.8402885093667958)
+#+end_example
+
+<<4fb39ead-cc08-46c5-8ea2-62b41a057f28>>
+From the printed p-value we can /not/ conclude that differences are
+insignificant. We can only say that according to the given sample,
+significance could not be shown.
+
+<<de3bb520-4302-415b-a974-12dd3a818843>>
+** Two-sided t-test for equivalence testing
+   :PROPERTIES:
+   :CUSTOM_ID: two-sided-t-test-for-equivalence-testing
+   :END:
+For proving that two algorithms perform similarly and means are
+different less that a given threshold, we can use a two-sided t-test,
+e.g. using statsmodels'
+[[https://www.statsmodels.org/dev/generated/statsmodels.stats.weightstats.ttost_ind.html][=ttost_ind=
+method]]. Our null-hypothesis: Means of measurements are more than 5%
+different.
+
+<<c2165ac0-909f-48c6-9fd2-27a5acd6ceb7>>
+#+begin_src python
+five_percent_error_threshold = 0.05 * (np.mean(imagej_areas) + np.mean(skimage_areas)) / 2
+five_percent_error_threshold
+#+end_src
+
+#+begin_example
+17.185894097222224
+#+end_example
+
+<<e11a5198-6148-4393-bce9-f468a2f0ec1d>>
+#+begin_src python
+ttost_ind(imagej_areas, skimage_areas, -five_percent_error_threshold, five_percent_error_threshold)
+#+end_src
+
+#+begin_example
+(0.40101477051276024,
+ (0.25125499758118736, 0.40101477051276024, 125.0),
+ (-0.6551437178813329, 0.2567895351853574, 125.0))
+#+end_example
+
+<<910539bf-2edc-4a9b-beda-fe31d14384b0>>
+Note to self: I'm not sure if I interpret the result correctly. I'm also
+not sure if I use this test correctly. If anyone reads this, and
+understands why the p-value here is 0.4, please get in touch:
+[[mailto:robert.haase@tu-dresden.de][robert.haase@tu-dresden.de]]
+
+<<72200b62-1f6a-4a99-9163-23bb555e29d7>>
+#+begin_src python
+ttost_ind?
+#+end_src
+
+#+begin_example
+Signature:
+ttost_ind(
+    x1,
+    x2,
+    low,
+    upp,
+    usevar='pooled',
+    weights=(None, None),
+    transform=None,
+)
+Docstring:
+test of (non-)equivalence for two independent samples
+
+TOST: two one-sided t tests
+
+null hypothesis:  m1 - m2 < low or m1 - m2 > upp
+alternative hypothesis:  low < m1 - m2 < upp
+
+where m1, m2 are the means, expected values of the two samples.
+
+If the pvalue is smaller than a threshold, say 0.05, then we reject the
+hypothesis that the difference between the two samples is larger than the
+the thresholds given by low and upp.
+
+Parameters
+----------
+x1 : array_like, 1-D or 2-D
+    first of the two independent samples, see notes for 2-D case
+x2 : array_like, 1-D or 2-D
+    second of the two independent samples, see notes for 2-D case
+low, upp : float
+    equivalence interval low < m1 - m2 < upp
+usevar : str, 'pooled' or 'unequal'
+    If ``pooled``, then the standard deviation of the samples is assumed to be
+    the same. If ``unequal``, then Welch ttest with Satterthwait degrees
+    of freedom is used
+weights : tuple of None or ndarrays
+    Case weights for the two samples. For details on weights see
+    ``DescrStatsW``
+transform : None or function
+    If None (default), then the data is not transformed. Given a function,
+    sample data and thresholds are transformed. If transform is log, then
+    the equivalence interval is in ratio: low < m1 / m2 < upp
+
+Returns
+-------
+pvalue : float
+    pvalue of the non-equivalence test
+t1, pv1 : tuple of floats
+    test statistic and pvalue for lower threshold test
+t2, pv2 : tuple of floats
+    test statistic and pvalue for upper threshold test
+
+Notes
+-----
+The test rejects if the 2*alpha confidence interval for the difference
+is contained in the ``(low, upp)`` interval.
+
+This test works also for multi-endpoint comparisons: If d1 and d2
+have the same number of columns, then each column of the data in d1 is
+compared with the corresponding column in d2. This is the same as
+comparing each of the corresponding columns separately. Currently no
+multi-comparison correction is used. The raw p-values reported here can
+be correction with the functions in ``multitest``.
+File:      c:\users\rober\miniconda3\envs\bio_39\lib\site-packages\statsmodels\stats\weightstats.py
+Type:      function
+#+end_example
+
+<<35d496a0-4bb0-408e-b5f5-c83371603cb3>>
+#+begin_src python
+#+end_src

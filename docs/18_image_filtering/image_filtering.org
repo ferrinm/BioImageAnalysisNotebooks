@@ -1,0 +1,227 @@
+<<af62c119-71c5-4047-9451-28d5fb42f566>>
+* Image Processing Filters
+  :PROPERTIES:
+  :CUSTOM_ID: image-processing-filters
+  :END:
+
+<<3a821ebf-e246-4b22-8a8e-97b05dcc1150>>
+Filters are mathematical operations that produce a new image out of one
+or more images. Pixel values between input and output images may differ.
+
+<<c5b49ac1-5496-4201-8bf6-a134a8de2998>>
+#+begin_src python
+import numpy as np
+
+import matplotlib.pyplot as plt
+from skimage.io import imread
+from skimage import data
+from skimage import filters
+from skimage import morphology
+from scipy.ndimage import convolve, gaussian_laplace
+import stackview
+#+end_src
+
+<<4bf1f395-6ec3-4679-9633-69d221d12440>>
+To demonstrate what specific filters do, we start with a very simple
+image. It contains a lot of zeros and a single pixel with value =1= in
+the middle.
+
+<<dea7213b-e0b4-44d8-956f-9ef95613741e>>
+#+begin_src python
+image1 = np.zeros((5, 5))
+image1[2, 2] = 1
+image1
+#+end_src
+
+#+begin_example
+array([[0., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 0.],
+       [0., 0., 1., 0., 0.],
+       [0., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 0.]])
+#+end_example
+
+<<0656b0e1-24e8-4dcd-9e68-6aa603c587a2>>
+#+begin_src python
+plt.imshow(image1, cmap='gray')
+plt.colorbar()
+#+end_src
+
+#+begin_example
+<matplotlib.colorbar.Colorbar at 0x162d12abe80>
+#+end_example
+
+[[file:36c52992781798653e46104f5a48793cee48fd31.png]]
+
+<<d69a61c0-c875-4da2-a809-dce5055ee572>>
+** Gaussian kernel
+   :PROPERTIES:
+   :CUSTOM_ID: gaussian-kernel
+   :END:
+To apply a /Gaussian blur/ to an image, we convolve it using a Gaussian
+kernel. The function
+[[https://scikit-image.org/docs/stable/api/skimage.filters.html#skimage.filters.gaussian][=gaussian=
+in scikit-image]] can do this for us.
+
+<<236fe675-7af1-4b6b-a781-8c58cf57e4f8>>
+#+begin_src python
+blurred = filters.gaussian(image1, sigma=1)
+blurred
+#+end_src
+
+#+begin_example
+array([[0.00291504, 0.01306431, 0.02153941, 0.01306431, 0.00291504],
+       [0.01306431, 0.05855018, 0.09653293, 0.05855018, 0.01306431],
+       [0.02153941, 0.09653293, 0.15915589, 0.09653293, 0.02153941],
+       [0.01306431, 0.05855018, 0.09653293, 0.05855018, 0.01306431],
+       [0.00291504, 0.01306431, 0.02153941, 0.01306431, 0.00291504]])
+#+end_example
+
+<<8109c64a-756d-4e1d-8e10-52e797965625>>
+#+begin_src python
+plt.imshow(blurred, cmap='gray')
+plt.colorbar()
+#+end_src
+
+#+begin_example
+<matplotlib.colorbar.Colorbar at 0x162d1363d00>
+#+end_example
+
+[[file:c569222753188a6d801d276adf9884da30ae8fdd.png]]
+
+<<9ebfa6c4-b027-4e6c-a12a-c502ecdd923c>>
+** Laplacian
+   :PROPERTIES:
+   :CUSTOM_ID: laplacian
+   :END:
+Whenever you wonder what a filter might be doing, just create a simple
+test image and apply the filter to it.
+
+<<662a5af6-36ce-4c62-b751-2358dca60fe6>>
+#+begin_src python
+image2 = np.zeros((9, 9))
+image2[4, 4] = 1
+
+plt.imshow(image2, cmap='gray')
+plt.colorbar()
+#+end_src
+
+#+begin_example
+<matplotlib.colorbar.Colorbar at 0x162d1438fd0>
+#+end_example
+
+[[file:bcf62ebd014999400cd2ebe57af6d32afcb13196.png]]
+
+<<2c57c338-18f8-4347-801a-6f4bf1d680ce>>
+#+begin_src python
+mexican_hat = filters.laplace(image2)
+
+plt.imshow(mexican_hat, cmap='gray')
+plt.colorbar()
+#+end_src
+
+#+begin_example
+<matplotlib.colorbar.Colorbar at 0x162d1b312b0>
+#+end_example
+
+[[file:62def1600450a90162918fe8a13615d44df23f20.png]]
+
+<<f3c74867-f1cd-404e-b411-38512cd02109>>
+** Laplacian of Gaussian
+   :PROPERTIES:
+   :CUSTOM_ID: laplacian-of-gaussian
+   :END:
+We can also combine filters, e.g. using functions. If we apply a
+Gaussian filter to an image and a Laplacian afterwards, we have a filter
+doing the /Laplacian of Gaussian/ (LoG) per definition.
+
+<<1689081f-d994-4e13-be1a-c6fb5c8237fb>>
+#+begin_src python
+def laplacian_of_gaussian(image, sigma):
+    """
+    Applies a Gaussian kernel to an image and the Laplacian afterwards.
+    """
+    
+    # blur the image using a Gaussian kernel
+    intermediate_result = filters.gaussian(image, sigma)
+    
+    # apply the mexican hat filter (Laplacian)
+    result = filters.laplace(intermediate_result)
+    
+    return result
+#+end_src
+
+<<728dc716-97fc-4dfe-872e-bbbef23f08d0>>
+#+begin_src python
+log_image1 = laplacian_of_gaussian(image2, sigma=1)
+
+plt.imshow(log_image1, cmap='gray')
+plt.colorbar()
+#+end_src
+
+#+begin_example
+<matplotlib.colorbar.Colorbar at 0x162d1bc5dc0>
+#+end_example
+
+[[file:6b283b3ecf60d7e3f047502c2f8d8645ff9d0562.png]]
+
+<<d20498a9-8c23-4515-823b-e9986f8a5714>>
+** Interactive filter parameter tuning
+   :PROPERTIES:
+   :CUSTOM_ID: interactive-filter-parameter-tuning
+   :END:
+To understand better what filters are doing, it shall be recommended to
+apply them interactively. The following code will not render on
+github.com. You need to execute the notebook locally use this
+interactive user-interface.
+
+<<4aeb2bae-e68d-4372-95c1-316cd897969a>>
+#+begin_src python
+image3 = imread('../../data/mitosis_mod.tif').astype(float)
+#+end_src
+
+<<050fc927-bd57-4d49-8ad0-0b7af7d80bc7>>
+#+begin_src python
+stackview.interact(laplacian_of_gaussian, image3, zoom_factor=4)
+#+end_src
+
+#+begin_example
+{"model_id":"65d73588943d46f49f815588bec7fcc7","version_major":2,"version_minor":0}
+#+end_example
+
+<<cd1df487-ec79-4bd9-b714-bbe9ecd8970f>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+
+<<bb883343-6579-436c-a4a6-39c2fb73cf4e>>
+Write a function that computes the
+[[https://en.wikipedia.org/wiki/Difference_of_Gaussians][Difference of
+Gaussian]].
+
+<<3c396772-1f11-4fb7-a00c-aee12610fb7d>>
+#+begin_src python
+def difference_of_gaussian(image, sigma1, sigma2):
+    
+    # enter code here
+#+end_src
+
+<<2aafb8fd-d63e-4404-a295-67e5f5dc386b>>
+Use a simple function call to try out the function.
+
+<<17829aef-9055-4d64-b717-3ca0cfc4d85b>>
+#+begin_src python
+dog_image = difference_of_gaussian(image3, 1, 5)
+
+plt.imshow(dog_image, cmap='gray')
+#+end_src
+
+<<291362c0-db7a-428a-8d12-c952c6c4d3c3>>
+Use the [[https://github.com/haesleinhuepf/stackview][stackview]]
+library to play with it interactively.
+
+<<0bb942f6-9567-4d4e-ba7f-03e63aed1f7e>>
+#+begin_src python
+stackview.interact(difference_of_gaussian, image3)
+#+end_src

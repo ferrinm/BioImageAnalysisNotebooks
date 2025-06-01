@@ -1,0 +1,506 @@
+<<ece1d646>>
+#+begin_src python
+import numpy as np
+from skimage.filters import gaussian
+#+end_src
+
+<<267a0e9a>>
+#+begin_src python
+def blur(image, sigma=1):
+    if len(image.shape) > 3:
+        raise ValueError("image must havve < 4 dimensions.")
+    print("blurring sigma =", sigma)
+    return gaussian(image, sigma)
+#+end_src
+
+<<cae6c7ae>>
+#+begin_src python
+image2d = np.asarray([
+    [1, 1, 1, 1, 1],
+    [1, 2, 1, 1, 1],
+    [1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1]
+])
+image3d = np.asarray([image2d, image2d, image2d])
+image4d = np.asarray([image3d, image3d, image3d, image3d])
+image5d = np.asarray([image4d, image4d, image4d, image4d, image4d])
+image6d = np.asarray([image5d, image5d, image5d, image5d, image5d, image5d])
+#+end_src
+
+<<fb854e14>>
+#+begin_src python
+print(image2d.shape)
+print(image3d.shape)
+print(image4d.shape)
+print(image5d.shape)
+print(image6d.shape)
+#+end_src
+
+#+begin_example
+(5, 5)
+(3, 5, 5)
+(4, 3, 5, 5)
+(5, 4, 3, 5, 5)
+(6, 5, 4, 3, 5, 5)
+#+end_example
+
+<<e7dd2d3a>>
+#+begin_src python
+res = blur(image2d)
+#+end_src
+
+#+begin_example
+blurring sigma = 1
+#+end_example
+
+<<10c6736d>>
+#+begin_src python
+res = blur(image3d)
+#+end_src
+
+#+begin_example
+blurring sigma = 1
+#+end_example
+
+<<4584e323>>
+#+begin_src python
+res = blur(image4d)
+#+end_src
+
+#+begin_example
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+~\AppData\Local\Temp/ipykernel_16644/2954039322.py in <module>
+----> 1 res = blur(image4d)
+
+~\AppData\Local\Temp/ipykernel_16644/3584614194.py in blur(image, sigma)
+      1 def blur(image, sigma=1):
+      2     if len(image.shape) > 3:
+----> 3         raise ValueError("image must havve < 4 dimensions.")
+      4     print("blurring sigma =", sigma)
+      5     return gaussian(image, sigma)
+
+ValueError: image must havve < 4 dimensions.
+#+end_example
+
+<<4be47c38>>
+#+begin_src python
+def run_on_all_hyperslices(image, operation, *args, **kwargs):
+    result = np.copy(image)
+    for i in range(image.shape[0]):
+        result[i] = operation(image[i], *args, **kwargs)
+    return result
+#+end_src
+
+<<c66bd68e>>
+#+begin_src python
+res = run_on_all_hyperslices(image4d, blur, sigma=2)
+#+end_src
+
+#+begin_example
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+#+end_example
+
+<<87452ecb>>
+#+begin_src python
+res = run_on_all_hyperslices(image5d, blur, sigma=2)
+#+end_src
+
+#+begin_example
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+~\AppData\Local\Temp/ipykernel_16644/3132670590.py in <module>
+----> 1 res = run_on_all_hyperslices(image5d, blur, sigma=2)
+
+~\AppData\Local\Temp/ipykernel_16644/2177098049.py in run_on_all_hyperslices(image, operation, *args, **kwargs)
+      2     result = np.copy(image)
+      3     for i in range(image.shape[0]):
+----> 4         result[i] = operation(image[i], *args, **kwargs)
+      5     return result
+
+~\AppData\Local\Temp/ipykernel_16644/3584614194.py in blur(image, sigma)
+      1 def blur(image, sigma=1):
+      2     if len(image.shape) > 3:
+----> 3         raise ValueError("image must havve < 4 dimensions.")
+      4     print("blurring sigma =", sigma)
+      5     return gaussian(image, sigma)
+
+ValueError: image must havve < 4 dimensions.
+#+end_example
+
+<<1e1b64fe>>
+#+begin_src python
+res = run_on_all_hyperslices(image5d, run_on_all_hyperslices, blur, 2)
+#+end_src
+
+#+begin_example
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+#+end_example
+
+<<8ffb30da>>
+#+begin_src python
+res = run_on_all_hyperslices(image6d, run_on_all_hyperslices, blur, 2)
+#+end_src
+
+#+begin_example
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+~\AppData\Local\Temp/ipykernel_16644/492889405.py in <module>
+----> 1 res = run_on_all_hyperslices(image6d, run_on_all_hyperslices, blur, 2)
+
+~\AppData\Local\Temp/ipykernel_16644/2177098049.py in run_on_all_hyperslices(image, operation, *args, **kwargs)
+      2     result = np.copy(image)
+      3     for i in range(image.shape[0]):
+----> 4         result[i] = operation(image[i], *args, **kwargs)
+      5     return result
+
+~\AppData\Local\Temp/ipykernel_16644/2177098049.py in run_on_all_hyperslices(image, operation, *args, **kwargs)
+      2     result = np.copy(image)
+      3     for i in range(image.shape[0]):
+----> 4         result[i] = operation(image[i], *args, **kwargs)
+      5     return result
+
+~\AppData\Local\Temp/ipykernel_16644/3584614194.py in blur(image, sigma)
+      1 def blur(image, sigma=1):
+      2     if len(image.shape) > 3:
+----> 3         raise ValueError("image must havve < 4 dimensions.")
+      4     print("blurring sigma =", sigma)
+      5     return gaussian(image, sigma)
+
+ValueError: image must havve < 4 dimensions.
+#+end_example
+
+<<53fa89b6>>
+#+begin_src python
+res = run_on_all_hyperslices(image6d, run_on_all_hyperslices, run_on_all_hyperslices, blur, 2)
+#+end_src
+
+#+begin_example
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+blurring sigma = 2
+#+end_example
+
+<<bd37cb0e>>
+#+begin_src python
+def run_on_all_hyperslices_recursive(image, operation, *args, **kwargs):
+    result = np.copy(image)
+    for i in range(image.shape[0]):
+        if len(image[i].shape) == 3:
+            result[i] = operation(image[i], *args, **kwargs)
+        else:
+            result[i] = run_on_all_hyperslices_recursive(image[i], operation, *args, **kwargs)
+    return result
+#+end_src
+
+<<76dbfdea>>
+#+begin_src python
+res = run_on_all_hyperslices_recursive(image4d, blur, sigma=3)
+#+end_src
+
+#+begin_example
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+#+end_example
+
+<<49b311d9>>
+#+begin_src python
+res = run_on_all_hyperslices_recursive(image5d, blur, sigma=3)
+#+end_src
+
+#+begin_example
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+#+end_example
+
+<<9cb05fe3>>
+#+begin_src python
+res = run_on_all_hyperslices_recursive(image6d, blur, sigma=3)
+#+end_src
+
+#+begin_example
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+blurring sigma = 3
+#+end_example
+
+<<36a933f1>>
+#+begin_src python
+#+end_src

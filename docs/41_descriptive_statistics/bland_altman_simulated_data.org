@@ -1,0 +1,104 @@
+<<b9f50070-8baa-44be-9d9f-ce44023c1de9>>
+* Bland-Altman plots in practice
+  :PROPERTIES:
+  :CUSTOM_ID: bland-altman-plots-in-practice
+  :END:
+In this notebook we demonstrate some simulated scenarios introducing
+certain errors and how you can see them in Bland-Altman plots.
+
+<<62e1942e-70cf-4012-ad2d-7ae8fa47b78c>>
+#+begin_src python
+import numpy as np
+from utils import bland_altman_plot
+#+end_src
+
+<<7c0827c2-16dc-4aa1-886e-d777ec1d4b75>>
+For determining variability of extracted features between different
+segmentation algorithms and potential systematic bias, we use
+[[https://en.wikipedia.org/wiki/Bland%E2%80%93Altman_plot][Bland-Altman
+Plots]]. For demonstration purposes, we use synthetic nuclei volume
+measurements from 100 images.
+
+<<0b6ad0e3-94c1-4046-8881-41e3def3723f>>
+#+begin_src python
+mean = 250
+std = 50
+number_of_samples = 100
+
+volume_ground_truth = np.random.normal(loc=250, scale=25, size=number_of_samples)
+volume_ground_truth[:5]
+#+end_src
+
+#+begin_example
+array([204.09881421, 262.64320502, 247.56230711, 256.07006239,
+       282.41305845])
+#+end_example
+
+<<c057b35a-5e67-4408-ab8c-8b37bd4070e2>>
+We now introduce a function =vary= that turns ground truth into a
+measurement including some random variation and systematic bias.
+
+<<881ab193-0e6d-4041-b2fb-5575c08a1acc>>
+#+begin_src python
+def vary(values, relative_error, absolute_error, std):
+    new_value = values * (1.0 + relative_error) + np.random.normal(loc=absolute_error, scale=std, size=values.shape)
+    return new_value
+
+volume_test = vary(volume_ground_truth, relative_error=0.0, absolute_error=10, std=5)
+volume_test[:5]
+#+end_src
+
+#+begin_example
+array([209.85951204, 267.53394119, 260.76895678, 273.23663888,
+       295.41294457])
+#+end_example
+
+<<f53205f5-d308-4f9a-a73b-a3969f06ad07>>
+From a Bland-Altman plot, you can read the average difference between
+two methods, e.g. in the following plot, you can see that the mean
+difference is zero. Thus, both methods deliver similar results on
+average.
+
+<<04abc5cb-7dd2-41d0-b461-c7d789262588>>
+#+begin_src python
+volume1 = vary(volume_ground_truth, relative_error=0.0, absolute_error=0, std=5)
+volume2 = vary(volume_ground_truth, relative_error=0.0, absolute_error=0, std=5)
+
+bland_altman_plot(volume1, volume2)
+#+end_src
+
+[[file:6a639e5c58cd50ed814776417ab6d3ae05d0d8eb.png]]
+
+<<90e425ab-f142-4834-8ff3-376290b9ddce>>
+In the next plot you see that the difference center line is at about 10,
+as specified as absolute error when generating the synthetic data.
+
+<<682cef0c-9548-4e03-a064-565df4dde1da>>
+#+begin_src python
+volume1 = vary(volume_ground_truth, relative_error=0.0, absolute_error=0, std=5)
+volume2 = vary(volume_ground_truth, relative_error=0.0, absolute_error=10, std=5)
+
+bland_altman_plot(volume1, volume2)
+#+end_src
+
+[[file:9d02d33265935b5c489a9bab7f169435f13b6d88.png]]
+
+<<655e20f7-f83d-4a37-a596-386d5f70bd51>>
+You can also see if there is a relative bias, e.g. the one method
+overestimates volume of objects depending on the volume of the objects.
+Such a relative error is expressed as a tilt in the measurments in a
+Bland-Altman plot.
+
+<<7c9c3097-4f9d-4159-87d1-6bb57390cbd0>>
+#+begin_src python
+volume1 = vary(volume_ground_truth, relative_error=0.0, absolute_error=0, std=5)
+volume2 = vary(volume_ground_truth, relative_error=0.2, absolute_error=0, std=5)
+
+bland_altman_plot(volume1, volume2)
+#+end_src
+
+[[file:3cc04fa2d248a7d55cf75200a82f3a01ee7231ed.png]]
+
+<<9022d094-85b8-4aa0-bfb3-a16819c82327>>
+#+begin_src python
+#+end_src

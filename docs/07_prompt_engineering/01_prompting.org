@@ -1,0 +1,101 @@
+<<9ee67a8d-c234-4427-91c9-a0dc7033657e>>
+* Prompting chatGPT
+  :PROPERTIES:
+  :CUSTOM_ID: prompting-chatgpt
+  :END:
+In this notebook we will send basic prompts to chatGPT and receive
+answers. We will write a small =prompt= helper function that makes it
+more accessible.
+
+<<3b7ff58a-4c07-431b-b123-543023f75b75>>
+#+begin_src python
+import openai
+#+end_src
+
+<<33f1bf93-26e8-4d10-bd57-6ade5afdcd7f>>
+A basic prompt requires to define the model we will be using as well as
+the role we have and the content/message we would like to be responded
+to.
+
+<<4206723e-8bee-4289-b950-c71207ed8ef9>>
+#+begin_src python
+client = openai.OpenAI()
+response = client.chat.completions.create(
+    model="gpt-3.5-turbo",
+    messages=[{"role": "user", "content": 'How old is Europe?'}]
+)
+response
+#+end_src
+
+#+begin_example
+ChatCompletion(id='chatcmpl-8WjEPJ4InHoD9Tbmr2lnzUGc1CDhs', choices=[Choice(finish_reason='stop', index=0, logprobs=None, message=ChatCompletionMessage(content='Europe is not a living entity and therefore does not have an age. However, the continent of Europe has a long history that dates back thousands of years. The earliest human settlements in Europe date back to around 45,000 years ago, while the modern concept of Europe emerged during the Renaissance period in the 14th century.', role='assistant', function_call=None, tool_calls=None))], created=1702811057, model='gpt-3.5-turbo-0613', object='chat.completion', system_fingerprint=None, usage=CompletionUsage(completion_tokens=66, prompt_tokens=12, total_tokens=78))
+#+end_example
+
+<<43b6dc92-8b1c-4814-bd8a-5fe76af56c21>>
+To make it more convenient we write a little helper function that allows
+us to retrieve the response to a message directly.
+
+<<f9406734-ba7a-4deb-8bb1-90b33c460d87>>
+#+begin_src python
+def prompt(message:str, model="gpt-3.5-turbo"):
+    """A prompt helper function that sends a message to openAI
+    and returns only the text response.
+    """
+    client = openai.OpenAI()
+    response = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": message}]
+    )
+    return response.choices[0].message.content
+#+end_src
+
+<<43c6f1dc-fb3c-463f-a144-90b017031600>>
+#+begin_src python
+print(prompt('Which countries are in central Europe?'))
+#+end_src
+
+#+begin_example
+The countries typically considered part of Central Europe are:
+
+1. Austria
+2. Czech Republic
+3. Germany (parts of it, mainly eastern regions such as Saxony and Thuringia)
+4. Hungary
+5. Liechtenstein
+6. Poland (some debate exists over whether it belongs to Central or Eastern Europe)
+7. Slovakia
+8. Slovenia
+9. Switzerland (parts of it, mainly western regions such as Bern and Lucerne)
+
+Note: The specific definition of Central Europe may vary, and some sources may include additional or different countries in this region.
+#+end_example
+
+<<ed9c0e13-2f2b-421b-8230-425507372969>>
+#+begin_src python
+print(prompt('Which parts of Switzerland are not central Europe?'))
+#+end_src
+
+#+begin_example
+Switzerland is located in Central Europe, so all parts of Switzerland are considered to be in central Europe.
+#+end_example
+
+<<a256a055-c5ef-4846-a370-006c8a80a119>>
+** A comment on reproducibilty
+   :PROPERTIES:
+   :CUSTOM_ID: a-comment-on-reproducibilty
+   :END:
+Note that prompt responses may not be very reproducible. You can execute
+the same prompt twice and receive different responses.
+
+<<8269c2a0-0a68-452d-9c20-1cabdaf66e1d>>
+#+begin_src python
+print(prompt('Which parts of Switzerland are not central Europe?'))
+#+end_src
+
+#+begin_example
+Switzerland is located in central Europe, so there are no parts of Switzerland that are not considered part of central Europe. The country is bordered by Germany to the north, France to the west, Italy to the south, and Austria and Liechtenstein to the east.
+#+end_example
+
+<<47f85f74-7742-4660-a60e-83e7c310b8f9>>
+#+begin_src python
+#+end_src

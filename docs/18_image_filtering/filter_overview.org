@@ -1,0 +1,158 @@
+<<af62c119-71c5-4047-9451-28d5fb42f566>>
+* Filter overview
+  :PROPERTIES:
+  :CUSTOM_ID: filter-overview
+  :END:
+In this notebook we demonstrate some more typical filters using the
+nuclei example image.
+
+<<c5b49ac1-5496-4201-8bf6-a134a8de2998>>
+#+begin_src python
+import numpy as np
+
+import matplotlib.pyplot as plt
+from skimage.io import imread
+from skimage import data
+from skimage import filters
+from skimage import morphology
+from scipy.ndimage import convolve, gaussian_laplace
+import stackview
+#+end_src
+
+<<050fc927-bd57-4d49-8ad0-0b7af7d80bc7>>
+#+begin_src python
+image3 = imread('../../data/mitosis_mod.tif').astype(float)
+
+plt.imshow(image3, cmap='gray')
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x12d1b7ce940>
+#+end_example
+
+[[file:3e4f6f9a48c2096b17bb273e6a001c84f9de3c2e.png]]
+
+<<2f1b5f95-e5be-4bd7-a62f-4ade460756d5>>
+** Denoising
+   :PROPERTIES:
+   :CUSTOM_ID: denoising
+   :END:
+Common filters for denoising images are the mean filter, the median
+filter and the Gaussian filter.
+
+<<9d184687-067a-4d8a-b853-73aa869b4789>>
+#+begin_src python
+denoised_mean = filters.rank.mean(image3.astype(np.uint8), morphology.disk(1))
+
+plt.imshow(denoised_mean, cmap='gray')
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x12d1ba2df10>
+#+end_example
+
+[[file:bd0e6b3be0b0b4359531e1423d19178aeb06d073.png]]
+
+<<40e5f991-d4bb-496e-9daf-165222df693d>>
+#+begin_src python
+denoised_median = filters.median(image3, morphology.disk(1))
+
+plt.imshow(denoised_median, cmap='gray')
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x12d1b8ef340>
+#+end_example
+
+[[file:b782bf53838571ab75f7ed7227c1274e01b85057.png]]
+
+<<40c7aa53-5352-4b16-b513-fa97d7fd81d8>>
+#+begin_src python
+denoised_median2 = filters.median(image3, morphology.disk(5))
+
+plt.imshow(denoised_median2, cmap='gray')
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x12d1b96bb20>
+#+end_example
+
+[[file:056fa7a39f0350f48ad5de4cf9cedbbcfa09eec9.png]]
+
+<<523a8cff-29b3-469a-8f09-4e466ef85de5>>
+#+begin_src python
+denoised_gaussian = filters.gaussian(image3, sigma=1)
+
+plt.imshow(denoised_gaussian, cmap='gray')
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x12d1bbbb880>
+#+end_example
+
+[[file:44ccbcd9418a4d5c80bb9e366591e02af459ed7a.png]]
+
+<<1b353e7d-049d-4d12-b8d9-05f24f5c43bd>>
+We can also show these images side-by-side using matplotlib.
+
+<<9e3765fb-b91d-4f34-a895-5c957b12af82>>
+#+begin_src python
+fig, axes = plt.subplots(1,3, figsize=(15,15))
+
+axes[0].imshow(denoised_mean, cmap='gray')
+axes[1].imshow(denoised_median, cmap='gray')
+axes[2].imshow(denoised_gaussian, cmap='gray')
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x12d1bae6d60>
+#+end_example
+
+[[file:8e06486c3a5e87a3f6a351eeede90df0fc7d74ee.png]]
+
+<<65a83ca8-d768-4cf2-8e6c-d1dc56fdde59>>
+*** Top-hat filtering / background removal
+    :PROPERTIES:
+    :CUSTOM_ID: top-hat-filtering--background-removal
+    :END:
+
+<<7de80baa-591a-4ece-900d-2b4522f45cf7>>
+#+begin_src python
+top_hat = morphology.white_tophat(image3, morphology.disk(15))
+
+plt.imshow(top_hat, cmap='gray')
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x12d1d549c10>
+#+end_example
+
+[[file:141aa59d41bf569727247d87c1dbb589bd5fe5fd.png]]
+
+<<19ecb69f-011c-4e9b-997d-aca16457e790>>
+*** Edge detection
+    :PROPERTIES:
+    :CUSTOM_ID: edge-detection
+    :END:
+
+<<f615fef7-0596-45bb-b5da-c47e61bfa7cb>>
+#+begin_src python
+sobel = filters.sobel(image3)
+
+plt.imshow(sobel, cmap='gray')
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x12d1ccc6bb0>
+#+end_example
+
+[[file:6818ec6c6979a258df88544b466ac624935fbd50.png]]
+
+<<cd1df487-ec79-4bd9-b714-bbe9ecd8970f>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+
+<<bb883343-6579-436c-a4a6-39c2fb73cf4e>>
+Apply different radii for the top-hat filter and show them side-by-side.

@@ -1,0 +1,428 @@
+<<c210541e-e486-466d-b1a5-cc6a196b74de>>
+* Measuring features in a time-lapse dataset
+  :PROPERTIES:
+  :CUSTOM_ID: measuring-features-in-a-time-lapse-dataset
+  :END:
+
+<<0ed53345-df1a-45aa-80ac-63ac192d7d08>>
+In this notebook, we will develop a workflow on a single timepoint of a
+timelapse and will learn how to apply the workflow on the whole
+time-lapse. This involves the following steps: preoprocessing,
+segmentation and feature extraction.
+
+<<bd1558cd-bba0-4b66-82b4-87e77e4eb9e7>>
+#+begin_src python
+from skimage.io import imread
+import pyclesperanto_prototype as cle
+from skimage.measure import regionprops_table
+import numpy as np
+import pandas as pd
+#+end_src
+
+<<9ec43007-ce2c-4c87-afb9-bbca4d36efda>>
+** Developing a workflow
+   :PROPERTIES:
+   :CUSTOM_ID: developing-a-workflow
+   :END:
+
+<<7f8f069b-8e9e-42f9-87e8-7156209d53d4>>
+First, we are reading in the image, scaling it and converting it to a
+[[https://haesleinhuepf.github.io/BioImageAnalysisNotebooks/12_image_analysis_basics/05_Masking_images.html][numpy]]-array:
+
+<<795f9af2-e31a-472f-a2f0-28c55d70e1fe>>
+#+begin_src python
+# reading in the image
+image_stack = imread("../../data/CalibZAPWfixed_000154_max.tif")[::10,:200,:200]
+
+# scaling the image and converting it to a np-array
+image_stack = np.asarray(cle.scale(image_stack, factor_z=1, factor_y=6, factor_x=6, auto_size=True))
+#+end_src
+
+<<a38e6156-70e6-4ed1-b007-7e1407d73e23>>
+#+begin_src python
+image_stack.shape
+#+end_src
+
+#+begin_example
+(10, 1200, 1200)
+#+end_example
+
+<<406704b6-370c-4256-9322-1d781c448d0a>>
+Next, we define a function =segment_single_image= which does
+[[https://haesleinhuepf.github.io/BioImageAnalysisNotebooks/18_image_filtering/03_background_removal.html][background
+subtraction]] using =top_hat_box= and segmentation using
+[[https://haesleinhuepf.github.io/BioImageAnalysisNotebooks/20_image_segmentation/11_voronoi_otsu_labeling.html][=voronoi_otsu_labeling=]].
+
+Therefore, it needs as input:
+
+- an image
+- =bg_radius= (= background radius)
+- =spot_sigma= and =outline_sigma=.
+
+It returns the labels as numpy-array:
+
+<<7aeec7b5-2a1e-4709-bdcd-57b655dedd50>>
+#+begin_src python
+def segment_single_image(image, bg_radius=50, spot_sigma=10, outline_sigma=3):
+    background_subtracted = cle.top_hat_box(image, radius_x=bg_radius, radius_y=bg_radius)
+    labels = cle.voronoi_otsu_labeling(background_subtracted, spot_sigma=spot_sigma, outline_sigma=outline_sigma)
+    return np.asarray(labels)
+#+end_src
+
+<<6e296999-a321-4dc0-bb1c-7d8d8d5a3f74>>
+We try the function on timepoint 6 (= 5th frame as we are counting from
+0):
+
+<<0a2bd698-ca85-4550-adb1-beaf30c2e49a>>
+#+begin_src python
+tp_6 = segment_single_image(image_stack[5])
+tp_6
+#+end_src
+
+#+begin_example
+array([[  0,   0,   0, ...,   0,   0,   0],
+       [  0,   0,   0, ...,   0,   0,   0],
+       [  0,   0,   0, ...,   0,   0,   0],
+       ...,
+       [  0,   0,   0, ..., 177, 177, 177],
+       [  0,   0,   0, ..., 177, 177, 177],
+       [  0,   0,   0, ..., 177, 177, 177]], dtype=uint32)
+#+end_example
+
+<<c82064da-3ca2-489c-8c1e-18d33c6666f2>>
+** Visualizing images and image stacks
+   :PROPERTIES:
+   :CUSTOM_ID: visualizing-images-and-image-stacks
+   :END:
+
+<<9346d86a-43f1-4b21-a2d4-3d24e6ca7ef1>>
+We can visualize our numpy-array like this:
+
+<<8bef4c90-a3fc-4402-bd4c-31454f99db69>>
+#+begin_src python
+cle.imshow(tp_6, labels=True)
+#+end_src
+
+[[file:91ae8e178a6a23f3f2b5d6ac855c93bdd0ecf72f.png]]
+
+<<42f040ab-2221-4ef8-ad50-517289820c38>>
+Now we can run our function in a for-loop over the whole time-lapse
+dataset:
+
+<<3b261001-37b1-457f-bc2e-27055b1cd0fd>>
+#+begin_src python
+segmented_slices = [segment_single_image(image) for image in image_stack]
+segmented_stack = np.asarray(segmented_slices)
+#+end_src
+
+<<8c78606b-fabf-4626-a4d6-1d8318d06266>>
+Our =segmented_stack= should keep the same shape as the original
+=image_stack=:
+
+<<0e041905-893b-4855-9885-84b820fcf566>>
+#+begin_src python
+segmented_stack.shape
+#+end_src
+
+#+begin_example
+(10, 1200, 1200)
+#+end_example
+
+<<2e47efd1-9c74-4c13-a347-e836cb1c2a78>>
+It does! Now, we can use =stackview= to visualize our whole image_stack.
+The function =curtain= provides a slider to visualize the label image on
+top of the original image.
+
+<<c0a0be3b-69a4-4b0a-a8e4-3a253ad7be68>>
+#+begin_src python
+import stackview
+stackview.curtain(image_stack, segmented_stack, zoom_factor=0.3)
+#+end_src
+
+#+begin_example
+{"model_id":"2e0c3da423044d318be53bb633d0ebfd","version_major":2,"version_minor":0}
+#+end_example
+
+<<702eccc4-fe25-4681-a381-9b04d7b508a7>>
+If you move the =Slice= slider you can see the segmentation result of
+the individual timepoints. As you can see, objects are not keeping the
+same label number over several frames. We are not doing tracking here,
+just segmenting timepoint-by-timepoint.
+
+<<078db194-8c11-46f5-82f8-061445f89dc7>>
+** Measuring features on an image and a label image
+   :PROPERTIES:
+   :CUSTOM_ID: measuring-features-on-an-image-and-a-label-image
+   :END:
+
+<<d877dcf1-61bb-4d48-8603-858e472c51ea>>
+Our goal is to extract features from this time-lapse dataset. Therefore,
+we define another function =analyze_mean_intensity_single_timepoint=.
+The name says it all.
+
+<<e5d35c58-52e8-4b6d-ad9f-6492a84e7151>>
+#+begin_src python
+def analyze_mean_intensity_single_timepoint(image, labels, frame):
+    df = pd.DataFrame(regionprops_table(labels[frame], intensity_image=image[frame], properties=['mean_intensity']))
+    df['frame'] = frame
+    return df
+#+end_src
+
+<<d22846d9-eee0-4e3f-863c-7df5012067f3>>
+Now, we try it out on timepoint 6 of our time-lapse dataset:
+
+<<2786bd86-dba5-4915-bd4f-0e1b6b116bce>>
+#+begin_src python
+df = analyze_mean_intensity_single_timepoint(image_stack, segmented_stack, 5)
+#+end_src
+
+<<e0892b54-d9cf-4736-9301-7adb3558a583>>
+#+begin_src python
+df
+#+end_src
+
+#+begin_example
+     mean_intensity  frame
+0        193.721710      5
+1        154.925858      5
+2        142.510788      5
+3        102.849998      5
+4         88.570175      5
+..              ...    ...
+172      154.884216      5
+173      147.652908      5
+174      126.156464      5
+175       89.161293      5
+176      135.688721      5
+
+[177 rows x 2 columns]
+#+end_example
+
+<<76ae361b-e61f-4241-a67b-42c84164e1cb>>
+As we can see, the function returns a table with the mean intensities of
+the labels in a particular frame.
+
+<<66feb210-9f07-4171-a082-00aaba3c9618>>
+** Measuring features on the whole time-lapse dataset
+   :PROPERTIES:
+   :CUSTOM_ID: measuring-features-on-the-whole-time-lapse-dataset
+   :END:
+
+<<761207f7-e2e6-485c-9020-9984d6ef8003>>
+Next, we want to apply our function on the whole stack. We use a
+[[https://haesleinhuepf.github.io/BioImageAnalysisNotebooks/02_python_basics/08_loops.html][for-loop]]
+to do so:
+
+<<e3a3ab60-c982-4aa1-ba45-96132f617251>>
+#+begin_src python
+num_frames = image_stack.shape[0]
+all_frames_df = pd.concat([analyze_mean_intensity_single_timepoint(image_stack, segmented_stack, t) for t in range(num_frames)])
+all_frames_df
+#+end_src
+
+#+begin_example
+     mean_intensity  frame
+0        223.347107      0
+1         93.042557      0
+2        112.046814      0
+3        192.766434      0
+4        162.704330      0
+..              ...    ...
+335      135.748642      9
+336      116.306427      9
+337      121.075317      9
+338       98.173592      9
+339       82.390472      9
+
+[1702 rows x 2 columns]
+#+end_example
+
+<<c5c8d4a4-e238-4889-ba2e-fb6ef90ff92f>>
+Now, we want to measure how long it takes to execute our code snipped.
+Therefore, we use
+[[https://docs.python.org/3/library/timeit.html][=timeit=]].
+
+<<50109e07-d00e-4ff0-94ac-bac2ff6372c2>>
+#+begin_src python
+import timeit
+#+end_src
+
+<<60c0aa46-63fb-412e-913d-d9378e45f21a>>
+#+begin_src python
+%%timeit
+pd.concat([analyze_mean_intensity_single_timepoint(image_stack, segmented_stack, t) for t in range(num_frames)])
+#+end_src
+
+#+begin_example
+115 ms ± 2.77 ms per loop (mean ± std. dev. of 7 runs, 10 loops each)
+#+end_example
+
+<<a6ca0e91-d500-41d8-88e8-2a6f927e50b7>>
+It tells us the execution time per loop (here per image) in our
+time-lapse dataset.
+
+<<47d9c4eb-4a17-44ac-8b13-ab7af2f007cb>>
+** Short side note: What is a good way to write a function?
+   :PROPERTIES:
+   :CUSTOM_ID: short-side-note-what-is-a-good-way-to-write-a-function
+   :END:
+
+<<5cf349c6-73e5-49b2-9d26-1992e37d94ca>>
+If we define functions, one function should do only one thing. Then,
+this function can be called by another function which brings another
+novelty. We call this modularization. Have a look at the two
+functions=get_intensity_for_timepoint= and =get_intensity=:
+
+<<4edee1bd-48f2-480f-ad4f-f4ccf36b7a22>>
+#+begin_src python
+def get_intensity_for_timepoint(intensity_image, label_layer):
+    stats = regionprops_table(label_layer, intensity_image=intensity_image, properties=['mean_intensity'])
+    return stats['mean_intensity']
+
+def get_intensity(intensity_image_stack, labels_layer_stack):
+    result = []        
+    for intensity_image, label_layer in zip(intensity_image_stack, labels_layer_stack):
+        result.append(get_intensity_for_timepoint(intensity_image, label_layer))
+    return result
+#+end_src
+
+<<d81e2003-6976-4f52-9153-c633a437aa60>>
+The first function measures the mean_intensity and the second function
+applies this on a whole time-lapse dataset. Therefore, the functions
+both have one main task and the first function is nested in the second
+one.
+
+<<030550ca-9259-4d0e-a41b-d85f6a234929>>
+** Libraries to extract features of all timepoints
+   :PROPERTIES:
+   :CUSTOM_ID: libraries-to-extract-features-of-all-timepoints
+   :END:
+
+<<7f9ca9c0-663a-491b-b743-5567b3b343bb>>
+Now, we want to measure different intensity-based parameters on all
+timepoints. Therefore, we use =regionprops_table_all_frames= from
+[[https://github.com/haesleinhuepf/napari-skimage-regionprops][napari_skimage_regionprops]].
+
+<<0101002d-b8ac-4997-9714-e423bb0ef6a3>>
+#+begin_src python
+from napari_skimage_regionprops import regionprops_table_all_frames
+#+end_src
+
+<<34a9f756-c26e-4964-9928-6718bf5fd9e5>>
+#+begin_src python
+stats = regionprops_table_all_frames(image_stack[:,np.newaxis,:,:], 
+                             segmented_stack[:,np.newaxis,:,:],
+                             size=False,
+                             intensity=True)
+pd.DataFrame(stats)
+#+end_src
+
+#+begin_example
+analyzing frame 0
+analyzing frame 1
+analyzing frame 2
+analyzing frame 3
+analyzing frame 4
+analyzing frame 5
+analyzing frame 6
+analyzing frame 7
+analyzing frame 8
+analyzing frame 9
+#+end_example
+
+#+begin_example
+      label  max_intensity  mean_intensity  min_intensity  \
+0         1          255.0      223.347107           91.0   
+1         2           97.0       93.042557           70.0   
+2         3          154.0      112.046814           68.0   
+3         4          245.0      192.766434           85.0   
+4         5          255.0      162.704330           67.0   
+...     ...            ...             ...            ...   
+1697    336          189.0      135.748642           61.0   
+1698    337          173.0      116.306427           38.0   
+1699    338          183.0      121.075317           39.0   
+1700    339          133.0       98.173592           55.0   
+1701    340          110.0       82.390472           48.0   
+
+      standard_deviation_intensity  frame  
+0                        40.516113      0  
+1                         7.657447      0  
+2                        16.508696      0  
+3                        39.013126      0  
+4                        42.194302      0  
+...                            ...    ...  
+1697                     30.539036      9  
+1698                     35.460144      9  
+1699                     38.362331      9  
+1700                     22.237257      9  
+1701                     16.561571      9  
+
+[1702 rows x 6 columns]
+#+end_example
+
+<<de9c5ce2-fc5d-496e-99a4-69b24ec80a09>>
+You could also use =label_statistics_in_all_frames= from
+[[https://github.com/haesleinhuepf/napari-simpleitk-image-processing][napari-simpleitk-image-processing]]
+which provides some additional intensity-based parameters:
+
+<<01504f20-01cb-42b0-ab95-5c5106c0bba7>>
+#+begin_src python
+from napari_simpleitk_image_processing._simpleitk_image_processing import label_statistics_in_all_frames
+#+end_src
+
+<<a6533ef9-8689-47ce-adcb-49ed576a07ae>>
+#+begin_src python
+stats = label_statistics_in_all_frames(image_stack[:,np.newaxis,:,:], 
+                             segmented_stack[:,np.newaxis,:,:],
+                             size=False,
+                             intensity=True)
+pd.DataFrame(stats)
+#+end_src
+
+#+begin_example
+analyzing frame 0
+analyzing frame 1
+analyzing frame 2
+analyzing frame 3
+analyzing frame 4
+analyzing frame 5
+analyzing frame 6
+analyzing frame 7
+analyzing frame 8
+analyzing frame 9
+#+end_example
+
+#+begin_example
+      label  maximum        mean      median  minimum      sigma       sum  \
+0         1    255.0  223.347113  248.525391     91.0  40.523332  626712.0   
+1         2     97.0   93.042553   97.119141     70.0   7.740232    4373.0   
+2         3    154.0  112.046817  110.068359     68.0  16.513038  213001.0   
+3         4    245.0  192.766438  201.708984     85.0  39.019508  589287.0   
+4         5    255.0  162.704329  162.861328     67.0  42.199321  684009.0   
+...     ...      ...         ...         ...      ...        ...       ...   
+1697    336    189.0  135.748642  140.314453     61.0  30.544961  349960.0   
+1698    337    173.0  116.306430  115.048828     38.0  35.472278  170040.0   
+1699    338    183.0  121.075317  123.169922     39.0  38.376643  162362.0   
+1700    339    133.0   98.173594   97.904297     55.0  22.264490   40153.0   
+1701    340    110.0   82.390476   84.369141     48.0  16.601144   17302.0   
+
+         variance  frame  
+0     1642.140432      0  
+1       59.911193      0  
+2      272.680439      0  
+3     1522.522001      0  
+4     1780.782651      0  
+...           ...    ...  
+1697   932.994614      9  
+1698  1258.282491      9  
+1699  1472.766711      9  
+1700   495.707536      9  
+1701   275.597995      9  
+
+[1702 rows x 9 columns]
+#+end_example
+
+<<88274090-8a4a-4b93-a3cd-38713b4fba08>>
+If you are interested in the differences between the libraries, you can
+go to
+[[https://haesleinhuepf.github.io/BioImageAnalysisNotebooks/22_feature_extraction/readme.html][feature_extraction]].

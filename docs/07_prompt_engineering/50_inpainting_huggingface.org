@@ -1,0 +1,157 @@
+<<4d63f63e-c1ea-406d-b339-ef9ec5d70ce6>>
+* Inpainting using Stable Diffusion
+  :PROPERTIES:
+  :CUSTOM_ID: inpainting-using-stable-diffusion
+  :END:
+Inpainting is the task of replacing a selected part of an image by
+generated pixels that make the selection disappear. When working with
+scientific images, this could be seen as scientific misconduct. Be
+careful when applying this technique to your microscopy images.
+
+In this notebook we demonstrate the technique using [[][Stable
+Diffusion]] the example shown below is modified from
+[[https://huggingface.co/docs/diffusers/api/pipelines/stable_diffusion/inpaint][here]].
+
+<<254a25e1-8198-4634-8936-4b96f73b9d5b>>
+#+begin_src python
+import PIL
+import requests
+import torch
+from io import BytesIO
+from skimage.io import imread
+import stackview
+import numpy as np
+from diffusers import StableDiffusionInpaintPipeline
+#+end_src
+
+<<65cc8248-6994-4fbe-b756-3a9d7d57100c>>
+We set up a Stable Diffusion pipeline and load it to our graphics
+processing unit.
+
+<<85c19f1e-6f4a-4ac3-8da4-c0f0bcceafff>>
+#+begin_src python
+pipe = StableDiffusionInpaintPipeline.from_pretrained(
+    "stabilityai/stable-diffusion-2-inpainting",
+    # "runwayml/stable-diffusion-inpainting", 
+    torch_dtype=torch.float16
+)
+pipe = pipe.to("cuda")
+#+end_src
+
+#+begin_example
+{"model_id":"8867a46702304808ac435375fde0f60c","version_major":2,"version_minor":0}
+#+end_example
+
+<<4faa7801-9d77-48c6-bf8a-a216b42b6c9a>>
+We load our example image as numpy array.
+
+<<37674eb9-92ab-4b82-911c-f22696a2c8c2>>
+#+begin_src python
+np_init_image = imread("../../data/real_cat.png")
+#+end_src
+
+<<e7210dc4-2153-4ced-ba53-dbb4cab95793>>
+As huggingface hub models expect images a
+[[https://pillow.readthedocs.io/en/stable/reference/Image.html][pillow
+images]], we need to convert it first.
+
+<<cb71cced-a024-42f4-902c-e7797314d8f0>>
+#+begin_src python
+init_image = PIL.Image.fromarray(np_init_image)
+init_image
+#+end_src
+
+[[file:5880b36fdc7762e3c6a8be1b0542e2aefad9ccc6.jpg]]
+
+<<344e2f33-9543-4fa9-9a16-787a436e6bb6>>
+#+begin_src python
+mask_np = imread("../../data/real_cat_mic_mask.tif")
+#+end_src
+
+<<c105ed10-c2cf-4d0e-9fa5-58beabf7a470>>
+#+begin_src python
+mask_image = np.asarray([mask_np, mask_np, mask_np]).swapaxes(0, 2).swapaxes(0, 1)
+mask_image = PIL.Image.fromarray((mask_image * 255).astype(np.uint8))
+mask_image
+#+end_src
+
+[[file:461c1b5429601d45e3ab3400b6b81d2716b33e6a.jpg]]
+
+<<ec65021f-23f1-4671-9006-398cc8f35ed4>>
+#+begin_src python
+prompt = "A black white cat fur"
+image = pipe(prompt=prompt, 
+             image=init_image, 
+             mask_image=mask_image, 
+             num_inference_steps=50, 
+             width=512, 
+             height=512,
+             num_images_per_prompt=1,
+            ).images[0]
+#+end_src
+
+#+begin_example
+{"model_id":"fd7bd632059949c180ec35b0503a40c9","version_major":2,"version_minor":0}
+#+end_example
+
+<<a2aec778-5032-4b80-b1b0-b84ae54d83a9>>
+#+begin_src python
+np_image = np.array(image)
+stackview.insight(np_image)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[[182, 183, 182],
+                   [178, 179, 181],
+                   [176, 178, 179],
+                   ...,
+                   [191, 194, 195],
+                   [191, 195, 197],
+                   [193, 193, 195]],
+
+                  [[181, 183, 183],
+                   [180, 180, 182],
+                   [177, 178, 179],
+                   ...,
+                   [190, 193, 194],
+                   [190, 193, 196],
+                   [192, 194, 197]],
+
+                  [[182, 183, 184],
+                   [179, 181, 182],
+                   [176, 179, 179],
+                   ...,
+                   [193, 195, 198],
+                   [191, 193, 194],
+                   [190, 191, 193]],
+
+                  ...,
+
+                  [[127,  88,  64],
+                   [124,  87,  63],
+                   [123,  86,  62],
+                   ...,
+                   [136,  90,  63],
+                   [136,  91,  64],
+                   [137,  93,  65]],
+
+                  [[127,  87,  61],
+                   [125,  88,  60],
+                   [123,  87,  61],
+                   ...,
+                   [139,  93,  65],
+                   [138,  90,  65],
+                   [136,  89,  63]],
+
+                  [[122,  86,  63],
+                   [127,  90,  62],
+                   [127,  89,  64],
+                   ...,
+                   [141,  94,  68],
+                   [137,  91,  65],
+                   [130,  91,  65]]], dtype=uint8)
+#+end_example
+
+<<6513a890-e89d-4d44-a707-6b0207187a19>>
+#+begin_src python
+#+end_src

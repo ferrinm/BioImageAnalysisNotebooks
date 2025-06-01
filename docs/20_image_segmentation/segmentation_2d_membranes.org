@@ -1,0 +1,227 @@
+<<5e80cfda-ddb8-4331-8364-bc208c742d68>>
+* Seeded watershed for membrane-based cell segmentation
+  :PROPERTIES:
+  :CUSTOM_ID: seeded-watershed-for-membrane-based-cell-segmentation
+  :END:
+In this section we will use a seeded watershed approach to cell
+segmentation. This approach is very common when cell segmentation based
+on images of membrane markers are given. Therefore, we use the napari
+plugin
+[[https://github.com/haesleinhuepf/napari-segment-blobs-and-things-with-membranes][napari-segment-blobs-and-things-with-membranes]].
+Under the hood, this plugins uses functions from
+[[http://scikit-image.org/][scikit-image]].
+
+See also
+
+- [[https://youtu.be/LT8L3vSLQ2Q?t=2124][Robert Haase's lecture 02a
+  Image Filtering and Segmentation, watershed explanation at 35:30]]
+
+<<ccf46dfe-a974-4f18-a11d-006791e7be46>>
+#+begin_src python
+from napari_segment_blobs_and_things_with_membranes import voronoi_otsu_labeling, \
+                                                           seeded_watershed, \
+                                                           local_minima_seeded_watershed
+from skimage.io import imread
+from skimage.filters import gaussian
+from skimage import data
+from pyclesperanto_prototype import imshow
+#+end_src
+
+<<6a6ca1b5-0487-4cc0-9735-ec9710a7ca3f>>
+We load the Cells3d example image from scikit-image which is a
+two-channel image showing nuclei and membrains.
+
+<<1dbc1a5e>>
+#+begin_src python
+cells = data.cells3d()
+cells.shape
+#+end_src
+
+#+begin_example
+(60, 2, 256, 256)
+#+end_example
+
+<<356e738c-c799-4065-b167-d409706f286a>>
+#+begin_src python
+nuclei_channel = cells[30, 1]
+
+imshow(nuclei_channel)
+#+end_src
+
+[[file:6a0de154d9f621f3c2e136338686cb336c2575b3.png]]
+
+<<9b83ac74-fdc5-47ec-9f19-fba535338d6a>>
+#+begin_src python
+membrane_channel = cells[30, 0]
+
+imshow(membrane_channel, max_display_intensity=6000)
+#+end_src
+
+[[file:9648ba2f914dba259c436b7a42c434ab05425b52.png]]
+
+<<087a35ee>>
+** Voronoi-Otsu-Labeling for nuclei segmentation
+   :PROPERTIES:
+   :CUSTOM_ID: voronoi-otsu-labeling-for-nuclei-segmentation
+   :END:
+First, we start with segmenting the nuclei using the
+[[image-segmentation:voronoi-otsu-labeling][Voronoi-Otsu-Labeling
+algorithm]].
+
+<<f5026a64>>
+#+begin_src python
+labeled_nuclei = voronoi_otsu_labeling(nuclei_channel, spot_sigma=10, outline_sigma=2)
+labeled_nuclei
+#+end_src
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 5, 5, 5],
+                  [0, 0, 0, ..., 5, 5, 5],
+                  [0, 0, 0, ..., 5, 5, 5],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]])
+#+end_example
+
+<<57f45ff9>>
+** Seeded watershed
+   :PROPERTIES:
+   :CUSTOM_ID: seeded-watershed
+   :END:
+We can use the image of labeled nuclei as starting point for flooding
+the low-intensity areas in the membrane image. This allows us to
+determine a cell segmentation.
+
+<<21e3273b>>
+#+begin_src python
+labeled_cells = seeded_watershed(membrane_channel, labeled_nuclei)
+labeled_cells
+#+end_src
+
+#+begin_example
+StackViewNDArray([[ 1,  1,  1, ...,  5,  5,  5],
+                  [ 1,  1,  1, ...,  5,  5,  5],
+                  [ 1,  1,  1, ...,  5,  5,  5],
+                  ...,
+                  [24, 24, 24, ..., 25, 25, 25],
+                  [24, 24, 24, ..., 25, 25, 25],
+                  [24, 24, 24, ..., 25, 25, 25]])
+#+end_example
+
+<<8e626677-f9a6-4907-86c3-ba13607de6df>>
+If the outlines of the cells are not 100% accurate, it may make sense to
+blur the membrane image a bit before segmenting the cells.
+
+<<22cf02ee-4733-48f9-badb-ee7262a54060>>
+#+begin_src python
+blurred = gaussian(membrane_channel, sigma=3)
+
+labeled_cells = seeded_watershed(blurred, labeled_nuclei)
+labeled_cells
+#+end_src
+
+#+begin_example
+StackViewNDArray([[ 1,  1,  1, ...,  5,  5,  5],
+                  [ 1,  1,  1, ...,  5,  5,  5],
+                  [ 1,  1,  1, ...,  5,  5,  5],
+                  ...,
+                  [24, 24, 24, ..., 25, 25, 25],
+                  [24, 24, 24, ..., 25, 25, 25],
+                  [24, 24, 24, ..., 25, 25, 25]])
+#+end_example
+
+<<927c5da6>>
+** Seeded watershed using automatic seed detection
+   :PROPERTIES:
+   :CUSTOM_ID: seeded-watershed-using-automatic-seed-detection
+   :END:
+In case we didn't image a separate nuclei channel and only have the
+membrane channel available for segmentation, we can use the membrane
+image to search for local minima (dark areas).
+
+<<61bf9459>>
+#+begin_src python
+labeles_cells2 = local_minima_seeded_watershed(membrane_channel)
+labeles_cells2
+#+end_src
+
+#+begin_example
+StackViewNDArray([[ 5,  5,  5, ...,  3,  3,  3],
+                  [ 5,  5,  5, ...,  3,  3,  3],
+                  [ 5,  5,  5, ...,  3,  3,  3],
+                  ...,
+                  [24, 24, 24, ..., 27, 27, 27],
+                  [24, 24, 24, ..., 27, 27, 27],
+                  [24, 24, 24, ..., 27, 27, 27]])
+#+end_example
+
+<<19578462-e075-4f20-9a0f-6cf0a2f29fd5>>
+This function also has some parameters to allow fine tuning the
+segmentation. The parameter =outline_sigma= allows to control a Gaussian
+blur filter that allows fine-tuning the outlines of the segmented cells
+as shown above.
+
+<<49ceb35d-8f2e-4e14-95fd-3b04220cfbc2>>
+#+begin_src python
+labeles_cells3 = local_minima_seeded_watershed(
+                      membrane_channel, 
+                      outline_sigma=3)
+labeles_cells3
+#+end_src
+
+#+begin_example
+StackViewNDArray([[ 5,  5,  5, ...,  3,  3,  3],
+                  [ 5,  5,  5, ...,  3,  3,  3],
+                  [ 5,  5,  5, ...,  3,  3,  3],
+                  ...,
+                  [24, 24, 24, ..., 27, 27, 27],
+                  [24, 24, 24, ..., 27, 27, 27],
+                  [24, 24, 24, ..., 27, 27, 27]])
+#+end_example
+
+<<a2901958-fba7-465f-96e8-129ac84b5e68>>
+If there are multiple cells sticking together, it may make sense to
+specify =spot_sigma=. This parameter allows to configure how close /
+large cells are.
+
+<<1ad2f36c-b524-44a3-8464-67bfa08450e4>>
+#+begin_src python
+labeles_cells4 = local_minima_seeded_watershed(
+                       membrane_channel, 
+                       spot_sigma=9, 
+                       outline_sigma=3)
+labeles_cells4
+#+end_src
+
+#+begin_example
+StackViewNDArray([[ 5,  5,  5, ...,  3,  3,  3],
+                  [ 5,  5,  5, ...,  3,  3,  3],
+                  [ 5,  5,  5, ...,  3,  3,  3],
+                  ...,
+                  [26, 26, 26, ..., 28, 28, 28],
+                  [26, 26, 26, ..., 28, 28, 28],
+                  [26, 26, 26, ..., 28, 28, 28]])
+#+end_example
+
+<<8249e860-9e94-447d-987b-12976f316c59>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Load the following dataset and find good parameters for processing it
+using a seeded watershed approach. This example image data is a courtesy
+of Sascha M. Kuhn, Nadler Lab, MPI-CBG Dresden.
+
+<<b5c895d9-060e-44e5-9e78-4ee6223d8c5b>>
+#+begin_src python
+image_slice = imread("../../data/membrane_2d_timelapse.tif")[2]
+
+imshow(image_slice)
+#+end_src
+
+[[file:adda1b9b660184756fd58b80b0225257b27a9073.png]]
+
+<<7d190e3a-3616-40ab-8cac-f35532f14f0c>>
+#+begin_src python
+#+end_src

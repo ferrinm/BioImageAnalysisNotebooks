@@ -1,0 +1,81 @@
+<<f755f82e-d3bf-47de-b9c0-254ec7ac6f1b>>
+* Experimental data
+  :PROPERTIES:
+  :CUSTOM_ID: experimental-data
+  :END:
+This notebook serves generating some test data. Assume we designed a
+couple of experiments exposing cells to a certain concentration of a
+drug. During these experiments we acquired images and later
+measurements: We counted the cells over time.
+
+<<6519a8d7-2d2d-477a-9332-96713aeb85ff>>
+#+begin_src python
+import pandas as pd
+import numpy as np
+#+end_src
+
+<<3e7f20c3-64fd-4263-ac64-c4b683424b22>>
+#+begin_src python
+experiments = {
+    "ID":[1,2,3,4],
+    "Comment":["High dose", "Medium dose", "Control", "Super high dose"],
+    "Concentration":[50, 20, 0, 1000]
+}
+pd.DataFrame(experiments).to_csv("../../data/experiments.csv")
+#+end_src
+
+<<4bf20833-aa87-42cb-abc7-a933000d67ec>>
+#+begin_src python
+images = {
+    "ID":list(range(1, 11)),
+    "Filename":[f"image{i}.tif" for i in range(10)],
+    "experiment_ID":[1,1,1,2,2,2,3,3,3,3]
+}
+pd.DataFrame(images).to_csv("../../data/images.csv")
+#+end_src
+
+<<aba5e196-61a5-4b99-8add-1ed60228e5e3>>
+#+begin_src python
+measurements = {
+    "image_ID":[],
+    "time_after_exposure_in_s":[],
+    "number_of_cells":[]
+}
+
+for i, e in zip(images["ID"], images["experiment_ID"]):
+        
+    num_cells_over_time = (np.random.random(1) + 0.5) * (np.random.random((10,)) * 10 + 100)
+    
+    if e < 3: # control; no decay
+        decay = np.reciprocal(np.arange(1, 11) / (1 + np.exp(-e)))
+        num_cells_over_time = num_cells_over_time * decay
+        
+    num_cells_over_time = num_cells_over_time.astype(int)
+    
+    print(i, e, num_cells_over_time)
+    
+    for t, n in enumerate(num_cells_over_time):
+        measurements["image_ID"].append(i)
+        measurements["time_after_exposure_in_s"].append(t)
+        measurements["number_of_cells"].append(n)
+    
+    
+pd.DataFrame(measurements).to_csv("../../data/measurements.csv")
+#+end_src
+
+#+begin_example
+1 1 [99 52 33 25 21 17 15 12 11  9]
+2 1 [201  92  63  48  40  32  26  23  21  19]
+3 1 [123  59  38  30  24  20  17  14  13  11]
+4 2 [70 32 21 16 13 11  9  8  7  6]
+5 2 [63 33 21 16 13 11  9  8  7  6]
+6 2 [158  75  50  37  29  24  22  19  17  15]
+7 3 [153 142 145 146 153 143 153 143 149 150]
+8 3 [157 151 148 151 150 161 154 157 158 149]
+9 3 [63 60 59 61 60 61 61 58 59 63]
+10 3 [52 54 53 54 56 52 54 54 54 51]
+#+end_example
+
+<<01a2bdc7-55f6-456e-931f-c46a4daccf4f>>
+#+begin_src python
+#+end_src

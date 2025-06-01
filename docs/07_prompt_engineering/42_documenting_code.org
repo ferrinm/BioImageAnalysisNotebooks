@@ -1,0 +1,52 @@
+<<18e8d7f0-88ca-4384-bacf-e76011c0a097>>
+* Documenting code
+  :PROPERTIES:
+  :CUSTOM_ID: documenting-code
+  :END:
+Bob can be used to document code. If you put the =%%doc= magic at the
+beginning of a cell...
+
+<<6430b191-58af-4d84-b76e-39d7a9e1a38b>>
+#+begin_src python
+from bia_bob import bob, doc
+bob.__version__
+#+end_src
+
+#+begin_example
+'0.6.2'
+#+end_example
+
+<<6cf2a6ee-c0dd-48a5-bad4-03b086f43cf6>>
+#+begin_src python
+%%doc
+from skimage.filters import threshold_otsu
+from skimage.measure import label
+threshold = threshold_otsu(image)
+binary = image > threshold
+labels = label(binary)
+#+end_src
+
+<<208bc3f0-b867-44c1-b65f-8a8b03e9af14>>
+... the cell will get updated when executing it. Note: In case there is
+=%%doc= at the beginning of a cell, the code will not be executed, it
+will just be replaced. For example the code above could be replaced with
+this:
+
+<<39a6f6b9-51ce-4872-9370-660765514476>>
+#+begin_src python
+from skimage.filters import threshold_otsu
+from skimage.measure import label
+
+# Calculate the threshold value using Otsu's method
+threshold = threshold_otsu(image)
+
+# Convert the image to binary using the computed threshold
+binary = image > threshold
+
+# Label the connected components in the binary image
+labels = label(binary)
+#+end_src
+
+<<50fed2a0-e36d-4825-80ad-cdec46987636>>
+#+begin_src python
+#+end_src

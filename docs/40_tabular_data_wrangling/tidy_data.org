@@ -1,0 +1,171 @@
+<<51e6f4d9-a000-4b05-9bcc-dc52db91658c>>
+* Tidy-Data
+  :PROPERTIES:
+  :CUSTOM_ID: tidy-data
+  :END:
+
+<<248c6fda-e47c-46c2-957d-cf4bdf4d141d>>
+Hadley Wickham wrote a
+[[https://www.jstatsoft.org/article/view/v059i10][great article]] in
+favor of “tidy data.” Tidy data frames follow the rules:
+
+- Each variable is a column.
+
+- Each observation is a row.
+
+- Each type of observation has its own separate data frame.
+
+This is less pretty to visualize as a table, but we rarely look at data
+in tables. Indeed, the representation of data which is convenient for
+visualization is different from that which is convenient for analysis. A
+tidy data frame is almost always much easier to work with than non-tidy
+formats.
+
+<<774c1a89-2f91-404b-8f74-284acabd3bcb>>
+Let's import a saved table with measurements. Is this table tidy?
+
+<<5c88af81-7a31-42bb-8f12-69a89f2f1e0a>>
+#+begin_src python
+import pandas as pd
+#+end_src
+
+<<504fd34a-9454-4fb3-9ccf-4b9964feada9>>
+#+begin_src python
+df = pd.read_csv('../../data/Multi_analysis.csv', header = [0,1], sep=';')
+df
+#+end_src
+
+#+begin_example
+        Before                   After            
+     channel_1   channel_2   channel_1   channel_2
+0    13.250000   21.000000   15.137984   42.022776
+1    44.954545   24.318182   43.328836   48.661610
+2    13.590909   18.772727   11.685995   37.926184
+3    85.032258   19.741935   86.031461   40.396353
+4    10.731707   25.268293   10.075421   51.471865
+5    94.625000   36.450000   95.180900   73.347843
+6    89.836735   34.693878   89.857864   69.902829
+7   100.261905   34.904762  101.989852   70.156432
+8    29.615385   52.115385   31.516654  104.525198
+9    15.868421   24.921053   16.086932   50.563301
+10   12.475000   25.450000   11.529924   51.381594
+11   87.875000   28.050000   89.745522   56.543107
+12   58.800000   22.600000   59.646229   45.215405
+13   91.061224   40.367347   89.935893   81.326111
+14   23.500000  117.333333   21.676993  235.067654
+15   82.566667   34.566667   84.097735   69.820702
+16   36.120000   29.600000   37.688676   59.870177
+17   70.687500   33.843750   72.569112   68.493363
+18  102.021277   33.297872  100.419746   67.379506
+19   72.318182  103.909091   70.843134  207.956510
+20   18.100000   29.166667   17.865201   58.361239
+21    5.217391   36.347826    6.961346   73.286439
+22   19.925926   72.814815   18.607102  145.900739
+23   26.673077   57.403846   27.611368  115.347217
+24   13.340000   30.400000   14.160543   61.225962
+25   15.028571   38.400000   14.529963   77.490249
+#+end_example
+
+<<e497f862-4f03-4d58-9b92-0dea8d750f16>>
+The most useful function for tidying data is
+[[https://pandas.pydata.org/docs/reference/api/pandas.melt.html][pd.melt]].
+
+<<0022b484-fd53-4c82-be11-9a3fe2261497>>
+#+begin_src python
+df.melt()
+#+end_src
+
+#+begin_example
+    variable_0 variable_1       value
+0       Before  channel_1   13.250000
+1       Before  channel_1   44.954545
+2       Before  channel_1   13.590909
+3       Before  channel_1   85.032258
+4       Before  channel_1   10.731707
+..         ...        ...         ...
+99       After  channel_2   73.286439
+100      After  channel_2  145.900739
+101      After  channel_2  115.347217
+102      After  channel_2   61.225962
+103      After  channel_2   77.490249
+
+[104 rows x 3 columns]
+#+end_example
+
+<<dd24af67-9f6e-4f8c-a432-37eb146e2bc9>>
+We can specify names for the value and for the variables. In this case,
+our measurements are of intensity and our variables are Intervention
+(before or after) and channel.
+
+<<9ffaf527-78d8-4a9c-89e0-19858b877c2e>>
+#+begin_src python
+df_tidy = df.melt(value_name='intensity', var_name=['Intervention', 'Channel'])
+df_tidy
+#+end_src
+
+#+begin_example
+    Intervention    Channel   intensity
+0         Before  channel_1   13.250000
+1         Before  channel_1   44.954545
+2         Before  channel_1   13.590909
+3         Before  channel_1   85.032258
+4         Before  channel_1   10.731707
+..           ...        ...         ...
+99         After  channel_2   73.286439
+100        After  channel_2  145.900739
+101        After  channel_2  115.347217
+102        After  channel_2   61.225962
+103        After  channel_2   77.490249
+
+[104 rows x 3 columns]
+#+end_example
+
+<<d95d7c92-95fe-48a5-8554-4b366830f351>>
+It may not look better for interpreting, but it becomes easier to
+manipulate, because now we can more easily mask by columns. Here we
+select intensity measurement rows for "channel_2" and "After"
+intervention.
+
+<<512f335d-61f7-4dc9-9ff1-239802b2f9da>>
+#+begin_src python
+row_mask = (df_tidy['Channel'] == 'channel_2') & (df_tidy['Intervention'] == 'After')
+#+end_src
+
+<<88c4b6bb-81b7-48e8-ada8-5f2acf2e4888>>
+#+begin_src python
+df_tidy.loc[row_mask, :]['intensity']
+#+end_src
+
+#+begin_example
+78      42.022776
+79      48.661610
+80      37.926184
+81      40.396353
+82      51.471865
+83      73.347843
+84      69.902829
+85      70.156432
+86     104.525198
+87      50.563301
+88      51.381594
+89      56.543107
+90      45.215405
+91      81.326111
+92     235.067654
+93      69.820702
+94      59.870177
+95      68.493363
+96      67.379506
+97     207.956510
+98      58.361239
+99      73.286439
+100    145.900739
+101    115.347217
+102     61.225962
+103     77.490249
+Name: intensity, dtype: float64
+#+end_example
+
+<<22c0f001-a3ae-4d4a-902a-8fe55cbd79b9>>
+#+begin_src python
+#+end_src

@@ -1,0 +1,138 @@
+<<cd0315c9-a953-4456-bcd6-1ff060d517f0>>
+* Connected component labeling in tiles
+  :PROPERTIES:
+  :CUSTOM_ID: connected-component-labeling-in-tiles
+  :END:
+Labeling objects in tiles is a challenging task. If this step cannot be
+circumvented, the [[http://image.dask.org/en/latest/][dask-image]]
+offers the right functionality to retrieve label images with labels
+crossing multiple tiles.
+
+<<72b4f4d8-d927-41a9-87e4-8d7a1cbc9a21>>
+#+begin_src python
+import numpy as np
+import dask
+import dask.array as da
+from skimage.data import cells3d
+from skimage.io import imread
+from skimage.measure import label as skimage_label
+import pyclesperanto_prototype as cle
+from pyclesperanto_prototype import imshow
+from dask_image.ndmeasure import label as daskimage_label
+#+end_src
+
+<<53c97620-8695-492d-9efb-e53d31617852>>
+#+begin_src python
+image = imread("../../data/blobs.tif") > 128
+imshow(image)
+#+end_src
+
+[[file:af12de5ea5ed035722d5cf045f32db9b06d81a02.png]]
+
+<<5b4c8e9f-a519-4248-a373-61fc0b1a71f6>>
+#+begin_src python
+tiles = da.from_array(image, chunks=(128, 128))
+tiles
+#+end_src
+
+#+begin_example
+dask.array<array, shape=(254, 256), dtype=bool, chunksize=(128, 128), chunktype=numpy.ndarray>
+#+end_example
+
+<<3854d6c0-014e-4551-8847-0eb79af4de1f>>
+We will use scikit-image function =label()= for processing our image.
+
+<<6ac3bd84-5486-40c7-b9b4-35ff616f7bde>>
+#+begin_src python
+procedure = skimage_label
+
+tile_map = da.map_blocks(procedure, tiles)
+
+result = tile_map.compute()
+imshow(result, labels=True)
+#+end_src
+
+[[file:0c23a02f7c169989f17016fdc74f920c257b4340.png]]
+
+<<c3c86c61-aa5d-4b1f-b7b2-18a97b5b1a70>>
+In this image, we can already see that the result has artifacts at the
+tile borders in the horizontal and vertical image center. To further
+check the result, we will compute the connected component labeling of
+the image without tiling.
+
+<<d58e71bd-f82a-43e2-a451-70d0e8be5538>>
+#+begin_src python
+reference = skimage_label(image)
+
+imshow(reference, labels=True)
+#+end_src
+
+[[file:43f62691d05bb75444dc813eaf0434e5c5731ae3.png]]
+
+<<59d113dc-f203-4fca-87a2-c67ffadad9ba>>
+Next, we can compare the maximum intensity in the label image to see if
+the total number of labels in these two images are equal. They are not:
+
+<<6517cdda-faf4-4b55-9945-0ce96eddca7d>>
+#+begin_src python
+result.max(), reference.max()
+#+end_src
+
+#+begin_example
+(20, 63)
+#+end_example
+
+<<98ecf07d-e17e-4fd5-97ac-d9b78c516a19>>
+By computing the standard deviation of the pixel intensity in the result
+image grouped by the reference labels, we can visualize which objects
+are not segmented correctly.
+
+<<43fd3c33-4b47-406d-bf9f-0a117da2c39e>>
+#+begin_src python
+stddev_map = cle.standard_deviation_intensity_map(result, reference) > 0
+
+imshow(stddev_map)
+#+end_src
+
+[[file:7beed9733c78f38c5766b76867974f8a70165c4f.png]]
+
+<<7de08b67-58e6-4db3-95df-f12a855625e5>>
+** Tiled connected component labeling using dask-image
+   :PROPERTIES:
+   :CUSTOM_ID: tiled-connected-component-labeling-using-dask-image
+   :END:
+The image processing library dask-image has a distributed version of
+connected component labeling available
+[[http://image.dask.org/en/latest/dask_image.ndmeasure.html?highlight=label#dask_image.ndmeasure.label][dask_image.ndmeasure.label]]:
+
+<<34ada0ea-e5a6-42be-9fe2-bbf4d70d410b>>
+#+begin_src python
+result_di, num_labels = daskimage_label(image)
+
+imshow(result_di, labels=True)
+#+end_src
+
+[[file:43f62691d05bb75444dc813eaf0434e5c5731ae3.png]]
+
+<<25edd7ee-e70d-4da2-b29a-a4d1cab8e5d3>>
+Note that the result of this operation is a dask-array, and computing
+the maximum for example is not straightforward:
+
+<<64c23ad5-0bbd-4d29-a9fa-f7e5b6011572>>
+#+begin_src python
+result_di.max(), reference.max()
+#+end_src
+
+#+begin_example
+(dask.array<amax-aggregate, shape=(), dtype=int32, chunksize=(), chunktype=numpy.ndarray>,
+ 63)
+#+end_example
+
+<<87311213-c37b-448d-9a67-c707ffaf434b>>
+#+begin_src python
+np.asarray(result_di).max(), reference.max()
+#+end_src
+
+#+begin_example
+(63, 63)
+#+end_example

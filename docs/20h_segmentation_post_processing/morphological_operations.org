@@ -1,0 +1,175 @@
+<<7765dd92-fd23-4402-a93a-d36fff865e07>>
+* Post-processing binary images using morphological operations
+  :PROPERTIES:
+  :CUSTOM_ID: post-processing-binary-images-using-morphological-operations
+  :END:
+
+<<130f162d-a1aa-4225-9745-ce7c99b3b551>>
+Morphological operations transform images based on shape; typically we
+mean binary images in this context.
+
+<<71721c42-8f09-447a-9c49-6e2685ccb771>>
+#+begin_src python
+import numpy as np
+from skimage.io import imread
+import matplotlib.pyplot as plt
+from skimage import morphology
+from skimage import filters
+#+end_src
+
+<<97f1a137-81de-43be-8c3b-3a90b8a5d6e5>>
+** Kernels, footsprints and structural elements
+   :PROPERTIES:
+   :CUSTOM_ID: kernels-footsprints-and-structural-elements
+   :END:
+
+<<12efc586-1762-4304-8fd1-995630504d02>>
+If we work with scikit-image, many morphological filters have a
+=footprint= parameter. This footprint is the filter kernel, and in the
+literature you also find the term =structural element= for this.
+
+<<f0097b92-852e-471e-b2d9-bee14fb42b4b>>
+#+begin_src python
+# creates a disk of 1 with radius = 3
+disk = morphology.disk(3) 
+disk
+#+end_src
+
+#+begin_example
+array([[0, 0, 0, 1, 0, 0, 0],
+       [0, 1, 1, 1, 1, 1, 0],
+       [0, 1, 1, 1, 1, 1, 0],
+       [1, 1, 1, 1, 1, 1, 1],
+       [0, 1, 1, 1, 1, 1, 0],
+       [0, 1, 1, 1, 1, 1, 0],
+       [0, 0, 0, 1, 0, 0, 0]], dtype=uint8)
+#+end_example
+
+<<6d5445e7-63b3-40c3-9ba4-ea687a64a9fa>>
+#+begin_src python
+plt.imshow(disk, cmap='gray')
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x225b0c88340>
+#+end_example
+
+[[file:3cdc5eea40623064a975c8b4df97bcad4dafb185.png]]
+
+<<1fc5b90d-c3d8-473a-af8f-68d31b86b6bf>>
+#+begin_src python
+# create a square with width and height = 3
+square = morphology.square(3) 
+square
+#+end_src
+
+#+begin_example
+array([[1, 1, 1],
+       [1, 1, 1],
+       [1, 1, 1]], dtype=uint8)
+#+end_example
+
+<<372014e4-bae5-4a03-a7ee-fbdb4ae7a9e9>>
+** Binary morphology
+   :PROPERTIES:
+   :CUSTOM_ID: binary-morphology
+   :END:
+
+<<a82d2d22-d8af-4efc-9353-b3feb636e552>>
+For demonstrating morphological filtering of binary images, we use the
+small nuclei image again.
+
+<<908dab51-e5bc-409f-950e-02e0dc0fb78b>>
+#+begin_src python
+image_nuclei = imread('../../data/mitosis_mod.tif').astype(float)
+image_binary = image_nuclei > filters.threshold_otsu(image_nuclei)
+
+plt.imshow(image_binary, cmap='gray')
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x225b0d05490>
+#+end_example
+
+[[file:3f99f00ff227106ec508b8caad3ab8a516277e2f.png]]
+
+<<1bde146c-25e3-4999-84c7-a6c4e365f348>>
+** Erosion and Dilation
+   :PROPERTIES:
+   :CUSTOM_ID: erosion-and-dilation
+   :END:
+To make white islands in the black ocean smaller, we need to /erode/ its
+coastlines.
+
+<<48667a3c-65e1-4875-ac0e-be8233cc51e0>>
+#+begin_src python
+eroded = morphology.binary_erosion(image_binary, disk)
+
+plt.imshow(eroded, cmap='gray')
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x225b0d80dc0>
+#+end_example
+
+[[file:529398e877a1fc8731a2b17789faa026249a127f.png]]
+
+<<03b741b3-a4b5-4c24-b532-b47537775917>>
+If we dilate the image afterwards, we get white islands back that look
+smoother than in the original binary image.
+
+<<aad9ad30-8a27-4b72-919e-b11230485595>>
+#+begin_src python
+eroded_dilated = morphology.binary_dilation(eroded, disk)
+
+plt.imshow(eroded_dilated, cmap='gray')
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x225b107f730>
+#+end_example
+
+[[file:4164efcb536723d9d0e793e30fa65dbd2817e76c.png]]
+
+<<91379b6e-3620-4465-a95d-5caac9d4fdc5>>
+Calling erosion and dilation subsequently is so common that there is an
+extra function which does exactly that. As the gap between islands
+/open/ the operation is called /opening/.
+
+<<75e2ed53-0024-4c37-b138-9e38a4cb93f4>>
+#+begin_src python
+opened = morphology.binary_opening(image_binary, disk)
+
+plt.imshow(opened, cmap='gray')
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x225b10f9b20>
+#+end_example
+
+[[file:4164efcb536723d9d0e793e30fa65dbd2817e76c.png]]
+
+<<d72477be-c22b-4c2d-ac1f-f1c2f8e5a7de>>
+** Exercise 1
+   :PROPERTIES:
+   :CUSTOM_ID: exercise-1
+   :END:
+There is also a /closing/ operation. Apply it to the binary image.
+
+<<ac94c8e3-3758-40cc-b5a3-44b04f9c76ab>>
+#+begin_src python
+#+end_src
+
+<<b6b89958-e647-43b9-98e7-479b42ab4e23>>
+** Exercise 2
+   :PROPERTIES:
+   :CUSTOM_ID: exercise-2
+   :END:
+Search the [[https://scikit-image.org/][scikit-image documentation]] for
+minimum and maximum filters. Apply the minimum filter to the binary
+image and the maximum filter to the result afterwards. Compare it to the
+images shown above.
+
+<<2b89eaac-5913-4225-935f-ba2f5bb0431f>>
+#+begin_src python
+#+end_src

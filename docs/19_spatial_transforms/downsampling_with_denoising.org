@@ -1,0 +1,414 @@
+* Down-scaling and denoising
+  :PROPERTIES:
+  :CUSTOM_ID: down-scaling-and-denoising
+  :END:
+Down-scaling is often used to to
+[[https://haesleinhuepf.github.io/BioImageAnalysisNotebooks/20_image_segmentation/Segmentation_3D.html][make
+your data isotropic]] and to speed up further processing. Furthermore,
+it is often necessary to
+[[https://haesleinhuepf.github.io/BioImageAnalysisNotebooks/18_image_filtering/image_filtering.html#denoising][denoise
+your data]] to enable further processing. Here, we'll demonstrate how
+down-scaling and denoising can be combined efficiently.
+
+Down-scaling means to reduce the number of pixels in your image by
+applying a scaling function with a scale-factor between 0 and 1. For
+example, a scale-factor of 0.5 would reduce each dimension to half the
+number of pixels. E.g a 2-d image with 1025 x 1024 pixels would be
+scaled down to 512 x 512 pixels. In this case, the simplest way to
+achieve this down-scaling would be to skip every 2nd pixel, which is
+[[https://en.wikipedia.org/wiki/Downsampling_(signal_processing)#Downsampling_by_an_integer_factor][called
+decimation]] and the decimation-factor is the reciprocal of the
+scale-factor. In our example, the decimation-factor that corresponds to
+a scale-factor of 0.5 would be 2.
+
+In this notebook, we will discuss several ways to down-scale image data.
+We will start with relatively simple and fast methods. Then we move to
+algorithms that combine down-scaling and denoising. Finally, we
+benchmark the different algorithms (on a M1 Macbook Pro).
+
+#+begin_src python
+import numpy as np
+import skimage.transform as sk_transform
+import pyclesperanto_prototype as cle
+from skimage.io import imread
+import matplotlib.pyplot as plt
+#+end_src
+
+** Original image
+   :PROPERTIES:
+   :CUSTOM_ID: original-image
+   :END:
+In our example, we use an image of the actin cytoskeleton of fixed,
+adherent bovine pulmonary artery endothelial cells.
+
+We add some artificial noise to better illustrate the effect of
+denoising later.
+
+#+begin_src python
+image = imread('../../data/BPAE_actin.tif')
+
+# increase noise to better illustrate the effect of denoising later
+noisy_image = image + np.random.normal(np.median(image), 2 * np.std(image), image.shape)
+
+cle.imshow(noisy_image)
+#+end_src
+
+[[file:c4d54ff60e15c6a9e6e0e563b86ed99adf6c7e1e.png]]
+
+** Choosing a scale-factor
+   :PROPERTIES:
+   :CUSTOM_ID: choosing-a-scale-factor
+   :END:
+The scale-factor depends greatly on your analysis pipeline. Here we will
+mimic a common application for microscopy. Because of greater resolution
+of a microscope in xy (perpendicular to the optical axis) than in z
+(along the optical axis), data is frequently acquired with finer
+sampling in xy than in z. If the high xy resolution is not needed for
+some of the analysis steps (which is frequently the case for many
+segmentation tasks), it is common to down-scale the xy dimensions to
+match the z sampling. In our case we assume a pixel size of 0.108333 µm
+in xy and 1 µm in z. Therefore, we want to down-scale xy by a factor of
+0.108333, which corresponds to a decimation-factor of approximately 9.
+
+That being said, other scale-factors may be more suitable for your
+analysis pipeline. Ideally, you annotate some reference data and
+[[https://haesleinhuepf.github.io/BioImageAnalysisNotebooks/29_algorithm_validation/segmentation_quality_estimation.html?highlight=annotation][measure
+the quality]] depending on the scale-factor
+
+#+begin_src python
+scale_factor = 0.108333
+decimation_factor = round(1 / scale_factor)
+#+end_src
+
+** Fast down-scaling
+   :PROPERTIES:
+   :CUSTOM_ID: fast-down-scaling
+   :END:
+*** Numpy slices
+    :PROPERTIES:
+    :CUSTOM_ID: numpy-slices
+    :END:
+The absolute fastest way to down-scale data is to decimate it using
+numpy and an integer decimation-factor. For this we use a
+[[https://numpy.org/doc/stable/user/basics.indexing.html#slicing-and-striding][slicing
+object to index the numpy array]]. The decimation-factor is the step
+size of the slicing object written as =::decimation_factor=.
+
+The reason that this is so fast, is that numpy cleverly just creates a
+=view= that shows you every decimation-factorth element without moving
+any data around.
+
+The disadvantage of using numpy is that you are limited to decimation,
+limiting you to certain scaling factors (e.g. 1/2 = 0.5, 1/3 = 0.33333,
+1/4 = 0.25, etc.).
+
+#+begin_src python
+numpy_decimated = noisy_image[::decimation_factor, ::decimation_factor]
+cle.imshow(numpy_decimated)
+#+end_src
+
+[[file:692ade5a55b47602808d93b7956b4efcbbcff143.png]]
+
+*** Scikit-image rescale() without anti-aliasing
+    :PROPERTIES:
+    :CUSTOM_ID: scikit-image-rescale-without-anti-aliasing
+    :END:
+Scikit image comes with the rescale() function
+[(documentation)]]([[https://scikit-image.org/docs/stable/api/skimage.transform.html#skimage.transform.rescale]])
+in the =skimage.transform.rescale()= package. Without anti aliasing
+(argument =anti_aliasing=False=), this is also quite fast and looks
+similar to the data that was decimated with numpy. However, unlike
+numpy, this operation supports arbitrary scaling factors and is thus not
+limited to decimation.
+
+#+begin_src python
+scikit_rescaled = sk_transform.rescale(noisy_image, scale=scale_factor, anti_aliasing=False, preserve_range=True)
+cle.imshow(scikit_rescaled)
+#+end_src
+
+[[file:5283108fe75730e646aea3080b886104810527a3.png]]
+
+*** GPU accelerated scaling
+    :PROPERTIES:
+    :CUSTOM_ID: gpu-accelerated-scaling
+    :END:
+Pyclesperanto-prototype (CLE) has a GPU accelerated []=scale()=
+function]([[https://github.com/clEsperanto/pyclesperanto_prototype/blob/master/pyclesperanto_prototype/_tier8/_AffineTransform3D.py#L31]])
+that also supports arbitrary scaling factors and looks very similar to
+the options above.
+
+#+begin_src python
+cle_scaled = cle.scale(noisy_image, factor_x=scale_factor, factor_y=scale_factor, auto_size=True)
+cle.imshow(cle_scaled)
+#+end_src
+
+[[file:08f279a938e279ffda2c9e2f7bcc6bc6758f6352.png]]
+
+** Combining down-scaling and denoising
+   :PROPERTIES:
+   :CUSTOM_ID: combining-down-scaling-and-denoising
+   :END:
+Down-sampling and denoising have in common, that they both reduce the
+amount of information in your data. If combined in a clever way, you
+loose information only once and thus end up with an improved result.
+
+The most common way to avoid loosing more information than necessary
+during down-scaling
+[[https://en.wikipedia.org/wiki/Downsampling_(signal_processing)#Downsampling_by_an_integer_factor][is
+to apply a low-pass filter before downscaling]]. This is also called
+anti-aliasing.
+
+*** Scikit-image rescale() with anti-aliasing
+    :PROPERTIES:
+    :CUSTOM_ID: scikit-image-rescale-with-anti-aliasing
+    :END:
+The [documentation of scikit image
+=rescale()``](https://scikit-image.org/docs/stable/api/skimage.transform.html#skimage.transform.rescale) recommends to enable anti aliasing for down-scaling (argument=anti_aliasing=True=). Below the hood, the ant-aliasing filter of scikit-image applies a gaussian filter, the sigma of which can be controlled by the=anti_aliasing_sigma`
+argument. Here we use a sigma that is 4 times smaller than the
+scale-factor to make sure that the image is not blurred more than
+necessary.
+
+#+begin_src python
+sigma = 1 / scale_factor / 4
+scikit_rescaled_antialiasing = sk_transform.rescale(noisy_image, scale=(scale_factor, scale_factor), anti_aliasing=True, anti_aliasing_sigma=sigma)
+cle.imshow(scikit_rescaled_antialiasing)
+#+end_src
+
+[[file:bfcc233a16d1e5297478622b4975b66eff0b7248.png]]
+
+This looks a lot better than without anti-aliasing. The gaussian filter
+managed to remove the noise without loosing more detail than the
+down-sampling itself.
+
+*** GPU accelerated down-scaling with anti-aliasing
+    :PROPERTIES:
+    :CUSTOM_ID: gpu-accelerated-down-scaling-with-anti-aliasing
+    :END:
+=cle.scale()= does not come with an anti-aliasing argument. However,
+nothing stops us from applying that filter ourselves before
+down-scaling. We use the same sigma as for =skimage.transform.rescale()=
+above.
+
+#+begin_src python
+# first, denoise
+blurred = cle.gaussian_blur(noisy_image, sigma_x=sigma, sigma_y=sigma)
+
+# then down-scale
+cle_denoised_scaled = cle.scale(blurred, factor_x=scale_factor, factor_y=scale_factor, auto_size=True)
+
+cle.imshow(cle_denoised_scaled)
+#+end_src
+
+[[file:c34c7894eef7afeb755448ad58b7d557e36416fe.png]]
+
+*** Denoising with an average filter before down-scaling
+    :PROPERTIES:
+    :CUSTOM_ID: denoising-with-an-average-filter-before-down-scaling
+    :END:
+Denoising with a gaussian filter is computationallyquite expensive,
+because it is applied to every pixel of the large original data. To
+alleviate this scikit-image provides the
+=skimage.transform.downscale_local_mean()= function
+[[https://scikit-image.org/docs/stable/api/skimage.transform.html#skimage.transform.downscale_local_mean][(documentation)]]
+that averages over the =decimation_factor= x =decimation_factor= pixels
+before combining them into one pixel. This means that the denoising
+operation is only calculated as many times as there are output pixels.
+The disadvantage is, that this function requires integer
+decimation-factors, imposing the same limitations as the numpy
+decimation.
+
+#+begin_src python
+scikit_downsampled = sk_transform.downscale_local_mean(noisy_image, (decimation_factor, decimation_factor))
+cle.imshow(scikit_downsampled)
+#+end_src
+
+[[file:cb618db1ca964a62786d30e3ae5dc87c6b806a05.png]]
+
+** Side-by side comparison
+   :PROPERTIES:
+   :CUSTOM_ID: side-by-side-comparison
+   :END:
+Let's compare the denoising results side-by-side
+
+#+begin_src python
+# Define the labels for figure titles and bar chart
+labels = [
+    'Numpy decimate',
+    'Scikit rescale without antialiasing',
+    'Scikit rescale with antialiasing',
+    'Scikit downscale_local_mean',
+    'CLE scale',
+    'CLE Gaussian blur + scale',
+]
+
+fig, axes = plt.subplots(2, 3, figsize=(10, 5))
+
+axes[0, 0].imshow(numpy_decimated, cmap='gray')
+axes[0, 0].set_title(labels[0])
+
+axes[0, 1].imshow(scikit_rescaled, cmap='gray')
+axes[0, 1].set_title(labels[1])
+
+axes[0, 2].imshow(cle_scaled, cmap='gray')
+axes[0, 2].set_title(labels[4])
+
+axes[1, 0].imshow(scikit_downsampled, cmap='gray')
+axes[1, 0].set_title(labels[3])
+
+axes[1, 1].imshow(scikit_rescaled_antialiasing, cmap='gray')
+axes[1, 1].set_title(labels[2])
+
+axes[1, 2].imshow(cle_denoised_scaled, cmap='gray')
+axes[1, 2].set_title(labels[5])
+
+for ax in axes.flatten():
+    ax.axis('off')
+
+fig.tight_layout()
+#+end_src
+
+[[file:395c6a679b1f11951f9de4947e1e9226a76d2c2f.png]]
+
+*** Estimating signal-to-noise
+    :PROPERTIES:
+    :CUSTOM_ID: estimating-signal-to-noise
+    :END:
+In order to quantify the improvement we get through denoising, let's
+roughly estimate the signal to noise
+
+#+begin_src python
+def calculate_snr(image):
+    noise_area = image[40:, :40]
+    noise = np.std(noise_area)
+    signal = np.percentile(image, 98) - np.mean(noise_area)
+    snr = signal / noise
+    return snr
+snrs = [
+    calculate_snr(noisy_image),
+    calculate_snr(numpy_decimated),
+    calculate_snr(scikit_rescaled),
+    calculate_snr(scikit_rescaled_antialiasing),
+    calculate_snr(scikit_downsampled),
+    calculate_snr(cle_scaled),
+    calculate_snr(cle_denoised_scaled),
+]
+
+# Create a figure
+fig, ax = plt.subplots()
+ax.barh(['Original noisy image'] + labels, snrs)
+ax.invert_yaxis()  # labels read top-to-bottom
+ax.set_xlabel('signal-to-noise ratio (SNR) [a.u.]')
+ax.set_title('Execution time for different down-scaling methods')
+
+# Display the plot
+plt.show()
+#+end_src
+
+[[file:93638a595ad97853544f89dd8c615a6e51799482.png]]
+
+The methods that denoise first and then downsample are clearly superior
+and lead to an improved signal to noise. However, how much extra
+computing time do they require? Let's measure it:
+
+** Benchmarking
+   :PROPERTIES:
+   :CUSTOM_ID: benchmarking
+   :END:
+We perform the benchmarking on a larger image so that the measurement is
+more realistic for cases where the extra computation time actually
+matters. We use the =timeit= module to run each method several times and
+measure the average execution time. The results are shown in the bar
+chart below.
+
+#+begin_src python
+# perform the benchmark on a larger image
+large_image = sk_transform.rescale(image, scale=(3, 3))
+large_image = np.asarray([large_image] * 100)
+
+noisy_image = large_image + np.random.normal(np.median(image), 2 * np.std(image), large_image.shape)
+print("Benchmarkint on image size: " + str(noisy_image.shape))
+
+print("Numpy resample:")
+numpy_resample_time = %timeit -o noisy_image[:, ::decimation_factor, ::decimation_factor]
+
+print("\nScikit rescale() without antialiasing:")
+sk_rescale_time = %timeit -o sk_transform.rescale(noisy_image, scale=(1, scale_factor, scale_factor), anti_aliasing=False)
+
+print("\nScikit rescale() with antialiasing:")
+sk_rescale_antialiasing_time = %timeit -o sk_transform.rescale(noisy_image, scale=(1, scale_factor, scale_factor), anti_aliasing=True)
+
+print("\nScikit downscale_local_mean():")
+sk_downscale_time = %timeit -o sk_transform.downscale_local_mean(noisy_image, (1, decimation_factor, decimation_factor))
+
+print("\ncle.scale():")
+cle_scale_time = %timeit -o cle.scale(noisy_image, factor_x=scale_factor, factor_y=scale_factor, auto_size=True)
+
+print("\ncle.gaussian_blur() + cle.scale():")
+cle_gaussian_scale_time = %timeit -o cle.scale(cle.gaussian_blur(noisy_image, sigma_x=sigma, sigma_y=sigma), factor_x=scale_factor, factor_y=scale_factor, auto_size=True)
+#+end_src
+
+#+begin_example
+Benchmarkint on image size: (100, 2040, 3300)
+Numpy resample:
+156 ns ± 0.44 ns per loop (mean ± std. dev. of 7 runs, 10,000,000 loops each)
+
+Scikit rescale() without antialiasing:
+469 ms ± 2.33 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+
+Scikit rescale() with antialiasing:
+10.2 s ± 27.5 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+
+Scikit downscale_local_mean():
+1.15 s ± 20.6 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+
+cle.scale():
+565 ms ± 8.5 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+
+cle.gaussian_blur() + cle.scale():
+1.91 s ± 21.6 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+#+end_example
+
+#+begin_src python
+# Collect the average results of the %timeit runs
+results = [
+    numpy_resample_time.average,
+    sk_rescale_time.average,
+    sk_rescale_antialiasing_time.average,
+    sk_downscale_time.average,
+    cle_scale_time.average,
+    cle_gaussian_scale_time.average
+]
+
+# Collect the standard deviations of the %timeit runs
+std_devs = [
+    numpy_resample_time.stdev,
+    sk_rescale_time.stdev,
+    sk_rescale_antialiasing_time.stdev,
+    sk_downscale_time.stdev,
+    cle_scale_time.stdev,
+    cle_gaussian_scale_time.stdev
+]
+
+
+# Create a horizontal bar chart with error bars
+fig, ax = plt.subplots()
+ax.barh(labels, results, xerr=std_devs, align='center')
+ax.invert_yaxis()  # labels read top-to-bottom
+ax.set_xlabel('Time (s)')
+ax.set_title('Execution time for different down-scaling methods')
+
+# Display the plot
+plt.show()
+#+end_src
+
+[[file:e1bd988275ba65ffa93880be8c65cefc986576ce.png]]
+
+** Summary
+   :PROPERTIES:
+   :CUSTOM_ID: summary
+   :END:
+Denoising before down-scaling significantly improves signal-to-noise,
+without loosing more detail than down-scaling alone. The additional
+computing time required for denoising is therefore well invested -
+particularly, if efficient algorithms such as
+=skimage.transform.downscale_local_mean()= or GPU acceleration are used.

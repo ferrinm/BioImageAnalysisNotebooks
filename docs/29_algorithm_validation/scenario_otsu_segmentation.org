@@ -1,0 +1,293 @@
+<<826ff56b-8bf2-4eba-a00e-820c9067b890>>
+* Scenario: Comparing different implementations of the same thresholding
+algorithm
+  :PROPERTIES:
+  :CUSTOM_ID: scenario-comparing-different-implementations-of-the-same-thresholding-algorithm
+  :END:
+In this notebook we will compare different implementations of the same
+algorithm. As example, we select Otsu's method for binary threesholding
+in combination with
+[[https://en.wikipedia.org/wiki/Connected-component_labeling][connected
+component labeling]]. The algorithm was published more than 40 years ago
+and one could presume that all common implementations of this algorithm
+show identical results.
+
+** See also
+   :PROPERTIES:
+   :CUSTOM_ID: see-also
+   :END:
+- [[https://ieeexplore.ieee.org/document/4310076][A Threshold Selection
+  Method from Gray-Level Histograms (N. Otsu 1979)]]
+
+<<8f59bab0-c91d-4339-b111-4dc8429da3fe>>
+#+begin_src python
+from skimage.io import imread, imshow, imsave
+from skimage.filters import threshold_otsu
+from skimage.measure import label
+from skimage.color import label2rgb
+#+end_src
+
+<<ef5bc06b-899b-4633-967c-f11c26ea8081>>
+** Implementation 1: ImageJ
+   :PROPERTIES:
+   :CUSTOM_ID: implementation-1-imagej
+   :END:
+As first implementation, we take a look at
+[[https://imagej.nih.gov/ij/index.html][ImageJ]]. We will use it as part
+of the [[https://fiji.sc/][Fiji distribution]]. The following
+[[https://imagej.nih.gov/ij/developer/macro/macros.html][ImageJ Macro]]
+code opens "blobs.tif", thresholds it using Otsu's method and applied
+connected component labeling. The resulting label image is stored to
+disk. You can execute this script in Fiji's script editor by clicking on
+=File > New > Script=.
+
+*Note:* When executing this script, you should adapt the path of the
+image data so that it runs on your computer.
+
+<<6dc9cb2c-bae4-4778-93eb-051a22398708>>
+#+begin_src python
+with open('blobs_segmentation_imagej.ijm') as f:
+    print(f.read())
+#+end_src
+
+#+begin_example
+open("C:/structure/code/clesperanto_SIMposium/blobs.tif");
+
+// binarization
+setAutoThreshold("Otsu dark");
+setOption("BlackBackground", true);
+run("Convert to Mask");
+
+// Connected component labeling + measurement
+run("Analyze Particles...", "  show=[Count Masks] ");
+
+// Result visualization
+run("glasbey on dark");
+
+// Save results
+saveAs("Tiff", "C:/structure/code/clesperanto_SIMposium/blobs_labels_imagej.tif");
+
+#+end_example
+
+<<0702950e-8d72-4964-b640-1f929a1def28>>
+The result looks then like this:
+
+<<90678918-b239-4999-884b-6e927ae51f3d>>
+#+begin_src python
+imagej_label_image = imread("blobs_labels_imagej.tif")
+visualization = label2rgb(imagej_label_image, bg_label=0)
+imshow(visualization)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1d290a79520>
+#+end_example
+
+[[file:2db48cc349a920fbb1d9e09706b9458bcff12c57.png]]
+
+<<f7bbdf6b-f457-4b42-a511-c50d18c0c9a6>>
+** Implementation 2: scikit-image
+   :PROPERTIES:
+   :CUSTOM_ID: implementation-2-scikit-image
+   :END:
+As a second implementation we will use
+[[https://scikit-image.org/][scikit-image]]. As it can be used from
+juypter notebooks, we can also have a close look again at the workflow.
+
+<<c53834c1-e72f-4958-a150-81e7871d36b7>>
+We start with loading and visualizing the raw blobs image.
+
+<<c3633629-1dd4-4336-8cc3-4fd93bf7bbe4>>
+#+begin_src python
+blobs_image = imread("blobs.tif")
+imshow(blobs_image, cmap="Greys_r")
+#+end_src
+
+#+begin_example
+C:\Users\rober\miniconda3\envs\bio_39\lib\site-packages\skimage\io\_plugins\matplotlib_plugin.py:150: UserWarning: Float image out of standard range; displaying image with stretched contrast.
+  lo, hi, cmap = _get_display_range(image)
+#+end_example
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1d290cfd7c0>
+#+end_example
+
+[[file:71540b1e99cd34004ea356aad29de96c9067b9c9.png]]
+
+<<5ba94935-6507-4cae-8eb7-ead807f7506c>>
+The
+[[https://scikit-image.org/docs/dev/api/skimage.filters.html?highlight=threshold%20otsu#skimage.filters.threshold_otsu][=threshold_otsu=
+method]] is then used to binarize the image.
+
+<<d9b1d9fc-128c-4000-9bdb-516da152488b>>
+#+begin_src python
+# determine threshold
+threshold = threshold_otsu(blobs_image)
+
+# apply threshold
+binary_image = blobs_image > threshold
+
+imshow(binary_image)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1d290f67280>
+#+end_example
+
+[[file:0d2ae1542da67c612fd887d33bfe07f4d32ce900.png]]
+
+<<9b46b593-f616-4bf5-829c-0a30bd0d0cc3>>
+For connected component labeling, we use the
+[[https://scikit-image.org/docs/dev/api/skimage.measure.html?highlight=label#skimage.measure.label][=label=
+method]]. The visualization of the label image is produced using the
+[[https://scikit-image.org/docs/dev/api/skimage.color.html#skimage.color.label2rgb][=label2rgb=
+method]].
+
+<<828da1e6-4e7b-4da4-9fd2-4ae6e9e0da3c>>
+#+begin_src python
+# connected component labeling
+skimage_label_image = label(binary_image)
+
+# visualize it in colours
+visualization = label2rgb(skimage_label_image, bg_label=0)
+imshow(visualization)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1d290d2f940>
+#+end_example
+
+[[file:b9210e5a4232ccb880c2b242c7a06e981cb2430f.png]]
+
+<<8cf5cdbd-4324-4538-bf27-0622d9c5d5c5>>
+To compare the images later, we also save this one to disk.
+
+<<02997585-205d-4ed9-8184-e998b174d60f>>
+#+begin_src python
+imsave("blobs_labels_skimage.tif", skimage_label_image)
+#+end_src
+
+#+begin_example
+C:\Users\rober\AppData\Local\Temp\ipykernel_6744\179771585.py:1: UserWarning: blobs_labels_skimage.tif is a low contrast image
+  imsave("blobs_labels_skimage.tif", skimage_label_image)
+#+end_example
+
+<<281aaa2c-5529-49fe-9cee-b33a1a289da9>>
+** Implementation 3: clesperanto / python
+   :PROPERTIES:
+   :CUSTOM_ID: implementation-3-clesperanto--python
+   :END:
+The third implementation of the same workflow also runs from python and
+uses
+[[https://github.com/clEsperanto/pyclesperanto_prototype][pyclesperanto]].
+
+*Note:* When executing this script, you should adapt the path of the
+image data so that it runs on your computer.
+
+<<83a8b4f0-9852-4691-af9a-33b524afa9d0>>
+#+begin_src python
+import pyclesperanto_prototype as cle
+
+blobs_image = cle.imread("C:/structure/code/clesperanto_SIMposium/blobs.tif")
+
+cle.imshow(blobs_image, "Blobs", False, 0, 255)
+
+# Threshold Otsu
+binary_image = cle.create_like(blobs_image)
+cle.threshold_otsu(blobs_image, binary_image)
+
+cle.imshow(binary_image, "Threshold Otsu of CLIJ2 Image of blobs.gif", False, 0.0, 1.0)
+
+# Connected Components Labeling Box
+label_image = cle.create_like(binary_image)
+cle.connected_components_labeling_box(binary_image, label_image)
+
+cle.imshow(label_image, "Connected Components Labeling Box of Threshold Otsu of CLIJ2 Image of blobs.gif", True, 0.0, 64.0)
+#+end_src
+
+[[file:211a1093a4b7efc2ac2adc2259d97303cc90f810.png]]
+
+[[file:d4e34a4e68998ca6f384360a5baf37f5fef0067b.png]]
+
+[[file:24bccd1e5a34a6ec1a7630dbdbeff9ddef83745e.png]]
+
+<<5effe3f6-0b8b-4f00-b5d8-cbcac979f169>>
+We will also save this image for later comparison.
+
+<<991320c1-d799-4173-979f-4d4dc35f385f>>
+#+begin_src python
+imsave("blobs_labels_clesperanto_python.tif", label_image)
+#+end_src
+
+<<25a28977-a56f-413c-8bd0-f17457739a54>>
+** Implementation 4: clesperanto / Jython
+   :PROPERTIES:
+   :CUSTOM_ID: implementation-4-clesperanto--jython
+   :END:
+The fourth implementation uses clesperanto within Fiji. To make this
+script run in Fiji, please activate the clij,
+[[https://clij.github.io/][clij2]] and
+[[https://clij.github.io/clijx-assistant/][clijx-assistant]] update
+sites in your Fiji. You may notice that this script is identical with
+the above one. Only saving the result works differently.
+
+*Note:* When executing this script, you should adapt the path of the
+image data so that it runs on your computer.
+
+<<5d1ff6c3-69ac-432b-936b-3667907ee105>>
+#+begin_src python
+with open('blobs_segmentation_clesperanto.py') as f:
+    print(f.read())
+#+end_src
+
+#+begin_example
+# To make this script run in Fiji, please activate the clij, clij2
+# and clijx-assistant update sites in your Fiji. 
+# Read more: 
+# https://clij.github.io/
+# 
+# To make this script run in python, install pyclesperanto_prototype:
+# conda install -c conda-forge pyopencl
+# pip install pyclesperanto_prototype
+# Read more: 
+# https://clesperanto.net
+# 
+import pyclesperanto_prototype as cle
+
+blobs_image = cle.imread("C:/structure/code/clesperanto_SIMposium/blobs.tif")
+
+cle.imshow(blobs_image, "Blobs", False, 0, 255)
+
+# Threshold Otsu
+binary_image = cle.create_like(blobs_image)
+cle.threshold_otsu(blobs_image, binary_image)
+
+cle.imshow(binary_image, "Threshold Otsu of CLIJ2 Image of blobs.gif", False, 0.0, 1.0)
+
+# Connected Components Labeling Box
+label_image = cle.create_like(binary_image)
+cle.connected_components_labeling_box(binary_image, label_image)
+
+cle.imshow(label_image, "Connected Components Labeling Box of Threshold Otsu of CLIJ2 Image of blobs.gif", True, 0.0, 64.0)
+
+# The following code is ImageJ specific. If you run this code from 
+# Python, consider replacing this part with skimage.io.imsave
+from ij import IJ
+IJ.saveAs("tif","C:/structure/code/clesperanto_SIMposium/blobs_labels_clesperanto_imagej.tif");
+#+end_example
+
+<<93046400-d811-4154-aafa-87bedab73d97>>
+We will also take a look at the result of this workflow:
+
+<<4669d5e1-cd5f-41ef-a734-cb8172be4296>>
+#+begin_src python
+imagej_label_image = imread("blobs_labels_clesperanto_imagej.tif")
+visualization = label2rgb(imagej_label_image, bg_label=0)
+imshow(visualization)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1d291513a90>
+#+end_example
+
+[[file:b9210e5a4232ccb880c2b242c7a06e981cb2430f.png]]

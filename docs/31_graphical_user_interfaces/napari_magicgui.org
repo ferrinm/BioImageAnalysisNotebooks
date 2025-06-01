@@ -1,0 +1,85 @@
+<<536e5e37>>
+** Interactive parameter tuning with napari and magicgui
+   :PROPERTIES:
+   :CUSTOM_ID: interactive-parameter-tuning-with-napari-and-magicgui
+   :END:
+A common task when processing images is to manually tune parameters
+until a segementation algorithm works fine on a given dataset. The
+[[https://napari.org][napari]] viewer and
+[[https://napari.org/magicgui/][magicgui]] offer the possibility to
+automatically build a user-interface where the user can tune parameters
+and see immediately how a corresponding segmentation will look like.
+This notebook demonstrates how this can be achieved from a simple python
+function that does the image processing.
+
+<<83eb9620>>
+#+begin_src python
+# Inspired by
+# https://github.com/pr4deepr/pyclesperanto_prototype/blob/master/napari_clij_widget.py
+import napari
+import pyclesperanto_prototype as cle
+from magicgui import magicgui
+from napari.types import ImageData, LabelsData
+#+end_src
+
+<<e6322806>>
+Our starting point is a function that implements a certain image
+processing workflow. In this example, we blur an image using a Gaussian
+filter, we threshold it using
+[[https://ieeexplore.ieee.org/document/4310076][Otsu's method]] and we
+apply connected component labeling to differentiate objects and label
+them.
+
+<<bc1a3ecc>>
+#+begin_src python
+@magicgui(auto_call=True)
+def process_image(image_input: ImageData, sigma: float = 2) -> LabelsData:
+    if input is not None:
+        # process the image
+        blurred = cle.gaussian_blur(image_input, sigma_x=sigma, sigma_y=sigma)
+        binary = cle.threshold_otsu(blurred)
+        labels = cle.connected_components_labeling_box(binary)
+
+        return labels
+#+end_src
+
+<<43973a94>>
+We also need an example image to demonstrate the procedure.
+
+<<011c8e68>>
+#+begin_src python
+# load data
+from skimage.io import imread
+image = imread('https://samples.fiji.sc/blobs.png')
+#+end_src
+
+<<19a69f50>>
+Next, we start up the napari viewer, add the original image and append a
+automatically generated user interface, a dock widget, that allows us to
+configure the parameters of the function provided above. Furthermore, we
+take a screenshot of the viewer.
+
+<<38eda89d>>
+#+begin_src python
+# start up napari
+viewer = napari.Viewer()
+viewer.add_image(image, name='blobs')
+
+# generate a Graphical User Interface from the function above magically
+viewer.window.add_dock_widget(process_image)
+
+# take a screenshot
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+#+begin_example
+Warning: Could not find scikit-tensor which is needed for separable approximations...
+If you want to compute separable approximations, please install it with
+pip install scikit-tensor-py3
+#+end_example
+
+[[file:d8e7cab5f9d08c3765121a60cf6e38ad04ec9278.png]]
+
+<<8feab7a3>>
+#+begin_src python
+#+end_src

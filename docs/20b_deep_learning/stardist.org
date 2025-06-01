@@ -1,0 +1,178 @@
+* Image segmentation with StarDist
+  :PROPERTIES:
+  :CUSTOM_ID: image-segmentation-with-stardist
+  :END:
+StarDist is a deep-learning based image segmentation method for
+segmenting objects such as cell nuclei.
+
+See also
+
+- [[https://link.springer.com/chapter/10.1007/978-3-030-00934-2_30][StarDist
+  in Proceedings of MICCAI 2018]]
+- [[https://github.com/stardist/stardist][StarDist on github]]
+- [[https://www.youtube.com/watch?v=Amn_eHRGX5M][StarDist NEUBIAS
+  Academy webinar]]
+- [[https://github.com/stardist/stardist/blob/master/examples/2D/3_prediction.ipynb][StarDist
+  prediction example]]
+
+As usual, we start by loading an example image.
+
+#+begin_src python
+from stardist.models import StarDist2D
+from csbdeep.utils import normalize
+from stardist import random_label_cmap
+
+import stackview
+import matplotlib.pyplot as plt
+import numpy as np
+from skimage.data import human_mitosis
+#+end_src
+
+#+begin_src python
+image = human_mitosis()
+stackview.insight(image)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[ 8,  8,  8, ..., 63, 78, 75],
+                  [ 8,  8,  7, ..., 67, 71, 71],
+                  [ 9,  8,  8, ..., 53, 64, 66],
+                  ...,
+                  [ 8,  9,  8, ..., 17, 24, 59],
+                  [ 8,  8,  8, ..., 17, 22, 55],
+                  [ 8,  8,  8, ..., 16, 18, 38]], dtype=uint8)
+#+end_example
+
+** Loading a model
+   :PROPERTIES:
+   :CUSTOM_ID: loading-a-model
+   :END:
+Models are files that typically contain a neural network which is
+capable of segmenting an image. StarDist comes with some pretrained
+models for demonstrating how the algorithm performs on a general
+use-case such as nuclei segmentation. If such a pretrained model does
+not perform well on your data (be a good scientist and check that
+carefully!), you need to
+[[https://github.com/stardist/stardist/blob/master/examples/2D/2_training.ipynb][train
+your own model]] which fits to your data. For training, you will likely
+need a powerful GPU, for applying a model (prediction step) to a 2D
+image no GPU is necessary.
+
+#+begin_src python
+# creates a pretrained model
+model = StarDist2D.from_pretrained('2D_versatile_fluo')
+#+end_src
+
+#+begin_example
+Found model '2D_versatile_fluo' for 'StarDist2D'.
+Loading network weights from 'weights_best.h5'.
+Loading thresholds from 'thresholds.json'.
+Using default values: prob_thresh=0.479071, nms_thresh=0.3.
+#+end_example
+
+** Normalizing the input image
+   :PROPERTIES:
+   :CUSTOM_ID: normalizing-the-input-image
+   :END:
+Many algorithms using neural networks need normalized input data to work
+on. For example, you can determine the 1% and the 99.8% percentile
+(that's very common) and normalize your image so that the intensities
+spread between these percentiles are afterwards in the range between 0
+and 1. We need to do this because the model was trained on an image in
+this range and might not be able to segment images with different
+intensity ranges.
+
+#+begin_src python
+axis_norm = (0,1)
+image = normalize(image, 1,99.8, axis=axis_norm)
+#+end_src
+
+Segmenting the image and labeling the individual objects is often called
+"instance segmentation" or "prediction" in the artificial intelligence
+community.
+
+#+begin_src python
+labels, details = model.predict_instances(image)
+
+stackview.insight(labels)
+#+end_src
+
+#+begin_example
+1/1 [==============================] - 0s 127ms/step
+#+end_example
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]])
+#+end_example
+
+** Result visualization
+   :PROPERTIES:
+   :CUSTOM_ID: result-visualization
+   :END:
+Cell / nuclei segmentation results can be checked best if the resulting
+label image is overlaid to the original image
+
+#+begin_src python
+plt.figure(figsize=(5,5))
+plt.imshow(image, clim=(0,1), cmap='gray')
+plt.imshow(labels, cmap=random_label_cmap(), alpha=0.5)
+plt.axis('off');
+#+end_src
+
+[[file:a742830f1398f0f32f99cd3a3538609953fcafa5.png]]
+
+... or by drawing outlines around segmented regions.
+
+#+begin_src python
+# create a new plot
+fig, axes = plt.subplots(1,1)
+
+# add two images
+axes.imshow(image, cmap=plt.cm.gray)
+axes.contour(labels, [0.5], linewidths=1.2, colors='r')
+#+end_src
+
+#+begin_example
+<matplotlib.contour.QuadContourSet at 0x22b34c4f1f0>
+#+end_example
+
+[[file:343e4bddfb05f6a8a83613d20ece9e42e4f0b0b0.png]]
+
+Note: The model we applied here to human_mitosis was not trained on it.
+The result doesn't look so bad though.
+
+** More available pretrained models
+   :PROPERTIES:
+   :CUSTOM_ID: more-available-pretrained-models
+   :END:
+StarDist offers more available pretrained models.
+
+#+begin_src python
+StarDist2D.from_pretrained() 
+#+end_src
+
+#+begin_example
+There are 4 registered models for 'StarDist2D':
+
+Name                  Alias(es)
+────                  ─────────
+'2D_versatile_fluo'   'Versatile (fluorescent nuclei)'
+'2D_versatile_he'     'Versatile (H&E nuclei)'
+'2D_paper_dsb2018'    'DSB 2018 (from StarDist 2D paper)'
+'2D_demo'             None
+#+end_example
+
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Load =../../data/blobs.tif= and apply StarDist to it.
+
+#+begin_src python
+#+end_src

@@ -1,0 +1,255 @@
+(image_segmentation.binary_mask_refinement)=
+
+* Binary mask refinement
+  :PROPERTIES:
+  :CUSTOM_ID: binary-mask-refinement
+  :END:
+A typical post-processing step after thresholding is refining binary
+masks. This step can be crucial to smooth outlines around segmented
+objects, remove single pixels which were segmented as positive and for
+filling black holes in white regions.
+
+See also
+
+- [[https://en.wikipedia.org/wiki/Closing_(morphology)][Closing]]
+
+We start with the segmented =embryos_grey.tif= example image. This image
+is a single-channel crop of an image known from the ImageJ example
+images.
+
+#+begin_src python
+from skimage.io import imread
+from skimage import filters
+import matplotlib.pyplot as plt
+from skimage.morphology import disk, binary_erosion, binary_dilation, binary_opening, binary_closing
+import numpy as np
+from scipy.ndimage import binary_fill_holes
+import pyclesperanto_prototype as cle
+#+end_src
+
+#+begin_src python
+# load image
+image = imread("../../data/embryos_grey.tif")
+
+# binarize the image
+threshold = filters.threshold_otsu(image)
+binary_image = image <= threshold
+
+# Show original image and binary image side-by-side
+fig, axs = plt.subplots(1, 2, figsize=(15,15))
+cle.imshow(image, plot=axs[0])
+axs[0].set_title('Original')
+
+cle.imshow(binary_image, plot=axs[1])
+axs[1].set_title('Binary')
+#+end_src
+
+#+begin_example
+Text(0.5, 1.0, 'Binary')
+#+end_example
+
+[[file:c1ac9e045318ea6dbe03adc4d15549215a65062d.png]]
+
+** Binary erosion
+   :PROPERTIES:
+   :CUSTOM_ID: binary-erosion
+   :END:
+[[https://scikit-image.org/docs/dev/api/skimage.morphology.html#skimage.morphology.binary_erosion][Binary
+erosion]] turns white pixels black which have a black neighboring pixel.
+The neighborhood is defined by a
+[[https://scikit-image.org/docs/stable/auto_examples/numpy_operations/plot_structuring_elements.html][structuring
+element]]. Thus, coastlines of the islands are eroded.
+
+#+begin_src python
+eroded1 = binary_erosion(binary_image, disk(1))
+eroded4 = binary_erosion(binary_image, disk(4))
+
+fig, axs = plt.subplots(1, 3, figsize=(15,15))
+cle.imshow(binary_image, plot=axs[0])
+axs[0].set_title('Binary image')
+
+cle.imshow(eroded1, plot=axs[1])
+axs[1].set_title('Eroded r=1')
+
+cle.imshow(eroded4, plot=axs[2])
+axs[2].set_title('Eroded r=4')
+#+end_src
+
+#+begin_example
+Text(0.5, 1.0, 'Eroded r=4')
+#+end_example
+
+[[file:3dd087e12d7198aad0659f819484ca34b036db3f.png]]
+
+** Binary dilation
+   :PROPERTIES:
+   :CUSTOM_ID: binary-dilation
+   :END:
+Analogously, dilation turns black pixels white which have a white
+neighbor.
+
+#+begin_src python
+dilated1 = binary_dilation(binary_image, disk(1))
+dilated4 = binary_dilation(binary_image, disk(4))
+
+fig, axs = plt.subplots(1, 3, figsize=(15,15))
+cle.imshow(binary_image, plot=axs[0])
+axs[0].set_title('Binary image')
+
+cle.imshow(dilated1, plot=axs[1])
+axs[1].set_title('Dilated r=1')
+
+cle.imshow(dilated4, plot=axs[2])
+axs[2].set_title('Dilated r=4')
+#+end_src
+
+#+begin_example
+Text(0.5, 1.0, 'Dilated r=4')
+#+end_example
+
+[[file:855053fd8c91be29d6a787895e33d597574338cd.png]]
+
+** Fill holes
+   :PROPERTIES:
+   :CUSTOM_ID: fill-holes
+   :END:
+Another important operation is
+[[https://docs.scipy.org/doc/scipy-0.14.0/reference/generated/scipy.ndimage.morphology.binary_fill_holes.html][fill
+holes]] which is part of the scipy package.
+
+#+begin_src python
+filled = binary_fill_holes(binary_image)
+
+fig, axs = plt.subplots(1, 2, figsize=(15,15))
+cle.imshow(binary_image, plot=axs[0])
+axs[0].set_title('Binary image')
+
+cle.imshow(filled, plot=axs[1])
+axs[1].set_title('Holes filled')
+#+end_src
+
+#+begin_example
+Text(0.5, 1.0, 'Holes filled')
+#+end_example
+
+[[file:e901ff297724da9390bd2cc0589c035bb31d6f9e.png]]
+
+** Binary closing and opening
+   :PROPERTIES:
+   :CUSTOM_ID: binary-closing-and-opening
+   :END:
+By combining operations such as erosion and dilation subsequently, one
+can close and open binary images.
+
+#+begin_src python
+opened = binary_opening(binary_image, disk(4))
+closed = binary_closing(binary_image, disk(4))
+
+fig, axs = plt.subplots(1, 3, figsize=(15,15))
+cle.imshow(binary_image, plot=axs[0])
+axs[0].set_title('Binary image')
+
+cle.imshow(opened, plot=axs[1])
+axs[1].set_title('Opened')
+
+cle.imshow(closed, plot=axs[2])
+axs[2].set_title('Closed')
+#+end_src
+
+#+begin_example
+Text(0.5, 1.0, 'Closed')
+#+end_example
+
+[[file:f0f93c96dfc939b1ada4cafe16ea634fb1908d7f.png]]
+
+In some libraries, such as
+[[https://github.com/clesperanto/pyclesperanto_prototype/][clesperanto]]
+there are no dedicated functions for binary opening and closing.
+However, one can use morphological opening and closing as these
+operations are mathematically both suitable for processsing binary
+images. Applying binary opening and closing to intensity images is not
+recemmended.
+
+#+begin_src python
+opened2 = cle.opening_sphere(binary_image, radius_x=4, radius_y=4)
+closed2 = cle.closing_sphere(binary_image, radius_x=4, radius_y=4)
+
+fig, axs = plt.subplots(1, 3, figsize=(15,15))
+cle.imshow(binary_image, plot=axs[0])
+axs[0].set_title('Binary image')
+
+cle.imshow(opened2, plot=axs[1])
+axs[1].set_title('Opened')
+
+cle.imshow(closed2, plot=axs[2])
+axs[2].set_title('Closed')
+#+end_src
+
+#+begin_example
+Text(0.5, 1.0, 'Closed')
+#+end_example
+
+[[file:f0f93c96dfc939b1ada4cafe16ea634fb1908d7f.png]]
+
+** Comparing binary images
+   :PROPERTIES:
+   :CUSTOM_ID: comparing-binary-images
+   :END:
+For better visualization of differenced between binary images, we would
+like to subtract one of the two binary images from the other. If we
+compute the absolute of this image, we should an image, where all pixels
+are have value =1= where the two binary images have different values.
+Unfortunately, we cannot subtract binary images with values =True= and
+=False= using the =-= operator. We first should turn the =True/False=
+binary images into numeric images. This is possible by multiplying the
+images with =1=:
+
+#+begin_src python
+absolute_difference = np.abs(opened * 1 - binary_image * 1)
+
+cle.imshow(absolute_difference)
+#+end_src
+
+[[file:825a86b5fc2570c84b90360692dc6aa902a26f04.png]]
+
+The same result can also be achieved using pyclesperanto's
+=absolute_difference= function:
+
+#+begin_src python
+absolute_difference2 = cle.absolute_difference(opened, binary_image)
+
+cle.imshow(absolute_difference2)
+#+end_src
+
+[[file:825a86b5fc2570c84b90360692dc6aa902a26f04.png]]
+
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+In the following code example, =embryos_grey.jpg= is processed using
+Gaussian filtering and Otsu-thresholding. Process the same =image= only
+using Otsu-thresholding and binary post-processing operations. Can you
+achieve the same binary image?
+
+#+begin_src python
+from skimage.io import imread, imshow
+image = imread("../../data/embryos_grey.tif")
+
+from skimage import filters
+
+# noise removal
+blurred = filters.gaussian(image, sigma=4)
+
+# thresholding
+threshold = filters.threshold_otsu(blurred)
+binary_image = blurred <= threshold
+
+# result visualization
+cle.imshow(binary_image * 1)
+#+end_src
+
+[[file:60c6da266adf315e3f061769d23808c73297adad.png]]
+
+#+begin_src python
+#+end_src

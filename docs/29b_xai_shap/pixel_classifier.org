@@ -1,0 +1,396 @@
+<<suffering-festival>>
+* Pixel classification explained with SHAP
+  :PROPERTIES:
+  :CUSTOM_ID: pixel-classification-explained-with-shap
+  :END:
+SHapley Additive exPlanations (SHAP) is a technique for visualizing how,
+for example random forest classifiers work. In this example we use a
+[[https://en.wikipedia.org/wiki/Random_forest][random forest
+classifier]] for pixel classification.
+
+See also
+
+- [[https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html][Scikit-learn
+  random forest]]
+- [[https://shap.readthedocs.io/en/latest/][SHAP documentation]]
+- [[https://en.wikipedia.org/wiki/Shapley_value][Shapley value]]
+
+<<extreme-papua>>
+#+begin_src python
+from sklearn.ensemble import RandomForestClassifier
+from IPython.display import display
+from skimage.io import imread, imsave
+import numpy as np
+import stackview
+import matplotlib.pyplot as plt
+import pandas as pd
+from utilities import format_data, add_background, generate_feature_stack, visualize_image_list, apply_threshold_range, get_plt_figure
+#+end_src
+
+<<0df4445b-3426-494b-9fde-2337ea59731c>>
+As example image, use a cropped and modified image from
+[[https://bbbc.broadinstitute.org/bbbc/BBBC038][BBBC038v1]], available
+from the Broad Bioimage Benchmark Collection
+[[https://doi.org/10.1038/s41592-019-0612-7][Caicedo et al., Nature
+Methods, 2019]].
+
+<<oriental-appointment>>
+#+begin_src python
+image = add_background(imread('data/0bf4b1.tif')[4:64,106:166])
+
+stackview.insight(image)
+#+end_src
+
+#+begin_example
+[[ 5.          6.69491525  7.38983051 ... 43.61016949 44.30508475
+  46.        ]
+ [ 8.69491525  9.38983051 10.08474576 ... 44.30508475 46.
+  45.69491525]
+ [10.38983051 11.08474576 13.77966102 ... 45.         45.69491525
+  46.38983051]
+ ...
+ [65.61016949 67.30508475 66.         ... 87.22033898 87.91525424
+  88.61016949]
+ [70.30508475 71.         72.69491525 ... 88.91525424 89.61016949
+  90.30508475]
+ [76.         76.69491525 77.38983051 ... 91.61016949 92.30508475
+  92.        ]]
+#+end_example
+
+<<ee9cfbf0-a22e-489b-b2f3-7f817b2f7d69>>
+#+begin_src python
+binary_masks = apply_threshold_range(image) + 1
+
+# Visualize the animation 
+stackview.animate(binary_masks, zoom_factor=5)
+#+end_src
+
+#+begin_example
+<IPython.core.display.HTML object>
+#+end_example
+
+<<unavailable-harvey>>
+For demonstrating how the algorithm works, we annotate two small regions
+on the left of the image with values 1 and 2 for background and
+foreground (objects).
+
+<<canadian-progress>>
+#+begin_src python
+manual_annotation = False
+if manual_annotation:
+    annotation = np.zeros(image.shape, dtype=np.uint32)
+    display(stackview.annotate(image, annotation, zoom_factor=4))
+#+end_src
+
+<<947ca64b-85d1-45fe-ada7-6dfb07870f4d>>
+*Note:* If =manual_annotation= is true, you need to annotate pixels with
+your mouse above before executing the next cell.
+
+<<c19fb6ea-e97f-461c-9f6f-9ae8341ba023>>
+#+begin_src python
+annotation_filename = "data/0bf4b1_annotation.tif"
+
+if manual_annotation:
+    imsave(annotation_filename, annotation)
+else:
+    annotation = imread(annotation_filename)
+stackview.animate_curtain(image, annotation, alpha=0.6, zoom_factor=4)
+#+end_src
+
+#+begin_example
+<IPython.core.display.HTML object>
+#+end_example
+
+<<touched-application>>
+** Generating a feature stack
+   :PROPERTIES:
+   :CUSTOM_ID: generating-a-feature-stack
+   :END:
+Pixel classifiers such as the random forest classifier takes multiple
+images as input. We typically call these images a feature stack because
+for every pixel exist now multiple values (features). In the following
+example we create a feature stack containing three features:
+
+- The original pixel value
+- The pixel value after a Gaussian blur
+- The pixel value of the Gaussian blurred image processed through a
+  Sobel operator.
+
+Thus, we denoise the image and detect edges. All three images serve the
+pixel classifier to differentiate positive and negative pixels.
+
+<<3dc1096f-9330-4fa6-8b6b-7c530e674ed7>>
+#+begin_src python
+feature_names = ["original", "top_hat(10)", "gaussian_sobel(1)", "random"]
+
+feature_stack = generate_feature_stack(image, feature_names)
+feature_stack.shape
+#+end_src
+
+#+begin_example
+(4, 60, 60)
+#+end_example
+
+<<4542973d-a094-455b-9e87-1515f279b7b0>>
+#+begin_src python
+visualize_image_list(feature_stack, feature_names)
+#+end_src
+
+[[file:0ee8a4237878768b2fa5aab4ed2cd436e98c4cb2.png]]
+
+<<painful-english>>
+** Formatting data
+   :PROPERTIES:
+   :CUSTOM_ID: formatting-data
+   :END:
+We now need to format the input data so that it fits to what scikit
+learn expects. Scikit-learn asks for an array of shape (n, m) as input
+data and (n) annotations. n corresponds to number of pixels and m to
+number of features. In our case m = 3.
+
+<<plastic-botswana>>
+#+begin_src python
+X, y = format_data(feature_stack, annotation)
+
+print("input shape", X.shape)
+print("annotation shape", y.shape)
+#+end_src
+
+#+begin_example
+input shape (969, 4)
+annotation shape (969,)
+#+end_example
+
+<<following-swedish>>
+** Training the random forest classifier
+   :PROPERTIES:
+   :CUSTOM_ID: training-the-random-forest-classifier
+   :END:
+We now train the
+[[https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html][random
+forest classifier]] by providing the feature stack X and the annotations
+y.
+
+<<chronic-terminology>>
+#+begin_src python
+classifier = RandomForestClassifier(max_depth=2, random_state=0)
+classifier.fit(X, y)
+#+end_src
+
+#+begin_example
+RandomForestClassifier(max_depth=2, random_state=0)
+#+end_example
+
+<<according-enterprise>>
+** Predicting pixel classes
+   :PROPERTIES:
+   :CUSTOM_ID: predicting-pixel-classes
+   :END:
+After the classifier has been trained, we can use it to predict pixel
+classes for whole images. Note in the following code, we provide
+=feature_stack.T= which are more pixels then X in the commands above,
+because it also contains the pixels which were not annotated before.
+
+<<optimum-relevance>>
+#+begin_src python
+prediction = classifier.predict(np.asarray([f.ravel() for f in feature_stack]).T).reshape(image.shape)
+stackview.animate_curtain(image, prediction, zoom_factor=4)
+#+end_src
+
+#+begin_example
+<IPython.core.display.HTML object>
+#+end_example
+
+<<b5697ac0-7fa2-4cfe-8bbc-230c82e2a4a7>>
+** SHAP
+   :PROPERTIES:
+   :CUSTOM_ID: shap
+   :END:
+SHAP analysis allows us to visualize to what degree features contribute
+to decisions the classifier makes.
+
+<<dff39526-3505-4fb6-a090-004e445e0477>>
+#+begin_src python
+def visualize_shap(classifier, feature_names, target_class=-1):
+    import shap
+    
+    # Create SHAP explainer
+    explainer = shap.TreeExplainer(classifier)
+    
+    # Calculate SHAP values 
+    shap_values = explainer.shap_values(X)[...,target_class]
+
+    # Create a new figure with larger size for better visibility
+    plt.figure(figsize=(40, 8))
+    
+    # Create SHAP summary plot with feature names
+    shap.summary_plot(shap_values, X, feature_names=feature_names, show=False)
+    
+    # Style plot and show it 
+    #plt.title('SHAP Feature Importance and Impact', pad=20)
+    plt.xlabel("SHAP value")
+    plt.tight_layout()
+
+visualize_shap(classifier, feature_names)
+
+#+end_src
+
+[[file:57e735d29eb26b1eaa0da5475115ef18f24a222d.png]]
+
+<<d80d8058-06f4-47ba-bb7e-9b16718442dc>>
+The plot above can be read like:
+
+- The top-hat filtered image is the most crucial for the segmentation of
+  the objects. If top-hat filtered pixel values are high, the classifier
+  sees the pixel as positive (red).
+- The original and the Gaussian-blurred image contribute to the decision
+  as well, but not as prominently because the SHAP values are closer
+  to 0.
+- The random image does not contribute to the classification.
+
+To interpret the plot above more easily, we show the feature images
+again:
+
+<<372271e5-1558-4a2c-af63-c8e1ede73469>>
+#+begin_src python
+visualize_image_list(feature_stack, feature_names)
+#+end_src
+
+[[file:0ee8a4237878768b2fa5aab4ed2cd436e98c4cb2.png]]
+
+<<5c1a568b-5a9a-4b3e-b065-2220bd6c0790>>
+** Beware of correlation
+   :PROPERTIES:
+   :CUSTOM_ID: beware-of-correlation
+   :END:
+We will execute the same procedure again, but this time with strongly
+correlating features.
+
+<<06aaa226-4bfc-4535-bf20-cd23e384eeb2>>
+#+begin_src python
+feature_names = ["original"] + [f"top_hat({r})" for r in range(6, 14, 2)] + ["gaussian_sobel(1)"]
+
+feature_stack = generate_feature_stack(image, feature_names)
+visualize_image_list(feature_stack, feature_names)
+#+end_src
+
+[[file:d70463c12b05b2931a7f72c906a9182bfae7c46e.png]]
+
+<<9ac0ae07-712d-4a00-86c2-48221bbd4eeb>>
+#+begin_src python
+X, y = format_data(feature_stack, annotation)
+
+classifier = RandomForestClassifier(max_depth=2, random_state=0)
+classifier.fit(X, y)
+#+end_src
+
+#+begin_example
+RandomForestClassifier(max_depth=2, random_state=0)
+#+end_example
+
+<<8094c145-58d8-4847-b7fa-9d23e4f8f9f2>>
+#+begin_src python
+prediction = classifier.predict(np.asarray([f.ravel() for f in feature_stack]).T).reshape(image.shape)
+stackview.animate_curtain(image, prediction, zoom_factor=4)
+#+end_src
+
+#+begin_example
+<IPython.core.display.HTML object>
+#+end_example
+
+<<e78b4e08-7dba-4ee4-a638-6d695f7b3b6b>>
+In this shap plot it /seems/ the Gaussian blurred image and the original
+are less useful compared to the SHAP plot above. However, the strongly
+correlating top-hat features might mislead our perception.
+
+<<bb7833a0-a450-4aaa-97cb-68dafd642af4>>
+#+begin_src python
+visualize_shap(classifier, feature_names)
+#+end_src
+
+[[file:24eab8990ecb4d4abcda9480b73a1061de581367.png]]
+
+<<cbc4c40c-086f-47d4-8514-c6ad4b66ae0f>>
+#+begin_src python
+import seaborn as sns
+
+# Create DataFrame
+df = pd.DataFrame(X, columns=feature_names)
+
+# Calculate correlation matrix
+correlation_matrix = df.corr()
+
+# Create heatmap
+plt.figure(figsize=(5, 5))
+sns.heatmap(correlation_matrix, 
+            cmap='PRGn',  # Purple-Green diverging colormap
+            center=0,     # Center the colormap at 0
+            vmin=-1,      # Set minimum value
+            vmax=1,       # Set maximum value
+            annot=False,   # Show correlation values
+            fmt='.2f')    # Format numbers to 2 decimal places
+plt.title('Feature Correlation Matrix') 
+plt.tight_layout()
+plt.show()
+#+end_src
+
+[[file:01ad4dd0f3b01cc9df1941b0282780615adc34f1.png]]
+
+<<de0bdb7c-60df-4c58-8510-f83c4ef41b8d>>
+The SHAP values are defined for all classes. In case of a binary
+classification, the two SHAP plots show oppsing values. Hence, showing
+one is enough. For completeness, here we see the two SHAP plots. The
+first is for predicing the class 0 (blue) and the second for class 1
+(orange).
+
+<<f8483c6b-9d53-4cf0-bb35-09a7e1fd356e>>
+#+begin_src python
+visualize_shap(classifier, feature_names, target_class=0)
+#+end_src
+
+[[file:740f7c903236cd3d62e22b6b203e152334ae7954.png]]
+
+<<9badf837-fa79-4c62-aa0d-33a889411798>>
+#+begin_src python
+visualize_shap(classifier, feature_names, target_class=1)
+#+end_src
+
+[[file:0e783be4d440b8ca11789cc490cdbe91629ff95c.png]]
+
+<<acda0240-c716-4eb8-a57b-719e48c1de81>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Interpret the features in this SHAP plot.
+
+<<9bb0a1f5-fbb5-41c3-b91d-4ca850f9158c>>
+#+begin_src python
+feature_names = ["original", "gaussian(1)", "laplace", "gaussian_laplace(1)"]
+
+feature_stack = generate_feature_stack(image, feature_names)
+visualize_image_list(feature_stack, feature_names)
+
+X, y = format_data(feature_stack, annotation)
+
+classifier = RandomForestClassifier(max_depth=2, random_state=0)
+classifier.fit(X, y)
+
+visualize_shap(classifier, feature_names, target_class=0)
+#+end_src
+
+[[file:f054b9b539d104be99d52a0a30f6c56e7e60b621.png]]
+
+[[file:87187bd3d03aab057f49598c02dc6256255d00af.png]]
+
+<<2f42b516-656f-443e-a837-21a06eec0725>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Execute the procedure demonstrated above to segment the edges of the
+objects in the image.
+
+<<20f60c70-51d6-4fe5-8fe1-c805b73f88b3>>
+#+begin_src python
+#+end_src

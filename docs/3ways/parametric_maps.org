@@ -1,0 +1,226 @@
+<<0c1412ba-d875-4efe-bad6-50ecbd1a3f3a>>
+#+begin_src python
+import pyclesperanto_prototype as cle
+import numpy as np
+from skimage.io import imread, imshow
+import matplotlib.pyplot as plt
+#+end_src
+
+<<8b1515a5-5490-4c7a-a6d4-7378b979293b>>
+We're using a dataset published by
+[[https://doi.org/10.1091/mbc.E13-04-0221][Heriche et al.]] licensed
+[[https://creativecommons.org/licenses/by/4.0/][CC BY 4.0]] available in
+the [[https://idr.openmicroscopy.org/webclient/img_detail/179719/][Image
+Data Resource]].
+
+<<1a8196b2-119e-48a9-8285-154d59a3a53e>>
+#+begin_src python
+# load file
+raw_image = imread('../../data/plate1_1_013 [Well 5, Field 1 (Spot 5)].png')[::2,::2,0]
+
+# visualize
+cle.asarray(raw_image)
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       ...,
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.]], dtype=float32)
+#+end_example
+
+<<f5f748fb-8cd6-4d48-aee0-0c0f4bc7b3fa>>
+** Starting point: a label image
+   :PROPERTIES:
+   :CUSTOM_ID: starting-point-a-label-image
+   :END:
+For demonstration purposes, we need a label image with labeled nuclei.
+
+<<37d13f8c-6e5f-4d27-b217-289bab89463f>>
+#+begin_src python
+labels = cle.voronoi_otsu_labeling(raw_image, spot_sigma=7)
+labels
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<590d7620-2b2e-4fe1-b2a2-036426e6e4d0>>
+** Measurements
+   :PROPERTIES:
+   :CUSTOM_ID: measurements
+   :END:
+Now, we count the number of neighbors around each nucleus in a certain
+radius.
+
+<<c347b193-4a4f-47d2-869f-fbeffe3bedb2>>
+#+begin_src python
+statistics = cle.statistics_of_labelled_neighbors(labels)
+number_of_neighbors = statistics["proximal_neighbor_count_d160"].tolist()
+print(number_of_neighbors)
+#+end_src
+
+#+begin_example
+[0.0, 0.0, 1.0, 6.0, 0.0, 2.0, 5.0, 4.0, 3.0, 5.0, 7.0, 3.0, 9.0, 4.0, 5.0, 4.0, 2.0, 5.0, 2.0, 3.0, 1.0, 4.0, 4.0, 3.0, 3.0, 4.0, 4.0, 4.0, 3.0, 4.0, 0.0]
+#+end_example
+
+#+begin_example
+c:\structure\code\pyclesperanto_prototype\pyclesperanto_prototype\_tier9\_statistics_of_labelled_neighbors.py:69: RuntimeWarning: invalid value encountered in divide
+  all_stats["max_min_distance_ratio_of_touching_neighbors"] = all_stats["maximum_distance_of_touching_neighbors"] / all_stats["minimum_distance_of_touching_neighbors"]
+#+end_example
+
+<<993c3382-ca44-4fe3-b58d-2482e9eccab5>>
+** Visualizing measurements as map
+   :PROPERTIES:
+   :CUSTOM_ID: visualizing-measurements-as-map
+   :END:
+Our goal is now to visualize those measurements as a /quantitative
+parameter image/. Sometimes these images are also referred to as
+/feature images/ or /feature maps/.
+
+<<34cb374e-aa9c-4c84-bf29-d491478088e9>>
+*** The naive way
+    :PROPERTIES:
+    :CUSTOM_ID: the-naive-way
+    :END:
+The most straight forward way to do this is using a for-loop iterating
+over pixels and replacing e.g. label =1= with the measurement
+corresponding to label =1=. While this is a reasonable strategy, it may
+also be the one with the longest code and the slowest way of doing it:
+
+<<e25343a3-ffe0-4f83-8b13-91947d1f6987>>
+#+begin_src python
+neighbor_count_map_naive = np.zeros(labels.shape)
+
+for y in range(labels.shape[0]):
+    for x in range(labels.shape[1]):
+        label = labels[y, x]
+        # we subtract 1 from the label to retrieve the
+        # index of the measurement in the array because 
+        # there is no measurement for background
+        measurement = number_of_neighbors[label - 1]
+        neighbor_count_map_naive[y, x] = measurement 
+
+imshow(neighbor_count_map_naive)
+#+end_src
+
+#+begin_example
+C:\Users\rober\miniconda3\envs\bio_39\lib\site-packages\skimage\io\_plugins\matplotlib_plugin.py:150: UserWarning: Float image out of standard range; displaying image with stretched contrast.
+  lo, hi, cmap = _get_display_range(image)
+#+end_example
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x21b4d6c0a30>
+#+end_example
+
+[[file:afe55a6d73ff1d8a5fe3b242116b10db90ffb61a.png]]
+
+<<ddd21b76-0dc0-40bf-a592-a89a98419641>>
+** The state-of-the-art way
+   :PROPERTIES:
+   :CUSTOM_ID: the-state-of-the-art-way
+   :END:
+A much shorter way for doing this, which is also much faster is using
+[[https://numpy.org][numpy]]. As numpy is likely the most commonly used
+Python library, we can consider such a solution the state-of-the-art.
+
+<<fb85c777-62d6-4ea8-ab8b-59859e3d0eb6>>
+#+begin_src python
+# The prefixed [0] represents the measurement for the background
+neighbor_count_map_numpy = np.take([0] + number_of_neighbors, labels)
+
+imshow(neighbor_count_map_numpy)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x21b58e3c520>
+#+end_example
+
+[[file:afe55a6d73ff1d8a5fe3b242116b10db90ffb61a.png]]
+
+<<6bc77e09-9924-45d5-b179-7a34b118f683>>
+*** The clesperanto-way
+    :PROPERTIES:
+    :CUSTOM_ID: the-clesperanto-way
+    :END:
+In the [[https://clesperanto.net][clesperanto project]] we spent time to
+design the function names and parameters in a way so that they are
+self-explanatory and easy to understand. Those function names are
+typically a bit longer but make the code easier to read.
+
+<<ca5aadd3-b8eb-4fbd-badf-00ad415f8a74>>
+#+begin_src python
+# The prefixed [0] represents the measurement for the background
+neighbor_count_map_cle = cle.replace_intensities(labels, [0] + number_of_neighbors)
+
+imshow(neighbor_count_map_cle)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x21b4cf04460>
+#+end_example
+
+[[file:afe55a6d73ff1d8a5fe3b242116b10db90ffb61a.png]]
+
+<<936591a8-2ca4-4351-b186-7d99dc7b8d9b>>
+** Validation
+   :PROPERTIES:
+   :CUSTOM_ID: validation
+   :END:
+Whenever using functions that are supposed to do the same, please be a
+good scientist and spend some time to check if this assumption is
+actually true.
+
+<<9e1cdab1-21f4-4a30-8231-c776dd211efd>>
+#+begin_src python
+np.array_equal(neighbor_count_map_naive, neighbor_count_map_numpy)
+#+end_src
+
+#+begin_example
+True
+#+end_example
+
+<<2184a8bc-9c6b-4627-a819-79cbd918200d>>
+#+begin_src python
+np.array_equal(neighbor_count_map_naive, neighbor_count_map_cle)
+#+end_src
+
+#+begin_example
+True
+#+end_example
+
+<<7cf57067-2194-4779-b4f5-464c3492eebb>>
+If the above two were true, the next one must be as well.
+
+<<cc03c5bb-bbc6-4dc8-b76a-3069394502c5>>
+#+begin_src python
+np.array_equal(neighbor_count_map_numpy, neighbor_count_map_cle)
+#+end_src
+
+#+begin_example
+True
+#+end_example
+
+<<295c25ff-0bd8-4a51-8674-d316548ecac2>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Use
+[[https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_regionprops.html][scikit-image's
+regionprops]] to measure the major axis length of the labeled nuclei and
+visualize the measurement in a =major_axis_length_map=.
+
+<<1d79df8c-4fce-46fe-b6f5-0fd6f2d46559>>
+#+begin_src python
+#+end_src

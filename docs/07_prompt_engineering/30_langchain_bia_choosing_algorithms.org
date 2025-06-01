@@ -1,0 +1,248 @@
+<<b97b3b00-8ff4-4e1b-b7c7-709f87aabc37>>
+** Allowing language models to choose the right algorithm
+   :PROPERTIES:
+   :CUSTOM_ID: allowing-language-models-to-choose-the-right-algorithm
+   :END:
+In this notebook we enable a language model to choose for the right
+algorithm. We define multiple segmentation algorithms / tools and then
+give the language model the choice which one to use given different
+inputs.
+
+<<f4ae3a80-b6ea-4409-95b7-caecd4e4211c>>
+#+begin_src python
+from langchain.memory import ConversationBufferMemory
+from langchain.chat_models import ChatOpenAI
+from langchain.agents import initialize_agent
+from langchain.agents import AgentType
+from langchain.tools import tool
+
+from skimage.io import imread
+from napari_segment_blobs_and_things_with_membranes import voronoi_otsu_labeling, local_minima_seeded_watershed
+
+import stackview
+#+end_src
+
+<<6b78c8e5-58d1-4750-b659-e639a2b99d2f>>
+Again, we define an image storage and a list of tools.
+
+<<8f8158b6-5a36-4cad-a28f-42cd375a0d4f>>
+#+begin_src python
+image_storage = {}
+tools = []
+#+end_src
+
+<<bc5b05a7-8ef6-458f-acbf-1c79e26cf9fb>>
+#+begin_src python
+@tools.append
+@tool
+def load_image(filename:str):
+    """Useful for loading an image file and storing it."""
+    print("loading", filename)
+    image = imread(filename)
+    image_storage[filename] = image
+    return "The image is now stored as " + filename
+#+end_src
+
+<<8bf722d8-5636-4cfc-a3c7-422e0f02fe68>>
+We define two segmentation algorithms, one for segmenting bright objects
+and one for segmenting dark objects.
+
+<<993a17aa-57b2-4e72-b546-0ec7199c40c6>>
+#+begin_src python
+@tools.append
+@tool
+def segment_bright_objects(image_name):
+    """
+    Useful for segmenting bright objects in an image 
+    that has been loaded and stored before.
+    """
+    print("segmenting (Voronoi-Otsu-Labeling)", image_name)
+    
+    image = image_storage[image_name]
+    label_image = voronoi_otsu_labeling(image, spot_sigma=4)
+    
+    label_image_name = "segmented_" + image_name
+    image_storage[label_image_name] = label_image
+    
+    return "The segmented image has been stored as " + label_image_name
+#+end_src
+
+<<7de6cb09-06a3-4e68-a685-0512e3f5aad3>>
+#+begin_src python
+@tools.append
+@tool
+def segment_dark_objects(image_name):
+    """
+    Useful for segmenting dark objects with bright border in an image 
+    that has been loaded and stored before.
+    """
+    print("segmenting (Local-minima-seeded watershed)", image_name)
+    
+    image = image_storage[image_name]
+    label_image = local_minima_seeded_watershed(image, spot_sigma=10)
+    
+    label_image_name = "segmented_" + image_name
+    image_storage[label_image_name] = label_image
+    
+    return "The segmented image has been stored as " + label_image_name
+#+end_src
+
+<<a11fe914-4162-4ca3-b067-e5278711e3f3>>
+#+begin_src python
+@tools.append
+@tool
+def show_image(image_name):
+    """Useful for showing an image that has been loaded and stored before."""
+    print("showing", image_name)
+    
+    image = image_storage[image_name]
+    display(stackview.insight(image))
+    
+    return "The image " + image_name + " is shown above."
+#+end_src
+
+<<c0524eb1-7633-45e7-982b-1c2cc5af0b16>>
+We create some memory and a large language model based on OpenAI's
+chatGPT.
+
+<<5d032bf0-49d1-42d4-9654-394a9e660996>>
+#+begin_src python
+memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+llm=ChatOpenAI(temperature=0)
+#+end_src
+
+<<7bda4152-8cd8-4257-8e7a-e31fca49ffad>>
+Given the list of tools, the large language model and the memory, we can
+create an agent.
+
+<<28afdf8e-87f2-44a7-9f8d-ef188e0f13b5>>
+#+begin_src python
+agent = initialize_agent(
+    tools, 
+    llm, 
+    agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION, 
+    memory=memory
+)
+#+end_src
+
+<<23e3065d-8d55-46dc-b160-ff4349ee3beb>>
+This agent can then respond to prompts.
+
+<<5bf8d165-de48-4052-8121-d0bedac8a3e2>>
+#+begin_src python
+agent.run("Please load the image ../../data/membrane2d.tif and show it.")
+#+end_src
+
+#+begin_example
+loading ../../data/membrane2d.tif
+showing ../../data/membrane2d.tif
+#+end_example
+
+#+begin_example
+StackViewNDArray([[4496, 5212, 6863, ..., 2917, 2680, 2642],
+                  [4533, 5146, 7555, ..., 2843, 2857, 2748],
+                  [4640, 6082, 8452, ..., 3372, 3039, 3128],
+                  ...,
+                  [1339, 1403, 1359, ..., 4458, 4314, 4795],
+                  [1473, 1560, 1622, ..., 3967, 4531, 4204],
+                  [1380, 1368, 1649, ..., 3091, 3558, 3682]], dtype=uint16)
+#+end_example
+
+#+begin_example
+'The image ../../data/membrane2d.tif is shown above.'
+#+end_example
+
+<<3a78de42-7960-43f0-a62b-98106e57e75a>>
+#+begin_src python
+agent.run("Please segment the image ../../data/membrane2d.tif")
+#+end_src
+
+#+begin_example
+segmenting (Voronoi-Otsu-Labeling) ../../data/membrane2d.tif
+#+end_example
+
+#+begin_example
+'The segmented image has been stored as segmented_../../data/membrane2d.tif'
+#+end_example
+
+<<ae00622c-0d17-4d73-adfc-3a0622024ea4>>
+#+begin_src python
+agent.run("Please show the segmented ../../data/membrane2d.tif image.")
+#+end_src
+
+#+begin_example
+showing segmented_../../data/membrane2d.tif
+#+end_example
+
+#+begin_example
+StackViewNDArray([[ 6,  6,  6, ...,  0,  0,  0],
+                  [ 6,  6,  6, ...,  0,  0,  0],
+                  [ 6,  6,  6, ...,  0,  3,  3],
+                  ...,
+                  [ 0,  0,  0, ..., 55, 55, 55],
+                  [ 0,  0,  0, ..., 55, 55, 55],
+                  [ 0,  0,  0, ..., 55, 55, 55]])
+#+end_example
+
+#+begin_example
+'The segmented image is shown above.'
+#+end_example
+
+<<b48dd0a0-f41c-4804-88b6-35ad766455aa>>
+The segmentation does not look like a cell-segmentation. Thus, we should
+ask more specifically.
+
+<<f0303b77-899a-4e8c-9d6e-f1e5136ce636>>
+#+begin_src python
+agent.run("Please segment the image ../../data/membrane2d.tif again and this time, segment the dark cells surrounded by bright membranes. Also show the result of the segmentation.")
+#+end_src
+
+#+begin_example
+segmenting (Local-minima-seeded watershed) ../../data/membrane2d.tif
+showing segmented_../../data/membrane2d.tif
+#+end_example
+
+#+begin_example
+StackViewNDArray([[ 5,  5,  5, ...,  3,  3,  3],
+                  [ 5,  5,  5, ...,  3,  3,  3],
+                  [ 5,  5,  5, ...,  3,  3,  3],
+                  ...,
+                  [24, 24, 24, ..., 27, 27, 27],
+                  [24, 24, 24, ..., 27, 27, 27],
+                  [24, 24, 24, ..., 27, 27, 27]])
+#+end_example
+
+#+begin_example
+'The segmented image of dark cells surrounded by bright membranes has been shown.'
+#+end_example
+
+<<497b2640-050a-4aef-9ab0-d5fe8fb04925>>
+We can also ask the agent which algorithm it chose and why it chose this
+tool.
+
+<<4b5c4ca0-e169-412a-85eb-46b9646750b6>>
+#+begin_src python
+agent.run("Which algorithm did you use this time?")
+#+end_src
+
+#+begin_example
+'I used the algorithm to segment dark cells surrounded by bright membranes.'
+#+end_example
+
+<<e47b9578-a60f-4708-a501-9da81baa57e9>>
+#+begin_src python
+agent.run("Why did you use this algorithm?")
+#+end_src
+
+#+begin_example
+'I used this algorithm because it is specifically designed to segment dark cells surrounded by bright membranes, which matches the criteria you mentioned in your request.'
+#+end_example
+
+<<a1b93a57-f920-43c7-ae01-60dea0a09af1>>
+Note: The language model cannot see the image. Its tool selection
+depends on information you provided and information it acquired during
+the chat.
+
+<<9a08e291-421b-4e69-b429-625ea362eb86>>
+#+begin_src python
+#+end_src

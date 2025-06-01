@@ -1,0 +1,165 @@
+<<e47023a7-9aae-4a03-ae96-7a755cf80436>>
+* Image segmentation quality measurements
+  :PROPERTIES:
+  :CUSTOM_ID: image-segmentation-quality-measurements
+  :END:
+For determining how good a segmentation algorithm is, and to compare
+different algorithms, we need a metric. A common metric is the
+[[https://en.wikipedia.org/wiki/Jaccard_index][Jaccard Index]], which is
+a measure of overlap between a reference segmentation and the
+segmentation an algorithm produced for example. If we work with label
+images, a fair method is to determine the overlap of every annotated
+object with the most overlapping object in the automatic segmentation.
+If we average this value over all annotated objects, we receive the
+[[https://github.com/haesleinhuepf/the-segmentation-game#segmentation-algorithm-comparison][Sparse
+Jaccard Index as defined in The Segmentation Game]].
+
+<<9f688371-6d53-4d0b-8c14-3bca3ffbf47d>>
+#+begin_src python
+import os
+import napari
+import napari_segment_blobs_and_things_with_membranes as nsbatwm
+from the_segmentation_game import metrics
+from skimage.io import imread
+#+end_src
+
+<<7f3cdbe1-3e35-4540-b113-aca40c290e1e>>
+To demonstate this, we pick a random example image from the
+[[https://bbbc.broadinstitute.org/BBBC007][BBBC007]] dataset (Jones et
+al., Proc. ICCV Workshop on Computer Vision for Biomedical Image
+Applications, 2005), available from the Broad Bioimage Benchmark
+Collection [Ljosa et al., Nature Methods, 2012].
+
+<<e8168bb7-d77a-43d3-b7f4-f5a513f8c4e2>>
+#+begin_src python
+image_folder = "../../data/BBBC007_batch/"
+sparse_annotation_folder = "../../data/BBBC007_sparse_instance_annotation/"
+
+test_image_filename = "17P1_POS0013_D_1UL.tif"
+#+end_src
+
+<<187d8541-0ddd-49cc-a3f9-8044ee4b21ec>>
+For visualizing the image and the corresponding manual annotation, we
+use napari.
+
+<<d56a0507-bec5-4311-a4d3-63824db6db1d>>
+#+begin_src python
+viewer = napari.Viewer()
+#+end_src
+
+<<4d090a97-07c6-4e52-aff4-70223d55c24c>>
+** The example image
+   :PROPERTIES:
+   :CUSTOM_ID: the-example-image
+   :END:
+
+<<55939cb1-8a7e-4549-bb92-099e1ff3dcb6>>
+#+begin_src python
+image = imread(folder + test_image_filename)
+
+viewer.add_image(image)
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:4dbcb67b845ae8c511e1ba77ea557e7b8c3af55a.png]]
+
+<<5b6e8b25-c62b-4df2-8c6f-0911efe59788>>
+** The manual annotation
+   :PROPERTIES:
+   :CUSTOM_ID: the-manual-annotation
+   :END:
+
+<<f7d34adb-dbb7-49e3-a153-d1de5d0236e5>>
+#+begin_src python
+sparse_labels = imread(sparse_annotation_folder + test_image_filename)
+
+viewer.add_labels(sparse_labels)
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:5e03b3ffdf69f80b688ea275c82115af1f15f7fc.png]]
+
+<<6bde7228-4ad8-447f-87cf-03aa3b79fb42>>
+#+begin_src python
+# hide last labels layer
+viewer.layers[-1].visible = False
+#+end_src
+
+<<7e3aea4d-ea57-459e-b0a5-c2e08738a31f>>
+** The automatic segmentation
+   :PROPERTIES:
+   :CUSTOM_ID: the-automatic-segmentation
+   :END:
+For demonstration purposes, we use background-subtraction and
+Voronoi-Otsu-Labeling to segment the nuclei in this image automatically.
+
+<<93d03e2f-0e63-4121-9157-9148430e7212>>
+#+begin_src python
+def my_segmentation_algorithm(input_image):
+
+    # background subtraction
+    background_subtracted = nsbatwm.white_tophat(input_image, radius = 10)
+    
+    # instance segmenation / labeling
+    labels_result = nsbatwm.voronoi_otsu_labeling(background_subtracted, spot_sigma=5, outline_sigma=1)
+
+    return labels_result
+#+end_src
+
+<<7cd2f7ea-b5ed-491d-86d9-d79500ebb2c3>>
+#+begin_src python
+labels = my_segmentation_algorithm(image)
+
+viewer.add_labels(labels)
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:2f0eafff5bc270340ef4b387986e771fc01e839e.png]]
+
+<<9c7b9745-26bc-4880-aa7f-a90a2b36a0a3>>
+** Quality estimation: Sparse Jaccard Index
+   :PROPERTIES:
+   :CUSTOM_ID: quality-estimation-sparse-jaccard-index
+   :END:
+From the two label images loaded and produced above we can compute the
+sparse Jaccard Index.
+
+<<12494b25-cbae-41fa-8894-9176873fbb57>>
+#+begin_src python
+metrics.jaccard_index_sparse(sparse_labels, labels)
+#+end_src
+
+#+begin_example
+0.8357392602053431
+#+end_example
+
+<<a3045fc4-4c63-4538-a4fc-ebcf2f408c57>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Use the following for-loop and code snippets from above to compute the
+segmentation quality of all images in the folder. Provide the average
+quality over all images.
+
+<<6d0a79da-9602-426f-9d06-c361218a1221>>
+#+begin_src python
+for image_filename in os.listdir(image_folder):
+    print(image_folder + image_filename)
+#+end_src
+
+#+begin_example
+../../data/BBBC007_batch/17P1_POS0013_D_1UL.tif
+../../data/BBBC007_batch/20P1_POS0005_D_1UL.tif
+../../data/BBBC007_batch/20P1_POS0007_D_1UL.tif
+../../data/BBBC007_batch/20P1_POS0010_D_1UL.tif
+../../data/BBBC007_batch/A9 p7d.tif
+../../data/BBBC007_batch/AS_09125_040701150004_A02f00d0.tif
+#+end_example
+
+<<764496ea-842c-4e87-b436-ab57542a12d8>>
+#+begin_src python
+#+end_src

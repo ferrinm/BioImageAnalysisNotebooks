@@ -1,0 +1,75 @@
+<<ce37b704>>
+* Binary Image Skeletonization
+  :PROPERTIES:
+  :CUSTOM_ID: binary-image-skeletonization
+  :END:
+This notebook demonstrates basic binary image skeletonization using
+Python libraries.
+
+** Introduction
+   :PROPERTIES:
+   :CUSTOM_ID: introduction
+   :END:
+Skeletonization reduces binary objects in an image to their essential
+lines, preserving the structure and connectivity, allowing for further
+analysis of the shapes and structures.
+
+<<d33ea6ce>>
+#+begin_src python
+# Import necessary libraries
+import matplotlib.pyplot as plt
+from skimage import data, filters, morphology, color
+#+end_src
+
+<<56f31437>>
+** Load and preprocess the image
+   :PROPERTIES:
+   :CUSTOM_ID: load-and-preprocess-the-image
+   :END:
+We'll use a sample image from =skimage.data= and convert it to binary
+form for demonstration.
+
+<<93ab9c8c>>
+#+begin_src python
+# Load sample image
+image = data.horse()  # Sample binary image
+
+# Apply threshold to convert to binary image
+binary_image = image < filters.threshold_otsu(image)
+
+# Plot original and binary images
+fig, ax = plt.subplots(1, 2, figsize=(8, 4))
+ax[0].imshow(image, cmap='gray')
+ax[0].set_title('Original Image')
+ax[1].imshow(binary_image, cmap='gray')
+ax[1].set_title('Binary Image')
+plt.show()
+#+end_src
+
+#+begin_example
+<__array_function__ internals>:180: RuntimeWarning: Converting input from bool to <class 'numpy.uint8'> for compatibility.
+#+end_example
+
+[[file:795c7a1e6313aa3a17b318bc472c1b5497810c12.png]]
+
+<<19fa365c>>
+** Perform Skeletonization
+   :PROPERTIES:
+   :CUSTOM_ID: perform-skeletonization
+   :END:
+We'll use the =skeletonize= function from =skimage.morphology= to
+perform skeletonization on the binary image.
+
+<<667ed136>>
+#+begin_src python
+# Perform skeletonization
+skeleton = morphology.skeletonize(binary_image)
+
+# Plot skeletonized image
+plt.figure(figsize=(4, 4))
+plt.imshow(skeleton, cmap='gray')
+plt.title('Skeletonized Image')
+plt.show()
+#+end_src
+
+[[file:c5620030e6a4a73164d66a67e688aea5309bc849.png]]

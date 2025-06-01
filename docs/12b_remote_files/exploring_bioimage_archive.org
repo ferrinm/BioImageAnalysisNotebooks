@@ -1,0 +1,251 @@
+<<ac8fe9b2-5a79-48ad-8ae2-ced7dd8888dd>>
+* Exploring the BioImage Archive
+  :PROPERTIES:
+  :CUSTOM_ID: exploring-the-bioimage-archive
+  :END:
+In this notebook we use the
+[[https://github.com/BioImage-Archive/bia-explorer][bia-explorer]]
+project to explore the
+[[https://www.ebi.ac.uk/bioimage-archive/galleries/S-BIAD634-ai.html][S-BIAD634
+dataset]] in the [[https://www.ebi.ac.uk/bioimage-archive][Bio-image
+Archive]]. We will download some images and store them in a local
+directory.
+
+<<3c0e30d0-283c-41d2-b6ed-f6368d83f07b>>
+#+begin_src python
+from bia_explorer import io, biostudies
+from skimage.io import imread, imsave
+from IPython.display import display, Markdown
+import stackview
+#+end_src
+
+<<605b72ab-c4e6-4fc7-8e66-dd1128ee9f40>>
+** Accessing meta-data
+   :PROPERTIES:
+   :CUSTOM_ID: accessing-meta-data
+   :END:
+First we access the meta data of the dataets. Here we can for example
+see what the data can be used for and under which license it can be
+used.
+
+<<46d874f0-002f-4162-89d0-fbdb6f47497a>>
+#+begin_src python
+accession = 'S-BIAD634'
+submission = biostudies.load_submission(accession)
+
+for a in submission.section.attributes:
+    name = a.name
+    short_value = str(a.value)
+    
+    print(f"{name} : {short_value}")
+#+end_src
+
+#+begin_example
+Title : An annotated fluorescence image dataset for training nuclear segmentation methods
+Description : This dataset contains annotated fluorescent nuclear images of normal or cancer cells from different tissue origins and sample preparation types, and can be used to train machine-learning based nuclear image segmentation algorithms. It consists of 79 expert-annotated fluorescence images of immuno and DAPI stained samples containing 7813 nuclei in total. In addition, the dataset is heterogenous in aspects such as type of preparation, imaging modality, magnification, signal-to-noise ratio and other technical aspects. Relevant parameters, e.g. diagnosis, magnification, signal-to-noise ratio and modality with respect to the type of preparation are provided in the file list. The images are derived from one Schwann cell stroma-rich tissue (from a ganglioneuroblastoma) cryosection (10 images/2773 nuclei), seven neuroblastoma (NB) patients (19 images/931 nuclei), one Wilms patient (1 image/102 nuclei), two NB cell lines (CLB-Ma, STA-NB10) (8 images/1785 nuclei) and a human keratinocyte cell line (HaCaT) (41 images/2222 nuclei).
+Keywords : AI
+Keywords : segmentation
+Keywords : nucleus
+Keywords : fluorescence
+License : CC0
+Funding statement : This work was facilitated by an EraSME grant (project TisQuant) under the grant no. 844198 and by a COIN grant (project VISIOMICS) under the grant no. 861750, both grants kindly provided by the Austrian Research Promotion Agency (FFG), and the St. Anna Kinderkrebsforschung. Partial funding was further provided by BMK, BMDW, and the Province of Upper Austria in the frame of the COMET Programme managed by FFG.
+#+end_example
+
+<<84e01875-523e-4f02-86d0-78226809ec79>>
+We can also see how many images are in the dataset.
+
+<<b7feae3a-e0e9-4b07-a339-5f0448806e57>>
+#+begin_src python
+study = io.load_bia_study(accession)
+
+len(study.images)
+#+end_src
+
+#+begin_example
+388
+#+end_example
+
+<<d3aac11c-ccc5-49ad-8603-a05cf7009fba>>
+** Visualizing images
+   :PROPERTIES:
+   :CUSTOM_ID: visualizing-images
+   :END:
+A single image can be loaded and shown like this
+([[https://github.com/BioImage-Archive/bia-explorer/issues/3][See
+also]]).
+
+<<687bdf50-76b0-447f-8f62-cc217f5c564e>>
+#+begin_src python
+image = study.images[0]
+image
+#+end_src
+
+#+begin_example
+BIAImage(uri='https://www.ebi.ac.uk/biostudies/files/S-BIAD634/dataset\\groundtruth\\Ganglioneuroblastoma_0.tif', size=2239668, fpath=WindowsPath('dataset/groundtruth/Ganglioneuroblastoma_0.tif'))
+#+end_example
+
+<<0447fc37-240e-435e-8b81-a62961aee9e6>>
+#+begin_src python
+uri = image.uri.replace("\\", "/")
+image_data = imread(uri)
+stackview.insight(image_data)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]], dtype=uint16)
+#+end_example
+
+<<5c00bb0c-148b-4852-995c-520256e08783>>
+To get an idea about the folder structure within the datasets, we can
+print out paths on the server.
+
+<<350503d1-2616-428e-a7bd-40e416643155>>
+#+begin_src python
+# print out filenames of some images
+for image in study.images[:5] + study.images[-5:]:
+    print(str(image.fpath))
+#+end_src
+
+#+begin_example
+dataset\groundtruth\Ganglioneuroblastoma_0.tif
+dataset\groundtruth\Ganglioneuroblastoma_1.tif
+dataset\groundtruth\Ganglioneuroblastoma_10.tif
+dataset\groundtruth\Ganglioneuroblastoma_2.tif
+dataset\groundtruth\Ganglioneuroblastoma_3.tif
+dataset\rawimages\otherspecimen_5.tif
+dataset\rawimages\otherspecimen_6.tif
+dataset\rawimages\otherspecimen_7.tif
+dataset\rawimages\otherspecimen_8.tif
+dataset\rawimages\otherspecimen_9.tif
+#+end_example
+
+<<996e3ab1-24b5-4f44-8bca-579aed840f8e>>
+** Downloading data
+   :PROPERTIES:
+   :CUSTOM_ID: downloading-data
+   :END:
+Before we download selected images, we need to ensure that the folder
+exists where we want to store the data.
+
+<<81fa7b52-cdb1-4b62-9f37-82c0277fc57a>>
+#+begin_src python
+import os
+
+def ensure_folder_exists(folder_path):
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+
+base_folder = f"../../data/{accession}"
+raw_folder = f"../../data/{accession}/images"
+groundtruth_folder = f"../../data/{accession}/groundtruth"
+
+ensure_folder_exists(base_folder)
+ensure_folder_exists(raw_folder)
+ensure_folder_exists(groundtruth_folder)
+#+end_src
+
+<<d6af74f1-9927-4510-b5a9-954cb3b59d0d>>
+Next we download all raw images, and ground-truth annotations of all
+datasets containing "Ganglioneuroblastoma" in their name. We also only
+download the files in case they are not downloaded yet.
+
+<<f022ddc4-7deb-4ad2-a2ea-59220ed76930>>
+#+begin_src python
+for image in study.images:
+    if "Ganglioneuroblastoma" in str(image.fpath):
+        uri = image.uri.replace("\\", "/")
+        filename = uri.split("/")[-1]
+        if "\\rawimages\\" in str(image.fpath):
+            target_file = raw_folder + "/" + filename
+            if not os.path.exists(target_file):
+                image_data = imread(uri)
+                imsave(target_file, image_data)
+        if "\\groundtruth\\" in str(image.fpath):
+            target_file = groundtruth_folder + "/" + filename
+            if not os.path.exists(target_file):
+                image_data = imread(uri)
+                imsave(target_file, image_data)
+#+end_src
+
+#+begin_example
+C:\Users\haase\AppData\Local\Temp\ipykernel_26092\2091960599.py:14: UserWarning: ../../data/S-BIAD634/groundtruth/Ganglioneuroblastoma_0.tif is a low contrast image
+  imsave(target_file, image_data)
+C:\Users\haase\AppData\Local\Temp\ipykernel_26092\2091960599.py:14: UserWarning: ../../data/S-BIAD634/groundtruth/Ganglioneuroblastoma_1.tif is a low contrast image
+  imsave(target_file, image_data)
+C:\Users\haase\AppData\Local\Temp\ipykernel_26092\2091960599.py:14: UserWarning: ../../data/S-BIAD634/groundtruth/Ganglioneuroblastoma_10.tif is a low contrast image
+  imsave(target_file, image_data)
+C:\Users\haase\AppData\Local\Temp\ipykernel_26092\2091960599.py:14: UserWarning: ../../data/S-BIAD634/groundtruth/Ganglioneuroblastoma_2.tif is a low contrast image
+  imsave(target_file, image_data)
+C:\Users\haase\AppData\Local\Temp\ipykernel_26092\2091960599.py:14: UserWarning: ../../data/S-BIAD634/groundtruth/Ganglioneuroblastoma_3.tif is a low contrast image
+  imsave(target_file, image_data)
+C:\Users\haase\AppData\Local\Temp\ipykernel_26092\2091960599.py:14: UserWarning: ../../data/S-BIAD634/groundtruth/Ganglioneuroblastoma_4.tif is a low contrast image
+  imsave(target_file, image_data)
+C:\Users\haase\AppData\Local\Temp\ipykernel_26092\2091960599.py:14: UserWarning: ../../data/S-BIAD634/groundtruth/Ganglioneuroblastoma_6.tif is a low contrast image
+  imsave(target_file, image_data)
+C:\Users\haase\AppData\Local\Temp\ipykernel_26092\2091960599.py:14: UserWarning: ../../data/S-BIAD634/groundtruth/Ganglioneuroblastoma_7.tif is a low contrast image
+  imsave(target_file, image_data)
+C:\Users\haase\AppData\Local\Temp\ipykernel_26092\2091960599.py:14: UserWarning: ../../data/S-BIAD634/groundtruth/Ganglioneuroblastoma_8.tif is a low contrast image
+  imsave(target_file, image_data)
+C:\Users\haase\AppData\Local\Temp\ipykernel_26092\2091960599.py:14: UserWarning: ../../data/S-BIAD634/groundtruth/Ganglioneuroblastoma_9.tif is a low contrast image
+  imsave(target_file, image_data)
+#+end_example
+
+<<381f39fd-1b97-4917-bcfc-490b54feb1c6>>
+We can then check which files arrived.
+
+<<3491c7a6-bc61-4d5a-8b28-378705fe5410>>
+#+begin_src python
+for f in os.listdir(raw_folder):
+    print(f)
+#+end_src
+
+#+begin_example
+Ganglioneuroblastoma_0.tif
+Ganglioneuroblastoma_1.tif
+Ganglioneuroblastoma_10.tif
+Ganglioneuroblastoma_2.tif
+Ganglioneuroblastoma_3.tif
+Ganglioneuroblastoma_4.tif
+Ganglioneuroblastoma_6.tif
+Ganglioneuroblastoma_7.tif
+Ganglioneuroblastoma_8.tif
+Ganglioneuroblastoma_9.tif
+#+end_example
+
+<<ad066bf1-9955-4de0-9218-165da84ff32f>>
+#+begin_src python
+for f in os.listdir(groundtruth_folder):
+    print(f)
+#+end_src
+
+#+begin_example
+Ganglioneuroblastoma_0.tif
+Ganglioneuroblastoma_1.tif
+Ganglioneuroblastoma_10.tif
+Ganglioneuroblastoma_2.tif
+Ganglioneuroblastoma_3.tif
+Ganglioneuroblastoma_4.tif
+Ganglioneuroblastoma_6.tif
+Ganglioneuroblastoma_7.tif
+Ganglioneuroblastoma_8.tif
+Ganglioneuroblastoma_9.tif
+#+end_example
+
+<<448c021b-bbdb-4f5c-a409-50e30b5946bf>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Download all images with "Neuroblastoma" in their name and upload them
+to a folder in the owncloud. Do not download and upload files which
+already exist.
+
+<<84571723-0fef-492f-aa67-753b2b2827bd>>
+#+begin_src python
+#+end_src

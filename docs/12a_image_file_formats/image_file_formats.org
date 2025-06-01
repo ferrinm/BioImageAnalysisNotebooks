@@ -1,0 +1,275 @@
+<<9a5d38ce-7834-474c-a01f-feb2bb725368>>
+* Pros and cons of image file formats
+  :PROPERTIES:
+  :CUSTOM_ID: pros-and-cons-of-image-file-formats
+  :END:
+When working with microscopy image data, many file formats are
+circulating. Most microscope vendors bring proprietary image file
+formats, image analysis software vendors offer custom and partially open
+file formats. Traditional file formats exist as well which are supported
+by common python libraries. For general-purpose image storage, only very
+few image file formats such as
+[[https://en.wikipedia.org/wiki/TIFF][TIF]] can be recommended.
+Furthermore, formats such as
+[[https://en.wikipedia.org/wiki/JPEG][JPEG]] should be avoided to
+conserve image data integrity. In this notebook we will test some file
+formats by resaving a microscopy image in these formats, reloading the
+image and comparing the images before and after saving.
+
+See also
+
+- [[https://github.com/imageio/imageio][ImageIO]]
+- [[https://github.com/AllenCellModeling/aicsimageio][AICSImageIO]]
+- [[https://github.com/CellProfiler/python-bioformats][python-bioformats]]
+- [[https://www.nature.com/articles/s41592-021-01326-w][Moore et al. Nat
+  Methods (2021) "OME-NGFF: a next-generation file format for expanding
+  bioimaging data-access strategies"]]
+
+<<9a97f808-03d4-477d-9dae-ff78ce476244>>
+#+begin_src python
+from skimage.data import cells3d
+from skimage.io import imread, imsave
+import pyclesperanto_prototype as cle
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+import os
+import warnings
+#+end_src
+
+<<9b407819-ddfe-4b86-b9c0-d8fb297c8247>>
+As example image we use the
+[[https://scikit-image.org/docs/dev/api/skimage.data.html#skimage.data.cells3d][Cells
+3D]] example image of scikit-image which was provided by the Allen
+Institute for Cell Science. It is an unsigned integer 16-bit image. In
+the first attempt we will choose only a single channel and plane.
+
+<<8f4a268b-e58a-48fa-890d-b39927e9e1fc>>
+#+begin_src python
+original_image = cells3d()[30, 1]
+cle.imshow(original_image, colorbar=True)
+#+end_src
+
+[[file:9a256a606a0ca10ce4653ef6c2a099022103ad7e.png]]
+
+<<02b5ebe4-8ec4-46b4-8a6a-beceda5beae6>>
+** Why JPEG should be avoided
+   :PROPERTIES:
+   :CUSTOM_ID: why-jpeg-should-be-avoided
+   :END:
+The JPEG file format is, at least per default in may programs, a lossy
+file format. That means information is lost when saving the image.
+
+<<2a2f3e7b-96b8-4d7c-9c22-6da17f58806d>>
+#+begin_src python
+imsave("temp.jpg", original_image)
+#+end_src
+
+#+begin_example
+Lossy conversion from uint16 to uint8. Losing 8 bits of resolution. Convert image to uint8 prior to saving to suppress this warning.
+#+end_example
+
+<<dcc97cdf-3733-4ba2-a3a3-6d819c1c33dc>>
+The warning above confirms this. Furthermore, when we reload the image,
+we can see in the colorbar that the intensity range is different now.
+
+<<6971b2ef-6a21-4d49-adfe-3230158f6277>>
+#+begin_src python
+jpg_image = imread("temp.jpg")
+
+cle.imshow(jpg_image, colorbar=True)
+#+end_src
+
+[[file:86358d4ca9db4a8cb4d349efde183e28ec7575dc.png]]
+
+<<fe1cbe10-f546-4656-82e9-bfe24c8e09b6>>
+Furthermore, if we zoom in, we can see two kind of typical JPEG
+artifacts.
+
+- The image is denoised.
+- We see patches, e.g. 8x8 pixels large and stripes going in different
+  directions.
+
+<<4deb173d-1eeb-45ba-a701-dd9855a96a74>>
+#+begin_src python
+fix, axs = plt.subplots(1,2,figsize=(10,10))
+
+cle.imshow(original_image[140:170, 0:30], plot=axs[0])
+cle.imshow(jpg_image[140:170, 0:30], plot=axs[1])
+#+end_src
+
+[[file:33df24f87764261361c52e116bd8592f72087f83.png]]
+
+<<ed81b3bd-6a16-4176-962a-2cb7d19aa21a>>
+To investigate those errors quantitatively and also to test multiple
+file formats, we write a short function that saves and reloads the image
+and outputs a table with some measurements,
+
+<<00c740f2-8ca5-494d-8049-78d4f43a5de0>>
+#+begin_src python
+def resave_image_statistics(original_image):
+    """Saves and reloads an image in multiple formats and returns a table with image statistics."""
+
+    # prepare table
+    stats = {
+        "ending":[],
+        "data_type":[],
+        "shape":[],
+        "size":[],
+        "min":[],
+        "max":[],
+        "mean":[],
+        "standard_deviation":[],
+        "mean_squared_error":[],
+    }
+    
+    # go through different file endings
+    endings = [None, "tif","png","mhd","mha","jpg","gif","bmp"]
+    for ending in endings:
+        try:
+            if ending is None:
+                # use the original image as first test
+                reloaded_image = original_image
+                size = np.NaN
+            else:
+                # save and reload image
+                filename = "temp." + ending
+                imsave(filename, original_image)
+
+                reloaded_image = imread(filename)
+                size = os.path.getsize(filename)
+            
+            # determine statistics
+            stats["ending"].append(ending)
+            stats["data_type"].append(reloaded_image.dtype)
+            stats["shape"].append(reloaded_image.shape)
+            stats["size"].append(size)
+            stats["min"].append(np.min(reloaded_image))
+            stats["max"].append(np.max(reloaded_image.astype(float)))
+            stats["mean"].append(np.mean(reloaded_image))
+            stats["standard_deviation"].append(np.std(reloaded_image))
+
+            stats["mean_squared_error"].append(np.mean((original_image - reloaded_image)**2))
+
+        except ValueError:
+            # some formats are not supported
+            warnings.warn("File format not supported: " + ending)
+            pass
+
+    return pd.DataFrame(stats)
+#+end_src
+
+<<385cfb49-6a53-41ac-b3f1-a8eef919a3e4>>
+Next, we apply that function to a 2D image slice.
+
+<<9f0382cd-b58b-4e7d-bcc1-f7e8a210bdad>>
+#+begin_src python
+resave_image_statistics(cells3d()[30, 1])
+#+end_src
+
+#+begin_example
+Lossy conversion from uint16 to uint8. Losing 8 bits of resolution. Convert image to uint8 prior to saving to suppress this warning.
+Lossy conversion from uint16 to uint8. Losing 8 bits of resolution. Convert image to uint8 prior to saving to suppress this warning.
+Lossy conversion from uint16 to uint8. Losing 8 bits of resolution. Convert image to uint8 prior to saving to suppress this warning.
+#+end_example
+
+#+begin_example
+  ending data_type       shape      size   min      max         mean  \
+0   None    uint16  (256, 256)       NaN  1091  58327.0  9346.115417   
+1    tif    uint16  (256, 256)  131328.0  1091  58327.0  9346.115417   
+2    png    uint16  (256, 256)  107470.0  1091  58327.0  9346.115417   
+3    mhd    uint16  (256, 256)     281.0  1091  58327.0  9346.115417   
+4    mha    uint16  (256, 256)  131350.0  1091  58327.0  9346.115417   
+5    jpg     uint8  (256, 256)    9271.0     0    237.0    36.005875   
+6    gif     uint8  (256, 256)   58225.0     4    227.0    36.014725   
+7    bmp     uint8  (256, 256)   66614.0     4    227.0    36.014725   
+
+   standard_deviation  mean_squared_error  
+0         6139.322637            0.000000  
+1         6139.322637            0.000000  
+2         6139.322637            0.000000  
+3         6139.322637            0.000000  
+4         6139.322637            0.000000  
+5           23.824527        32596.059555  
+6           23.978329        32236.271164  
+7           23.978329        32236.271164  
+#+end_example
+
+<<4b443e66-e533-41da-b320-06cc09bc4b21>>
+** Saving 3D images
+   :PROPERTIES:
+   :CUSTOM_ID: saving-3d-images
+   :END:
+We can use the same function to test which file formats support 3D
+images.
+
+<<f9c58970-d60d-4125-a12a-2138d52e0eb5>>
+#+begin_src python
+resave_image_statistics(cells3d()[30])
+#+end_src
+
+#+begin_example
+File format not supported: png
+File format not supported: mhd
+File format not supported: mha
+File format not supported: jpg
+File format not supported: gif
+File format not supported: bmp
+#+end_example
+
+#+begin_example
+  ending data_type          shape      size  min      max         mean  \
+0   None    uint16  (2, 256, 256)       NaN  277  58327.0  5925.968422   
+1    tif    uint16  (2, 256, 256)  262566.0  277  58327.0  5925.968422   
+
+   standard_deviation  mean_squared_error  
+0         5711.584119                 0.0  
+1         5711.584119                 0.0  
+#+end_example
+
+<<a5fe6322-f5ad-4995-9e5c-4ecb668cdd1b>>
+** Saving 4D images
+   :PROPERTIES:
+   :CUSTOM_ID: saving-4d-images
+   :END:
+The =cells3d= dataset is actually a 4D-dataset. It contains channels as
+well. Thus, we can use it to test saving and reloading 4D data as well.
+
+<<f1645cd6-790d-4d37-bd15-678de640dcab>>
+#+begin_src python
+resave_image_statistics(cells3d())
+#+end_src
+
+#+begin_example
+File format not supported: png
+File format not supported: mhd
+File format not supported: mha
+File format not supported: jpg
+File format not supported: gif
+File format not supported: bmp
+#+end_example
+
+#+begin_example
+  ending data_type              shape        size  min      max        mean  \
+0   None    uint16  (60, 2, 256, 256)         NaN    0  65535.0  4837.14054   
+1    tif    uint16  (60, 2, 256, 256)  15748650.0    0  65535.0  4837.14054   
+
+   standard_deviation  mean_squared_error  
+0         3985.348828                 0.0  
+1         3985.348828                 0.0  
+#+end_example
+
+<<acfe05fb-f2de-46ab-8dab-e1e631b07147>>
+Thus, the TIF file format can be recommended. It is also compatible with
+a wide range of other software such as [[https://imagej.net][ImageJ]]
+and [[https://fiji.sc][Fiji]].
+
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Determine if the file formats 'ico' and 'raw' are supported.
+
+<<91d3f55f-5b0c-463a-bc86-0a7f68016c7a>>
+#+begin_src python
+#+end_src

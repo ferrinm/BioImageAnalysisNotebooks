@@ -1,0 +1,222 @@
+<<9db616fd-65a3-4bdf-823d-44c204fc033c>>
+* Coordinate systems
+  :PROPERTIES:
+  :CUSTOM_ID: coordinate-systems
+  :END:
+When working with 3D image data, we often speak about X, Y and Z. When
+describing image dimensions. Depending on which software one works with,
+these dimensions are specified a bit differently. This notebook gives an
+overview about two different ways established in the field. We will call
+the two systems the "/ZYX/ system" and the "/012/ system". Python
+libraries such as numpy and scipy follow the /012/ system. Software such
+as ImageJ, CLIJ and clesperanto follow the /ZYX/ system.
+
+We start by opening a 3D image stack.
+
+<<f6103a4a-40b1-4d01-98a3-00b1827d912a>>
+#+begin_src python
+import numpy as np
+from skimage.io import imread
+import scipy.ndimage as ndi
+import pyclesperanto_prototype as cle
+from scipy.linalg import inv
+#+end_src
+
+<<9c3f7def-5bda-4ce0-8719-15f055f4b3be>>
+#+begin_src python
+image = imread('../../data/Haase_MRT_tfl3d1.tif')
+
+image.shape
+#+end_src
+
+#+begin_example
+(192, 256, 256)
+#+end_example
+
+<<a7a02254-23f6-49f6-aa91-2168f94fae8c>>
+This image has a shape of (192, 256, 256). These numbers are sorted
+according to the 012 system, which does not define terms such as
+"width", "height" and "depth". In the ZYX-system, this image stack has
+192 slices. Each of these slices is 256 pixels high and 256 pixels wide.
+Hence, the ZYX-system interprets the numbers printed above in the
+opposite order.
+
+We will now extract a Z-slice from the 3D dataset and visualize it. In
+the 012-system, we take slice from the stack in the first (index 0)
+dimension. It has slice-position Z=100 (ZYX-system) or position 100
+along dimension 0 (012 system).
+
+<<202791b2-d131-4b75-8b8a-240cc399dde8>>
+#+begin_src python
+slice = image[100]
+
+cle.imshow(slice)
+#+end_src
+
+[[file:d9079be19bf0ac8a77ac93477f528e98d3161006.png]]
+
+<<96eb789a-e597-4462-aec1-b91426adacea>>
+** Translating images
+   :PROPERTIES:
+   :CUSTOM_ID: translating-images
+   :END:
+To explain the difference between the coordinate systems a bit more, we
+will now use an affine transform matrix to translate the image. We will
+translate it by 100 pixels in Y-direction (ZYX-system), also known as
+dimension 1 (012-system) and -50 pixels in X-direction, a.k.a. the
+dimension 2.
+
+<<5131fbf0-322b-481a-b0fd-63d100650fd0>>
+#+begin_src python
+tz = 0
+ty = 100
+tx = -50
+
+t0 = 0
+t1 = 100
+t2 = -50
+#+end_src
+
+<<e51228d1-31d4-4912-aba8-8587f8cfac18>>
+If you are no familiar with affine transform matrices yet,
+[[https://en.wikipedia.org/wiki/Affine_transformation#Image_transformation][this
+wikipedia article]] gives a great overview.
+
+*** Translating images using clesperanto
+    :PROPERTIES:
+    :CUSTOM_ID: translating-images-using-clesperanto
+    :END:
+clesperanto follows the ZYX-system, and affine transform matrices are
+typically written in the following form. Please note that in the so
+called ZYX-system the translation vector reads x-y-z from the top to the
+bottom.
+
+<<06c0bf61-a2f6-45df-a580-f125dce4c323>>
+#+begin_src python
+matrix = np.asarray([
+ [1, 0, 0, tx],
+ [0, 1, 0, ty],
+ [0, 0, 1, tz],
+ [0, 0, 0, 1],
+])
+
+cle_transformed = cle.affine_transform(image, transform=matrix)
+
+cle.imshow(cle_transformed[100])
+#+end_src
+
+[[file:6278f5729de560350f69d7cb14d5e0d65bfa7fee.png]]
+
+<<6252d6c1-da23-4c3b-83c2-9f293dd9577d>>
+*** Translating images using scipy
+    :PROPERTIES:
+    :CUSTOM_ID: translating-images-using-scipy
+    :END:
+In scipy, which follows the 012-system and hence, the transform looks
+like this:
+
+<<324921e1-9784-4a2c-901e-ac07eb184f46>>
+#+begin_src python
+matrix = np.asarray([
+ [1, 0, 0, t0],
+ [0, 1, 0, t1],
+ [0, 0, 1, t2],
+ [0, 0, 0, 1],
+])
+#+end_src
+
+<<ed3ae9c8-addc-49f9-b668-eea75d1867fb>>
+Note that the affine_transform function in scipy expects a transform
+that describes the transformation from the output image to the source
+image. This is the inverse of the defined transform matrix above. Hence,
+we call =inv()= to invert the matrix. This is very common in software
+that applies affine transforms. It technically makes sense, even though
+it might not be the most intuitive way of working with transforms.
+
+<<69d7f83e-ac9a-474a-a5cc-acc2acfdae11>>
+#+begin_src python
+scipy_transformed = ndi.affine_transform(image, inv(matrix))
+
+cle.imshow(scipy_transformed[100])
+#+end_src
+
+[[file:6278f5729de560350f69d7cb14d5e0d65bfa7fee.png]]
+
+<<7d1ba075-080c-4502-a2c3-f13118403abc>>
+** Keep it simple
+   :PROPERTIES:
+   :CUSTOM_ID: keep-it-simple
+   :END:
+To keep affine transforms and coordinate systems easy to use, we have an
+=AffineTransform3D= class in clesperanto that will manage transform
+matrices for us and we don't have to think about them anymore. We just
+need to keep in mind that X goes from left to right, Y goes from top to
+bottom and Z from front to back in our image stack.
+
+<<d75b81f2-515a-43b2-a0ec-b518d60f9eb6>>
+#+begin_src python
+transform = cle.AffineTransform3D()
+transform.translate(
+    translate_x=tx,
+    translate_y=ty,
+    translate_z=tz
+)
+
+cle_translated2 = cle.affine_transform(image, transform=transform)
+
+cle.imshow(cle_translated2[100])
+#+end_src
+
+[[file:6278f5729de560350f69d7cb14d5e0d65bfa7fee.png]]
+
+<<dfbe8b8e-3e35-442f-a260-0f4bcad79781>>
+The same also works with scaling and rotations.
+
+<<5433f6ed-fc34-4b67-ab08-90d4065bc6a1>>
+#+begin_src python
+scale_factor = 2
+
+transform = cle.AffineTransform3D()
+transform.scale(scale_x=scale_factor)
+
+cle_translated2 = cle.affine_transform(image, transform=transform, auto_size=True)
+
+cle.imshow(cle_translated2[100])
+#+end_src
+
+[[file:a4cf95fdd715d12cf7c73f6256682514f5a899aa.png]]
+
+<<8ed02bfd-37a7-4a0c-a878-79c03e6a8959>>
+#+begin_src python
+scale_factor = 2
+rotation_angle = 45
+
+transform = cle.AffineTransform3D()
+
+transform.scale(scale_x=scale_factor)
+transform.rotate_around_z_axis(rotation_angle)
+
+cle_translated2 = cle.affine_transform(image, transform=transform, auto_size=True)
+
+cle.imshow(cle_translated2[100])
+#+end_src
+
+[[file:cf76dc27fdd17534048abcffa72f5092a0938251.png]]
+
+<<77ed8031-608d-407f-a2ca-5b46f8705cc4>>
+Note: If you scale first and rotate after, or if you rotate first and
+scale after makes a difference:
+
+<<b3ef3345-1d04-4fb1-93b7-aef11eb19c17>>
+#+begin_src python
+transform = cle.AffineTransform3D()
+
+transform.rotate_around_z_axis(rotation_angle)
+transform.scale(scale_x=scale_factor)
+
+cle_translated2 = cle.affine_transform(image, transform=transform, auto_size=True)
+
+cle.imshow(cle_translated2[100])
+#+end_src
+
+[[file:3d2940b6b2eb149d2c701ba6d2fa37b87dc32f05.png]]

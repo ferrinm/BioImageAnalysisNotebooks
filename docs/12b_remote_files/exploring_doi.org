@@ -1,0 +1,87 @@
+<<13e2e653-e785-4944-b636-c5af8ac8479f>>
+* Reading meta data from DOI.org
+  :PROPERTIES:
+  :CUSTOM_ID: reading-meta-data-from-doiorg
+  :END:
+In this notebook we will access meta data of records on
+[[https://doi.org]] .
+
+<<a9b1e8c9-5e06-469c-9026-fcd051c19f0d>>
+#+begin_src python
+import requests
+import json
+#+end_src
+
+<<7b076f43-2533-4266-887f-760be61820f6>>
+For this, we write a little helper function.
+
+<<6d4c61b7-a34d-489c-a8c7-4cc379d0c6a6>>
+#+begin_src python
+def read_doi(doi):
+    """
+    Reads meta data of records in doi.org.
+    """
+
+    doi = doi.replace("https://doi.org/", "")
+    url = "https://doi.org/api/handles/" + doi
+    
+    # Download the file
+    response = requests.get(url)
+    data = response.json()
+    return data
+#+end_src
+
+<<6b60eef3-afac-441d-ab87-e572bf0ae209>>
+We can then call the function and store the results in a =data= object.
+
+<<dd0e3c6a-0fb3-4cae-b763-7fc5bb0dd2b8>>
+#+begin_src python
+data = read_doi("https://doi.org/10.5281/zenodo.3833824")
+data
+#+end_src
+
+#+begin_example
+{'responseCode': 1,
+ 'handle': '10.5281/zenodo.3833824',
+ 'values': [{'index': 100,
+   'type': 'HS_ADMIN',
+   'data': {'format': 'admin',
+    'value': {'handle': '10.admin/codata',
+     'index': 300,
+     'permissions': '111111111111'}},
+   'ttl': 86400,
+   'timestamp': '2020-05-19T10:28:11Z'},
+  {'index': 1,
+   'type': 'URL',
+   'data': {'format': 'string', 'value': 'https://zenodo.org/record/3833824'},
+   'ttl': 86400,
+   'timestamp': '2020-05-19T10:28:11Z'}]}
+#+end_example
+
+<<69457d57-6b3b-481b-9d14-ba8d8a9b0c12>>
+This [[https://www.json.org/json-en.html][json]] object consists of
+Python dictionaries and lists. We can navigate through those and extract
+information.
+
+<<59897f15-2db0-4fa3-8029-af8dc9d941de>>
+#+begin_src python
+data['values'][0]
+#+end_src
+
+#+begin_example
+{'index': 100,
+ 'type': 'HS_ADMIN',
+ 'data': {'format': 'admin',
+  'value': {'handle': '10.admin/codata',
+   'index': 300,
+   'permissions': '111111111111'}},
+ 'ttl': 86400,
+ 'timestamp': '2020-05-19T10:28:11Z'}
+#+end_example
+
+<<9ce5a0f4-bbbe-4b18-92bb-3dfe9f5e1dc5>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Find out the author(s) of the DOI above.

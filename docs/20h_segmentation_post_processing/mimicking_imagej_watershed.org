@@ -1,0 +1,294 @@
+<<2029f1f7-6659-4175-b05b-73e35c6c90bd>>
+* Mimicking ImageJ's watershed algorithm
+  :PROPERTIES:
+  :CUSTOM_ID: mimicking-imagejs-watershed-algorithm
+  :END:
+In [[][ImageJ]] there is an algorithm called "Watershed" which allows
+splitting segmented dense objects within a binary image. This notebook
+demonstrates how to achieve a similar operation in Python.
+
+The "Watershed" in ImageJ was applied to a binary image using this
+macro:
+
+#+begin_example
+open("../BioImageAnalysisNotebooks/data/blobs_otsu.tif");
+run("Watershed");
+#+end_example
+
+<<3718ab2f-954b-4515-b0cd-10967094c95e>>
+#+begin_src python
+from skimage.io import imread, imshow
+import matplotlib.pyplot as plt
+import napari_segment_blobs_and_things_with_membranes as nsbatwm
+import numpy as np
+
+from scipy import ndimage as ndi
+from skimage.feature import peak_local_max
+from skimage.filters import gaussian, sobel
+from skimage.measure import label
+from skimage.segmentation import watershed
+from skimage.morphology import binary_opening
+#+end_src
+
+<<7f0a03a9-f505-40ea-90b6-b5bac386255e>>
+Starting point for the demonstration is a binary image.
+
+<<1e0343de-dbdc-4920-a078-9f5578e58a09>>
+#+begin_src python
+binary_image = imread("../../data/blobs_otsu.tif")
+imshow(binary_image)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1f8e41b2700>
+#+end_example
+
+[[file:0f0d984826ec21665aa908a98c0e173ac9b2c938.png]]
+
+<<d82557b9-2446-48ec-a80f-002eb56e7676>>
+After applying the macro shown above, the result image in ImageJ looksl
+ike this:
+
+<<468d7ff1-ac88-45f5-a7c5-f7168a50b7c9>>
+#+begin_src python
+binary_watershed_imagej = imread("../../data/blobs_otsu_watershed.tif")
+imshow(binary_watershed_imagej)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1f8e4209100>
+#+end_example
+
+[[file:a0d4f72ff5f0b9e88ec83b40e74ccedd71969267.png]]
+
+<<7cf306aa-e226-4069-9875-e7fba0d98726>>
+The Napari plugin
+[[https://www.napari-hub.org/plugins/napari-segment-blobs-and-things-with-membranes#split-touching-objects-formerly-known-as-binary-watershed][napari-segment-blobs-and-things-with-membranes]]
+offers a function for mimicking the functionality from ImageJ.
+
+<<098ba17e-424f-4b2b-ad1a-cf32ba63a9e4>>
+#+begin_src python
+binary_watershed_nsbatwm = nsbatwm.split_touching_objects(binary_image)
+imshow(binary_watershed_nsbatwm)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1f8e42a63d0>
+#+end_example
+
+[[file:ab0b42bd9bdf665dcbbc0c72374125440bb122d5.png]]
+
+<<b961c77e-0a7a-4f87-a1ef-9d1049d7ba35>>
+** Comparing results
+   :PROPERTIES:
+   :CUSTOM_ID: comparing-results
+   :END:
+When comparing results, it is obvious that the results are not 100%
+identical.
+
+<<c0681f6c-d63f-42f9-a5fe-982b06707f88>>
+#+begin_src python
+fig, axs = plt.subplots(1, 2, figsize=(10,10))
+
+axs[0].imshow(binary_watershed_imagej)
+axs[0].set_title("ImageJ")
+axs[1].imshow(binary_watershed_nsbatwm)
+axs[1].set_title("nsbatwm")
+#+end_src
+
+#+begin_example
+Text(0.5, 1.0, 'nsbatwm')
+#+end_example
+
+[[file:fbe96aa6cf42667073c4064131adfb3748120483.png]]
+
+<<01a2f0db-d9dd-458e-b6d8-6915e60ee566>>
+** Fine-tuning results
+   :PROPERTIES:
+   :CUSTOM_ID: fine-tuning-results
+   :END:
+Modifying the result is possible by tuning the =sigma= parameter.
+
+<<403ec7db-d286-4f3e-9b93-ce495c60c2d8>>
+#+begin_src python
+fig, axs = plt.subplots(1, 4, figsize=(10,10))
+
+for i, sigma in enumerate(np.arange(2, 6, 1)):
+    result = nsbatwm.split_touching_objects(binary_image, sigma=sigma)
+    axs[i].imshow(result)
+    axs[i].set_title("sigma="+str(sigma))
+#+end_src
+
+[[file:437b75b7ba38cce64956444ba8378a5ee0c6be2f.png]]
+
+<<4e592eef-e7d7-4895-8d10-c749738838be>>
+** How does it work?
+   :PROPERTIES:
+   :CUSTOM_ID: how-does-it-work
+   :END:
+Under the hood, ImageJ's watershed algorithm uses a distance image and
+spot-detection. The following code attempts to replicate the result.
+
+Again, we start from the binary image.
+
+<<501c8ccd-b342-4e20-859c-8daa37a23b95>>
+#+begin_src python
+imshow(binary_image)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1f8e55b87f0>
+#+end_example
+
+[[file:0f0d984826ec21665aa908a98c0e173ac9b2c938.png]]
+
+<<c0d83b95-8f37-4907-9880-e0f4a0060b62>>
+The first step is to produce a distance image.
+
+<<5424cbc4-e173-47a8-90e2-edcae408721f>>
+#+begin_src python
+distance = ndi.distance_transform_edt(binary_image)
+imshow(distance)
+#+end_src
+
+#+begin_example
+C:\Users\haase\mambaforge\envs\bio39\lib\site-packages\skimage\io\_plugins\matplotlib_plugin.py:150: UserWarning: Float image out of standard range; displaying image with stretched contrast.
+  lo, hi, cmap = _get_display_range(image)
+#+end_example
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1f8e55f17c0>
+#+end_example
+
+[[file:d0de034b7ec17cb2c2df4e11db7b09c37f6fe458.png]]
+
+<<dfc44beb-2d88-4de4-8de0-66f7f323e833>>
+To avoid very small split objects, we blur the distance image using the
+=sigma= parameter.
+
+<<4f8b61bd-8a73-4c66-adb7-bd83a5fbdb85>>
+#+begin_src python
+sigma = 3.5
+
+blurred_distance = gaussian(distance, sigma=sigma)
+imshow(blurred_distance)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1f8e56ec5e0>
+#+end_example
+
+[[file:a65fd6d1c7dfcd2a9d2e60470c32716f26884ba4.png]]
+
+<<9fe0210b-54b4-4848-b75f-967b27c53136>>
+Within this blurred image, we search for local maxima and receive them
+as list of coordinates.
+
+<<732f789e-04fa-4a9e-92d5-b40731ef92e9>>
+#+begin_src python
+fp = np.ones((3,) * binary_image.ndim)
+coords = peak_local_max(blurred_distance, footprint=fp, labels=binary_image)
+
+# show the first 5 only
+coords[:5]
+#+end_src
+
+#+begin_example
+array([[  8, 254],
+       [ 97,   1],
+       [ 10, 108],
+       [230, 180],
+       [182, 179]], dtype=int64)
+#+end_example
+
+<<e25ee6ce-ca2e-4b85-b181-93f25e8f7a42>>
+We next write these maxima into a new image and label them.
+
+<<3033c2ac-bed2-4236-b5dc-b5bc229e141d>>
+#+begin_src python
+mask = np.zeros(distance.shape, dtype=bool)
+mask[tuple(coords.T)] = True
+markers = label(mask)
+imshow(markers, cmap='jet')
+#+end_src
+
+#+begin_example
+C:\Users\haase\mambaforge\envs\bio39\lib\site-packages\skimage\io\_plugins\matplotlib_plugin.py:150: UserWarning: Low image data range; displaying image with stretched contrast.
+  lo, hi, cmap = _get_display_range(image)
+#+end_example
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1f8e59c1c40>
+#+end_example
+
+[[file:491b0223dd0fce0709675510f11fcbb306573d67.png]]
+
+<<d1f01106-4b28-437a-97f7-3d684511f42d>>
+Next, we apply
+[[https://scikit-image.org/docs/stable/api/skimage.segmentation.html#skimage.segmentation.watershed][scikit-image's
+Watershed algorithm]]
+([[https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_watershed.html][example]]).
+It takes a distance image and a label image as input. Optional input is
+the =binary_image= to limit spreading the labels too far.
+
+<<a0ad6e84-3591-4438-9ece-ecb5e0d121c8>>
+#+begin_src python
+labels = watershed(-blurred_distance, markers, mask=binary_image)
+imshow(labels, cmap='jet')
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1f8e5a97f40>
+#+end_example
+
+[[file:e786d20b0c26ef73dfb407f9ed92a8e94bf49e80.png]]
+
+<<a1961203-8936-4257-a914-bbf66d26531b>>
+To create a binary image again as ImageJ does, we now identify the edges
+between the labels.
+
+<<3df2b763-e0d5-477f-a155-e5adbdce3ab3>>
+#+begin_src python
+# identify label-cutting edges
+edges_labels = sobel(labels)
+edges_binary = sobel(binary_image)
+
+edges = np.logical_xor(edges_labels != 0, edges_binary != 0)
+imshow(edges)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1f8e5aaea00>
+#+end_example
+
+[[file:d7048691e8b2357139a07f2cae3c72aa60fb4545.png]]
+
+<<35f6530f-3316-40e2-a714-34413a59cf17>>
+Next we subtract those edges from the original =binary_image=.
+
+<<036bc728-5a27-46c0-9621-2b84a352d225>>
+#+begin_src python
+almost = np.logical_not(edges) * binary_image
+imshow(almost)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1f8e55c8610>
+#+end_example
+
+[[file:7e07f96c0f65a74b19bb9adfd83dddda30c5e26a.png]]
+
+<<853b43ea-de82-4f77-9282-b3697c0d98b3>>
+As this result is not perfect yet, we apply a binary opening.
+
+<<d4dfaa1e-08d3-4708-8648-c7465d7b75a4>>
+#+begin_src python
+result = binary_opening(almost)
+imshow(result)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1f8e3b81e50>
+#+end_example
+
+[[file:ab0b42bd9bdf665dcbbc0c72374125440bb122d5.png]]

@@ -1,0 +1,190 @@
+<<6b25ab6a-6e72-499b-8e1c-596a1acf326e>>
+* Inner and outer cell borders
+  :PROPERTIES:
+  :CUSTOM_ID: inner-and-outer-cell-borders
+  :END:
+When studying tissues, organisms and organoids, often the position and
+orientation of the cell and its membranes within the tissue is relevant.
+For example, we differentiate apical (at an apex, at the end, outer) and
+basal (at the base, inner) sides of cells within tissue. Starting from a
+cell segmentation label image, we can identify pixels that sit outside
+or inside of a structure made of cells. In the following example we work
+with a synthetic two-dimensional image of some cells forming an
+organoid. The same functions will also work in 3D.
+
+<<626f5f39-5098-4073-85ad-dba507e02258>>
+#+begin_src python
+import numpy as np
+import pyclesperanto_prototype as cle
+#+end_src
+
+<<d90dcfb3-062f-47f1-8bf7-f9d33778e364>>
+First, we build our synthetic dataset. It is made of 6 cell-centers we
+dilated to form an organoid.
+
+<<451f06eb-7ed0-444f-8ff7-bb8978993b00>>
+#+begin_src python
+points = np.asarray([
+    [50, 50],
+    [60, 60],
+    [25, 40],
+    [70, 30],
+    [35, 65],
+    [50, 25]
+]).T
+image = np.zeros((100, 100))
+spots = cle.pointlist_to_labelled_spots(points, image)
+cells = cle.dilate_labels(spots, radius=15)
+spots.shape
+#+end_src
+
+#+begin_example
+(100, 100)
+#+end_example
+
+<<09eabbdf-6694-4708-b79d-5c20f554c481>>
+These are our cells:
+
+<<4118d3d7-a155-482b-bf7f-c2c4d877b099>>
+#+begin_src python
+cells
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<a6a69fe3-ccf7-4bfc-b768-d7465cec1f3c>>
+And that's the organoid:
+
+<<430c2545-b765-427e-a001-6af31c372547>>
+#+begin_src python
+organoid = cells > 0
+organoid
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint8)
+#+end_example
+
+<<0772ee71-ff4e-4581-a111-d146c6c119dd>>
+We now identify the pixels that sit on the borders of the cells.
+
+<<50881a14-b5a2-4855-943c-949fcb631b6a>>
+#+begin_src python
+cell_borders = cle.reduce_labels_to_label_edges(cells)
+cell_borders
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<16f151e4-f006-459b-bce7-23b05b571f25>>
+We can do exactly the same with the organoid to identify the pixels on
+its surface.
+
+<<0e02357b-f746-4867-b881-e9c962b653d3>>
+#+begin_src python
+organoid_border = cle.reduce_labels_to_label_edges(organoid)
+organoid_border
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<d9d1ec4e-8f1f-4e45-b12a-ad37c18b020d>>
+By masking the cell borders with the organoid border - technically
+that's a pixel-by-pixel multiplication - we can identify the outer
+borders.
+
+<<aa965a78-ef82-4e60-8909-eed3d68c0cd2>>
+#+begin_src python
+outer_borders = cle.mask(cell_borders, organoid_border).astype(np.uint32)
+outer_borders
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<11ef81d3-49ef-4bee-9bb6-2b491ec9d6ef>>
+If we subtract the outer borders from all cell borders, we retrieve the
+inner borders
+
+<<452340c1-987d-41b1-8431-f9882cad6e10>>
+#+begin_src python
+inner_borders = (cell_borders - outer_borders).astype(np.uint32)
+inner_borders
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<afc73d32-96d9-4b23-b712-8fadde7a8edc>>
+When post-processing these label images, be a bit careful, because these
+images may not be sequentially labeled. There are libraries and
+functions which may have issues with those kind of label images (e.g.
+=cle.statistics_of_labelled_pixels()=). You can print out which labels
+exist in a label image using =np.unique()= and you could make the label
+images sequential using =cle.relabel_sequential()=.
+
+<<a40a6826-5f21-4ba4-aafa-a2992a6332e1>>
+#+begin_src python
+np.unique(outer_borders)
+#+end_src
+
+#+begin_example
+array([0, 2, 3, 4, 5, 6], dtype=uint32)
+#+end_example
+
+<<7da3ec85-4bd0-4433-aa73-46641e24dbcf>>
+#+begin_src python
+np.unique(inner_borders)
+#+end_src
+
+#+begin_example
+array([0, 1, 2, 3, 4, 5, 6], dtype=uint32)
+#+end_example
+
+<<32e866b1-b41b-4965-a717-9c57d190fa73>>
+#+begin_src python
+#+end_src

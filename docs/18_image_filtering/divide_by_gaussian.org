@@ -1,0 +1,110 @@
+<<32087d19-f65e-465b-ab2b-f9c78420a61d>>
+* Divide by Gaussian
+  :PROPERTIES:
+  :CUSTOM_ID: divide-by-gaussian
+  :END:
+When processing images with membrane staining it sometimes happens that
+the intensity of the membranes is not homogeneous and changes locally.
+This intensity variation may impair cell segmentation algorithms. In
+these cases it may make sense to homogenize the intensity by dividing
+the image by a Gaussian blurred version of itself.
+
+<<142cfb4f-63b8-438c-a18f-348af9aa1ec0>>
+#+begin_src python
+import pyclesperanto_prototype as cle
+from skimage.io import imread, imshow
+from skimage.filters import gaussian
+#+end_src
+
+<<13658c3a-0ce6-4edd-8d22-2359c3074520>>
+In this image you see that the intensity of the membranes decreases from
+top to bottom.
+
+<<313b3b95-6d47-42d0-a60a-88e6604d3fd6>>
+#+begin_src python
+image = imread('../../data/membranes_2d.tif')
+cle.asarray(image)
+#+end_src
+
+#+begin_example
+cl.OCLArray([[15516., 16706., 10227., ...,  2777.,  2855.,  2783.],
+       [16803., 16311.,  9807., ...,  2795.,  2744.,  2721.],
+       [13111., 15255.,  9477., ...,  3006.,  3027.,  2698.],
+       ...,
+       [ 2405.,  2826.,  3144., ...,  2060.,  1959.,  1762.],
+       [ 3175.,  3318.,  3200., ...,  1841.,  2054.,  1913.],
+       [ 3099.,  3301.,  3012., ...,  1965.,  2374.,  2446.]],
+      dtype=float32)
+#+end_example
+
+<<e16f5106-02c8-4678-b5fe-d6daff58a7a7>>
+This intensity gradient can be removed by dividing the image by its
+background, a Gaussian blurred version of it self.
+
+<<479381f4-3821-4fc5-b7e6-a218f4e81149>>
+#+begin_src python
+intensity_equivalized = cle.divide_by_gaussian_background(image, sigma_x=10, sigma_y=10)
+intensity_equivalized
+#+end_src
+
+#+begin_example
+cl.OCLArray([[1.8295711 , 2.0727317 , 1.3400825 , ..., 0.63890284, 0.6729534 ,
+        0.6717435 ],
+       [2.0299954 , 2.0725877 , 1.3155018 , ..., 0.63900983, 0.6421698 ,
+        0.6515172 ],
+       [1.6262667 , 1.9892585 , 1.3039397 , ..., 0.6835915 , 0.7039906 ,
+        0.6414088 ],
+       ...,
+       [0.98931336, 1.1786715 , 1.3311533 , ..., 0.8870197 , 0.8390279 ,
+        0.7511131 ],
+       [1.3044561 , 1.3835748 , 1.3560139 , ..., 0.79402256, 0.88066417,
+        0.8159115 ],
+       [1.271311  , 1.3758018 , 1.2770755 , ..., 0.84971267, 1.0200088 ,
+        1.0449218 ]], dtype=float32)
+#+end_example
+
+<<949dd6bf-5aab-4ad9-93cd-086d56e9eae5>>
+** How it works
+   :PROPERTIES:
+   :CUSTOM_ID: how-it-works
+   :END:
+To demonstrate how it works, we will do the same operation using two
+steps using scikit-image and numpy.
+
+<<d10a7d86-8d28-435e-80c4-ce74f44ea4b3>>
+#+begin_src python
+background = gaussian(image, sigma=10)
+imshow(background, cmap="Greys_r")
+#+end_src
+
+#+begin_example
+C:\Users\haase\mambaforge\envs\bio39\lib\site-packages\skimage\io\_plugins\matplotlib_plugin.py:150: UserWarning: Low image data range; displaying image with stretched contrast.
+  lo, hi, cmap = _get_display_range(image)
+#+end_example
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1aa03625160>
+#+end_example
+
+[[file:46224305f69cd2dc770223cf86f0f8dc46abda92.png]]
+
+<<bda2d4f8-4599-4d30-9259-e995dc1adec0>>
+#+begin_src python
+result = image / background
+imshow(result, cmap="Greys_r")
+#+end_src
+
+#+begin_example
+C:\Users\haase\mambaforge\envs\bio39\lib\site-packages\skimage\io\_plugins\matplotlib_plugin.py:150: UserWarning: Float image out of standard range; displaying image with stretched contrast.
+  lo, hi, cmap = _get_display_range(image)
+#+end_example
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1aa0350d580>
+#+end_example
+
+[[file:f770e920fba771ade282030f62c93813c51314c1.png]]
+
+<<4a60a63e-817b-450e-8d6a-9ed121a68115>>
+#+begin_src python
+#+end_src

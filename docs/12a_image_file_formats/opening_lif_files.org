@@ -1,0 +1,212 @@
+<<9f4234e6-18a5-4427-8e22-1e3a7efea0cb>>
+** Opening LIF files
+   :PROPERTIES:
+   :CUSTOM_ID: opening-lif-files
+   :END:
+When working with microscopy image data, many file formats are
+circulating such as the Leica Image Format (LIF). In this notebook, we
+will open a =.lif= file using the
+[[https://pypi.org/project/readlif/][=readlif= library]].
+
+Note: It is recommended to use
+[[https://github.com/AllenCellModeling/aicsimageio][AICSImageIO]] for
+reading LIF images as shown in this
+[[file:image_file_formats:aicsimagio][notebook]].
+
+The =readlif= library can be installed like this from the terminal:
+
+#+begin_example
+pip install readlif
+#+end_example
+
+After installing it, it can be imported.
+
+<<cc300440-614c-4c97-8130-ca12672d2047>>
+#+begin_src python
+from readlif.reader import LifFile
+
+import os
+import requests
+from skimage.io import imshow
+import numpy as np
+#+end_src
+
+<<00619c06-a0e8-405b-b5df-24f23d73545b>>
+As example dataset, we will use an image shared by
+[[https://zenodo.org/record/3382102#.Y57rFnbMJaQ][Gregory Marquart and
+Harold Burgess]] under
+[[https://creativecommons.org/licenses/by/4.0/legalcode][CC-BY 4.0
+license]]. We need to download it first.
+
+<<65ee5724-a2d1-45c9-bfc2-c5848308e6d4>>
+#+begin_src python
+filename = "../../data/y293-Gal4_vmat-GFP-f01.lif"
+url = 'https://zenodo.org/record/3382102/files/y293-Gal4_vmat-GFP-f01.lif?download=1'
+
+if not os.path.isfile(filename):
+    # only download the file if we don't have it yet
+    response = requests.get(url)
+    open(filename, "wb").write(response.content)
+#+end_src
+
+<<ed3c9136-51a5-4a69-a18e-ac631cf4267d>>
+At this point the file should be on our computer and can be opened like
+this.
+
+<<7a208394-962c-44da-9e46-09fea74b5253>>
+#+begin_src python
+file = LifFile(filename)
+file
+#+end_src
+
+#+begin_example
+'LifFile object with 1 image'
+#+end_example
+
+<<b4791412-bc80-4524-83b6-a952c0edd6d4>>
+#+begin_src python
+lif_image = file.get_image(0)
+lif_image
+#+end_src
+
+#+begin_example
+'LifImage object with dimensions: Dims(x=616, y=500, z=86, t=1, m=1)'
+#+end_example
+
+<<0eb18447-b1e6-4b76-b134-f3cd7f1ff2dc>>
+From the LifImage, we can get individual frames as
+[[https://pypi.org/project/PIL/][PIL]] images.
+
+<<fca13f1f-dffd-4ec7-a919-6e8818912862>>
+#+begin_src python
+pil_image = lif_image.get_frame(z=0)
+type(pil_image)
+#+end_src
+
+#+begin_example
+PIL.Image.Image
+#+end_example
+
+<<d729ad22-7a65-4b6b-b583-931ab7386d20>>
+Finally, these 2D PIL images can be converted into numpy arrays. Which
+allows us eventually to take a look at the image.
+
+<<242971e5-ccfe-4788-b23d-1735a4704b37>>
+#+begin_src python
+np_image = np.array(pil_image)
+np_image.shape
+#+end_src
+
+#+begin_example
+(500, 616)
+#+end_example
+
+<<03f7f231-a52b-41b3-bcc7-9348fedc372b>>
+#+begin_src python
+imshow(np_image)
+#+end_src
+
+#+begin_example
+/opt/miniconda3/envs/devbio-napari-env/lib/python3.9/site-packages/skimage/io/_plugins/matplotlib_plugin.py:149: UserWarning: Low image data range; displaying image with stretched contrast.
+  lo, hi, cmap = _get_display_range(image)
+#+end_example
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1378ab970>
+#+end_example
+
+[[file:60a05b41e9e9d5cf212bed4328bcf9e9dec55d30.png]]
+
+<<695d07de-7fac-4c7a-ae1a-082ba6c8f370>>
+To access all pixels in our 3D image, we should first have a look in the
+metadata of the file.
+
+<<901cb3c2-ac19-4f78-b6ac-70c78cbda5d5>>
+#+begin_src python
+lif_image.info
+#+end_src
+
+#+begin_example
+{'dims': Dims(x=616, y=500, z=86, t=1, m=1),
+ 'display_dims': (1, 2),
+ 'dims_n': {1: 616, 2: 500, 3: 86},
+ 'scale_n': {1: 2.1354804344851965,
+  2: 2.135480168493237,
+  3: 0.9929687300128537},
+ 'path': 'Experiment_002/',
+ 'name': 'Series011',
+ 'channels': 2,
+ 'scale': (2.1354804344851965, 2.135480168493237, 0.9929687300128537, None),
+ 'bit_depth': (12, 12),
+ 'mosaic_position': [],
+ 'channel_as_second_dim': False,
+ 'settings': {}}
+#+end_example
+
+<<6c8c4193-4975-491d-8aad-4973b9b8dfa3>>
+For example, it might be useful later to know the voxel size in z/y/x
+order.
+
+<<acfe442d-6dbf-489d-b9c0-92fe40aca6de>>
+#+begin_src python
+voxel_size = lif_image.info['scale'][2::-1]
+voxel_size
+#+end_src
+
+#+begin_example
+(0.9929687300128537, 2.135480168493237, 2.1354804344851965)
+#+end_example
+
+<<be13dc3a-8efb-45c2-970e-8ec1609a06e4>>
+We can also read out how many slices the 3D stack has.
+
+<<ff9b972e-be78-4bb2-9b81-4675384119c0>>
+#+begin_src python
+num_slices = lif_image.info['dims'].z
+num_slices
+#+end_src
+
+#+begin_example
+86
+#+end_example
+
+<<192745e0-0172-4682-ab4b-56d52ac52381>>
+This information allows us to write a convenience function that allows
+converting the LIF image into a 3D numpy image stack.
+
+<<4a1af9ff-1438-4557-9f64-e59951122f69>>
+#+begin_src python
+def lif_to_numpy_stack(lif_image):
+    num_slices = lif_image.info['dims'].z
+    
+    return np.asarray([np.array(lif_image.get_frame(z=z)) for z in range(num_slices)])
+#+end_src
+
+<<381b8676-ba7f-4e8e-b19e-f31a187ce7cd>>
+#+begin_src python
+image_stack = lif_to_numpy_stack(lif_image)
+image_stack.shape
+#+end_src
+
+#+begin_example
+(86, 500, 616)
+#+end_example
+
+<<bbf750fa-c973-4890-86a3-7ea395f1b05e>>
+This image stack can then be used for example to visualize a maximum
+intensity projection along Z.
+
+<<aa812111-f1c0-498f-b6cf-700c9aca37f3>>
+#+begin_src python
+imshow(np.max(image_stack, axis=0))
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x137a1c610>
+#+end_example
+
+[[file:c2677a7b631d5048d2fb609778669b1ea23a4024.png]]
+
+<<e752f910>>
+#+begin_src python
+#+end_src

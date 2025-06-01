@@ -1,0 +1,1832 @@
+<<e9de210d-a426-44b9-b4ad-a211680db15d>>
+* Statistics of neighbors
+  :PROPERTIES:
+  :CUSTOM_ID: statistics-of-neighbors
+  :END:
+When characterizing tissues, it may be useful to summarize statistics
+such as the average distance labels to their neighbors.
+
+Note: When measuring distances, the centroid-to-centroid distance is
+called /distance/ for simplicity unless mentioned otherwise.
+Furthermore, keep in mind that most of the shown measurements only work
+correctly when using label images with isotropic pixels / voxels.
+
+<<768bb5ea-2e1d-4c88-8f73-515fd450c1ff>>
+#+begin_src python
+import numpy as np
+import pyclesperanto_prototype as cle
+from skimage.io import imread
+import matplotlib.pyplot as plt
+import pandas as pd
+#+end_src
+
+<<939779d2-54c4-4cbb-9b29-cf9753dc9d87>>
+We use this example label image to show what the different measurements
+mean. In the following, most measures will be explained for the object
+number =7= in the center of the image.
+
+<<74b80485-c5da-493e-886b-78231634b637>>
+#+begin_src python
+labels = cle.scale(cle.asarray([
+   [1, 1, 2, 2, 3, 3, 3, 3],
+   [1, 1, 2, 2, 3, 3, 3, 3],
+   [1, 1, 7, 7, 7, 7, 3, 3],
+   [1, 1, 7, 7, 7, 7, 3, 3],
+   [6, 6, 7, 7, 7, 7, 4, 4],
+   [6, 6, 7, 7, 7, 7, 4, 4],
+   [5, 5, 5, 5, 5, 5, 4, 4],
+   [5, 5, 5, 5, 5, 5, 4, 4],
+]), factor_x=10, factor_y=10, auto_size=True).astype(np.uint32)
+
+labels
+#+end_src
+
+#+begin_example
+cl.OCLArray([[1, 1, 1, ..., 3, 3, 3],
+       [1, 1, 1, ..., 3, 3, 3],
+       [1, 1, 1, ..., 3, 3, 3],
+       ...,
+       [5, 5, 5, ..., 4, 4, 4],
+       [5, 5, 5, ..., 4, 4, 4],
+       [5, 5, 5, ..., 4, 4, 4]], dtype=uint32)
+#+end_example
+
+<<15916c9f-dfd0-432b-8cf7-7d4392048341>>
+* Distance meshes
+  :PROPERTIES:
+  :CUSTOM_ID: distance-meshes
+  :END:
+Before diving into details we should first have a look at neighborhood
+relationships and distances between neighbors. A distance mesh
+visualizes the distances between centroids in colour.
+
+<<113e2acd-0d92-47ad-ba67-ba5b8bfe569b>>
+#+begin_src python
+distance_mesh = cle.draw_distance_mesh_between_touching_labels(labels)
+cle.imshow(distance_mesh, colorbar=True, colormap="rainbow")
+#+end_src
+
+[[file:4eb6cd3bf48ff939a47cac2c46d509f7287e52e3.png]]
+
+<<62080990-6ca8-4900-a419-088955684f38>>
+Simple statistics such as the longest distance between direct neighbors
+can be measured from that image.
+
+<<c5745e43-7d9d-4104-af0a-2efbe71f47f7>>
+#+begin_src python
+distance_mesh.max()
+#+end_src
+
+#+begin_example
+43.843155
+#+end_example
+
+<<65196c9f-c988-42d5-996e-7d4ee8ea6892>>
+For more detailed statistics we use a table / pandas DataFrame.
+
+<<ed8124f6-61c2-4add-98f8-28efda93b23f>>
+#+begin_src python
+stats = pd.DataFrame(cle.statistics_of_labelled_neighbors(labels))
+stats
+#+end_src
+
+#+begin_example
+   label  touching_neighbor_count  minimum_distance_of_touching_neighbors  \
+0      1                      3.0                               22.360680   
+1      2                      3.0                               22.360680   
+2      3                      3.0                               32.998318   
+3      4                      3.0                               36.055511   
+4      5                      3.0                               28.284273   
+5      6                      3.0                               28.284273   
+6      7                      6.0                               31.622776   
+
+   average_distance_of_touching_neighbors  \
+0                               29.472065   
+1                               29.325642   
+2                               36.944984   
+3                               40.376575   
+4                               33.712704   
+5                               29.969015   
+6                               33.329613   
+
+   maximum_distance_of_touching_neighbors  \
+0                               36.055511   
+1                               33.993465   
+2                               43.843155   
+3                               43.843155   
+4                               41.231056   
+5                               31.622776   
+6                               36.055511   
+
+   max_min_distance_ratio_of_touching_neighbors  proximal_neighbor_count_d10  \
+0                                      1.612452                          0.0   
+1                                      1.520234                          0.0   
+2                                      1.328648                          0.0   
+3                                      1.215990                          0.0   
+4                                      1.457738                          0.0   
+5                                      1.118034                          0.0   
+6                                      1.140175                          0.0   
+
+   proximal_neighbor_count_d20  proximal_neighbor_count_d40  \
+0                          0.0                          3.0   
+1                          0.0                          3.0   
+2                          0.0                          2.0   
+3                          0.0                          1.0   
+4                          0.0                          2.0   
+5                          0.0                          3.0   
+6                          0.0                          6.0   
+
+   proximal_neighbor_count_d80  ...  touch_portion_above_0.2_neighbor_count  \
+0                          6.0  ...                                     3.0   
+1                          6.0  ...                                     3.0   
+2                          6.0  ...                                     3.0   
+3                          6.0  ...                                     3.0   
+4                          6.0  ...                                     3.0   
+5                          6.0  ...                                     3.0   
+6                          6.0  ...                                     6.0   
+
+   touch_portion_above_0.33_neighbor_count  \
+0                                      3.0   
+1                                      3.0   
+2                                      2.0   
+3                                      2.0   
+4                                      2.0   
+5                                      2.0   
+6                                      6.0   
+
+   touch_portion_above_0.5_neighbor_count  \
+0                                     0.0   
+1                                     0.0   
+2                                     0.0   
+3                                     0.0   
+4                                     0.0   
+5                                     0.0   
+6                                     0.0   
+
+   touch_portion_above_0.75_neighbor_count  touch_count_sum  \
+0                                      0.0             60.0   
+1                                      0.0             60.0   
+2                                      0.0             80.0   
+3                                      0.0             60.0   
+4                                      0.0             80.0   
+5                                      0.0             60.0   
+6                                      0.0            160.0   
+
+   minimum_touch_count  maximum_touch_count  minimum_touch_portion  \
+0                 20.0                 20.0               0.333333   
+1                 20.0                 20.0               0.333333   
+2                 20.0                 40.0               0.250000   
+3                 20.0                 20.0               0.333333   
+4                 20.0                 40.0               0.250000   
+5                 20.0                 20.0               0.333333   
+6                 20.0                 40.0               0.125000   
+
+   maximum_touch_portion  standard_deviation_touch_portion  
+0               0.333333                      2.980232e-08  
+1               0.333333                      2.980232e-08  
+2               0.500000                      1.111111e-01  
+3               0.333333                      2.980232e-08  
+4               0.500000                      1.111111e-01  
+5               0.333333                      2.980232e-08  
+6               0.250000                      5.555556e-02  
+
+[7 rows x 44 columns]
+#+end_example
+
+<<c2382f75-f475-44a8-9f21-ab6e17f1b2f2>>
+This table contains these columns:
+
+<<5546c297-98e5-4fd9-b28a-f7bc0196779c>>
+#+begin_src python
+stats.describe().T
+#+end_src
+
+#+begin_example
+                                              count       mean        std  \
+label                                           7.0   4.000000   2.160247   
+touching_neighbor_count                         7.0   3.428571   1.133893   
+minimum_distance_of_touching_neighbors          7.0  28.852358   5.190999   
+average_distance_of_touching_neighbors          7.0  33.304371   4.184873   
+maximum_distance_of_touching_neighbors          7.0  38.092091   4.881063   
+max_min_distance_ratio_of_touching_neighbors    7.0   1.341896   0.193760   
+proximal_neighbor_count_d10                     7.0   0.000000   0.000000   
+proximal_neighbor_count_d20                     7.0   0.000000   0.000000   
+proximal_neighbor_count_d40                     7.0   2.857143   1.573592   
+proximal_neighbor_count_d80                     7.0   6.000000   0.000000   
+proximal_neighbor_count_d160                    7.0   6.000000   0.000000   
+maximum_distance_of_n1_nearest_neighbors        7.0  28.852358   5.191000   
+average_distance_of_n1_nearest_neighbors        7.0  28.852358   5.191000   
+maximum_distance_of_n2_nearest_neighbors        7.0  32.870403   3.922370   
+average_distance_of_n2_nearest_neighbors        7.0  30.861380   4.257244   
+maximum_distance_of_n3_nearest_neighbors        7.0  37.458839   5.444354   
+average_distance_of_n3_nearest_neighbors        7.0  33.060535   4.232608   
+maximum_distance_of_n4_nearest_neighbors        7.0  49.142155   9.086052   
+average_distance_of_n4_nearest_neighbors        7.0  37.080940   4.918169   
+maximum_distance_of_n5_nearest_neighbors        7.0  56.808464   9.705204   
+average_distance_of_n5_nearest_neighbors        7.0  41.026447   5.346182   
+maximum_distance_of_n6_nearest_neighbors        7.0  61.855495  12.137788   
+average_distance_of_n6_nearest_neighbors        7.0  44.497955   6.060761   
+maximum_distance_of_n7_nearest_neighbors        7.0  61.855495  12.137788   
+average_distance_of_n7_nearest_neighbors        7.0  48.585533   5.194938   
+maximum_distance_of_n8_nearest_neighbors        7.0  61.855495  12.137788   
+average_distance_of_n8_nearest_neighbors        7.0  48.585533   5.194938   
+maximum_distance_of_n10_nearest_neighbors       7.0  61.855495  12.137788   
+average_distance_of_n10_nearest_neighbors       7.0  48.585533   5.194938   
+maximum_distance_of_n20_nearest_neighbors       7.0  61.855495  12.137788   
+average_distance_of_n20_nearest_neighbors       7.0  48.585533   5.194938   
+distance_to_most_distant_other                  7.0  61.855495  12.137788   
+touch_portion_above_0_neighbor_count            7.0   3.428571   1.133893   
+touch_portion_above_0.16_neighbor_count         7.0   3.428571   1.133893   
+touch_portion_above_0.2_neighbor_count          7.0   3.428571   1.133893   
+touch_portion_above_0.33_neighbor_count         7.0   2.857143   1.463850   
+touch_portion_above_0.5_neighbor_count          7.0   0.000000   0.000000   
+touch_portion_above_0.75_neighbor_count         7.0   0.000000   0.000000   
+touch_count_sum                                 7.0  80.000000  36.514839   
+minimum_touch_count                             7.0  20.000000   0.000000   
+maximum_touch_count                             7.0  28.571428  10.690450   
+minimum_touch_portion                           7.0   0.279762   0.078743   
+maximum_touch_portion                           7.0   0.369048   0.094491   
+standard_deviation_touch_portion                7.0   0.039683   0.052844   
+
+                                                       min           25%  \
+label                                         1.000000e+00  2.500000e+00   
+touching_neighbor_count                       3.000000e+00  3.000000e+00   
+minimum_distance_of_touching_neighbors        2.236068e+01  2.532248e+01   
+average_distance_of_touching_neighbors        2.932564e+01  2.972054e+01   
+maximum_distance_of_touching_neighbors        3.162278e+01  3.502449e+01   
+max_min_distance_ratio_of_touching_neighbors  1.118034e+00  1.178083e+00   
+proximal_neighbor_count_d10                   0.000000e+00  0.000000e+00   
+proximal_neighbor_count_d20                   0.000000e+00  0.000000e+00   
+proximal_neighbor_count_d40                   1.000000e+00  2.000000e+00   
+proximal_neighbor_count_d80                   6.000000e+00  6.000000e+00   
+proximal_neighbor_count_d160                  6.000000e+00  6.000000e+00   
+maximum_distance_of_n1_nearest_neighbors      2.236068e+01  2.532248e+01   
+average_distance_of_n1_nearest_neighbors      2.236068e+01  2.532248e+01   
+maximum_distance_of_n2_nearest_neighbors      3.000000e+01  3.081139e+01   
+average_distance_of_n2_nearest_neighbors      2.618034e+01  2.806693e+01   
+maximum_distance_of_n3_nearest_neighbors      3.162278e+01  3.280812e+01   
+average_distance_of_n3_nearest_neighbors      2.932564e+01  2.972054e+01   
+maximum_distance_of_n4_nearest_neighbors      3.299832e+01  4.472136e+01   
+average_distance_of_n4_nearest_neighbors      3.196666e+01  3.341583e+01   
+maximum_distance_of_n5_nearest_neighbors      3.605551e+01  5.692582e+01   
+average_distance_of_n5_nearest_neighbors      3.278444e+01  3.881543e+01   
+maximum_distance_of_n6_nearest_neighbors      3.605551e+01  6.289321e+01   
+average_distance_of_n6_nearest_neighbors      3.332961e+01  4.292323e+01   
+maximum_distance_of_n7_nearest_neighbors      3.605551e+01  6.289321e+01   
+average_distance_of_n7_nearest_neighbors      3.901267e+01  4.723577e+01   
+maximum_distance_of_n8_nearest_neighbors      3.605551e+01  6.289321e+01   
+average_distance_of_n8_nearest_neighbors      3.901267e+01  4.723577e+01   
+maximum_distance_of_n10_nearest_neighbors     3.605551e+01  6.289321e+01   
+average_distance_of_n10_nearest_neighbors     3.901267e+01  4.723577e+01   
+maximum_distance_of_n20_nearest_neighbors     3.605551e+01  6.289321e+01   
+average_distance_of_n20_nearest_neighbors     3.901267e+01  4.723577e+01   
+distance_to_most_distant_other                3.605551e+01  6.289321e+01   
+touch_portion_above_0_neighbor_count          3.000000e+00  3.000000e+00   
+touch_portion_above_0.16_neighbor_count       3.000000e+00  3.000000e+00   
+touch_portion_above_0.2_neighbor_count        3.000000e+00  3.000000e+00   
+touch_portion_above_0.33_neighbor_count       2.000000e+00  2.000000e+00   
+touch_portion_above_0.5_neighbor_count        0.000000e+00  0.000000e+00   
+touch_portion_above_0.75_neighbor_count       0.000000e+00  0.000000e+00   
+touch_count_sum                               6.000000e+01  6.000000e+01   
+minimum_touch_count                           2.000000e+01  2.000000e+01   
+maximum_touch_count                           2.000000e+01  2.000000e+01   
+minimum_touch_portion                         1.250000e-01  2.500000e-01   
+maximum_touch_portion                         2.500000e-01  3.333333e-01   
+standard_deviation_touch_portion              2.980232e-08  2.980232e-08   
+
+                                                       50%        75%  \
+label                                         4.000000e+00   5.500000   
+touching_neighbor_count                       3.000000e+00   3.000000   
+minimum_distance_of_touching_neighbors        2.828427e+01  32.310547   
+average_distance_of_touching_neighbors        3.332961e+01  35.328844   
+maximum_distance_of_touching_neighbors        3.605551e+01  42.537106   
+max_min_distance_ratio_of_touching_neighbors  1.328648e+00   1.488986   
+proximal_neighbor_count_d10                   0.000000e+00   0.000000   
+proximal_neighbor_count_d20                   0.000000e+00   0.000000   
+proximal_neighbor_count_d40                   3.000000e+00   3.000000   
+proximal_neighbor_count_d80                   6.000000e+00   6.000000   
+proximal_neighbor_count_d160                  6.000000e+00   6.000000   
+maximum_distance_of_n1_nearest_neighbors      2.828427e+01  32.310547   
+average_distance_of_n1_nearest_neighbors      2.828427e+01  32.310547   
+maximum_distance_of_n2_nearest_neighbors      3.162278e+01  32.808121   
+average_distance_of_n2_nearest_neighbors      2.995353e+01  32.559334   
+maximum_distance_of_n3_nearest_neighbors      3.605551e+01  42.537104   
+average_distance_of_n3_nearest_neighbors      3.162278e+01  35.328842   
+maximum_distance_of_n4_nearest_neighbors      5.343740e+01  53.644524   
+average_distance_of_n4_nearest_neighbors      3.546340e+01  39.907761   
+maximum_distance_of_n5_nearest_neighbors      6.000000e+01  61.860416   
+average_distance_of_n5_nearest_neighbors      3.914105e+01  44.215530   
+maximum_distance_of_n6_nearest_neighbors      6.289321e+01  68.071133   
+average_distance_of_n6_nearest_neighbors      4.463604e+01  47.328476   
+maximum_distance_of_n7_nearest_neighbors      6.289321e+01  68.071133   
+average_distance_of_n7_nearest_neighbors      4.870390e+01  51.011694   
+maximum_distance_of_n8_nearest_neighbors      6.289321e+01  68.071133   
+average_distance_of_n8_nearest_neighbors      4.870390e+01  51.011694   
+maximum_distance_of_n10_nearest_neighbors     6.289321e+01  68.071133   
+average_distance_of_n10_nearest_neighbors     4.870390e+01  51.011694   
+maximum_distance_of_n20_nearest_neighbors     6.289321e+01  68.071133   
+average_distance_of_n20_nearest_neighbors     4.870390e+01  51.011694   
+distance_to_most_distant_other                6.289321e+01  68.071133   
+touch_portion_above_0_neighbor_count          3.000000e+00   3.000000   
+touch_portion_above_0.16_neighbor_count       3.000000e+00   3.000000   
+touch_portion_above_0.2_neighbor_count        3.000000e+00   3.000000   
+touch_portion_above_0.33_neighbor_count       2.000000e+00   3.000000   
+touch_portion_above_0.5_neighbor_count        0.000000e+00   0.000000   
+touch_portion_above_0.75_neighbor_count       0.000000e+00   0.000000   
+touch_count_sum                               6.000000e+01  80.000000   
+minimum_touch_count                           2.000000e+01  20.000000   
+maximum_touch_count                           2.000000e+01  40.000000   
+minimum_touch_portion                         3.333333e-01   0.333333   
+maximum_touch_portion                         3.333333e-01   0.416667   
+standard_deviation_touch_portion              2.980232e-08   0.083333   
+
+                                                     max  
+label                                           7.000000  
+touching_neighbor_count                         6.000000  
+minimum_distance_of_touching_neighbors         36.055511  
+average_distance_of_touching_neighbors         40.376575  
+maximum_distance_of_touching_neighbors         43.843155  
+max_min_distance_ratio_of_touching_neighbors    1.612452  
+proximal_neighbor_count_d10                     0.000000  
+proximal_neighbor_count_d20                     0.000000  
+proximal_neighbor_count_d40                     6.000000  
+proximal_neighbor_count_d80                     6.000000  
+proximal_neighbor_count_d160                    6.000000  
+maximum_distance_of_n1_nearest_neighbors       36.055511  
+average_distance_of_n1_nearest_neighbors       36.055511  
+maximum_distance_of_n2_nearest_neighbors       41.231056  
+average_distance_of_n2_nearest_neighbors       38.643284  
+maximum_distance_of_n3_nearest_neighbors       43.843155  
+average_distance_of_n3_nearest_neighbors       40.376572  
+maximum_distance_of_n4_nearest_neighbors       60.827621  
+average_distance_of_n4_nearest_neighbors       45.489334  
+maximum_distance_of_n5_nearest_neighbors       64.031242  
+average_distance_of_n5_nearest_neighbors       49.197720  
+maximum_distance_of_n6_nearest_neighbors       72.111023  
+average_distance_of_n6_nearest_neighbors       53.016602  
+maximum_distance_of_n7_nearest_neighbors       72.111023  
+average_distance_of_n7_nearest_neighbors       55.887230  
+maximum_distance_of_n8_nearest_neighbors       72.111023  
+average_distance_of_n8_nearest_neighbors       55.887230  
+maximum_distance_of_n10_nearest_neighbors      72.111023  
+average_distance_of_n10_nearest_neighbors      55.887230  
+maximum_distance_of_n20_nearest_neighbors      72.111023  
+average_distance_of_n20_nearest_neighbors      55.887230  
+distance_to_most_distant_other                 72.111023  
+touch_portion_above_0_neighbor_count            6.000000  
+touch_portion_above_0.16_neighbor_count         6.000000  
+touch_portion_above_0.2_neighbor_count          6.000000  
+touch_portion_above_0.33_neighbor_count         6.000000  
+touch_portion_above_0.5_neighbor_count          0.000000  
+touch_portion_above_0.75_neighbor_count         0.000000  
+touch_count_sum                               160.000000  
+minimum_touch_count                            20.000000  
+maximum_touch_count                            40.000000  
+minimum_touch_portion                           0.333333  
+maximum_touch_portion                           0.500000  
+standard_deviation_touch_portion                0.111111  
+#+end_example
+
+<<734c41d1-32b4-4ea2-9535-a88fa263db71>>
+The following code snippets show how we can interpret that table. All
+examples refer to the labeled object =7= in the center of the label
+image shown above.
+
+<<e19217a5-d478-464d-b6e7-51582176c985>>
+#+begin_src python
+print("The label of the last object is", 
+      stats["label"].tolist()[-1])
+#+end_src
+
+#+begin_example
+The label of the last object is 7
+#+end_example
+
+<<52f9eded-4d92-406e-888b-01f7bdd21ae3>>
+#+begin_src python
+print("The last object has", 
+      stats["touching_neighbor_count"].tolist()[-1],
+     "touching neighbors")
+#+end_src
+
+#+begin_example
+The last object has 6.0 touching neighbors
+#+end_example
+
+<<b17dbf55-a7d8-44b7-a03a-afd871ea2aec>>
+#+begin_src python
+print("The maximum distance of any label centroid to any other is", 
+      stats["maximum_distance_of_touching_neighbors"].max())
+#+end_src
+
+#+begin_example
+The maximum distance of any label centroid to any other is 43.843155
+#+end_example
+
+<<73567a74-b83e-4a9b-b8e0-9898cdc1846a>>
+#+begin_src python
+print("The last object has an average distance to its touching neighbors of",
+     stats["average_distance_of_touching_neighbors"].tolist()[-1]
+     )
+#+end_src
+
+#+begin_example
+The last object has an average distance to its touching neighbors of 33.329612731933594
+#+end_example
+
+<<3c187b25-c606-4260-84d8-ab5b521f68ed>>
+#+begin_src python
+print("The last object has an minimum distance to its touching neighbors of",
+     stats["minimum_distance_of_touching_neighbors"].tolist()[-1]
+     )
+#+end_src
+
+#+begin_example
+The last object has an minimum distance to its touching neighbors of 31.62277603149414
+#+end_example
+
+<<f9787526-fbc5-41d0-b30a-ec8f4792e2c3>>
+#+begin_src python
+print("The last object has an maximum distance to its touching neighbors of",
+     stats["maximum_distance_of_touching_neighbors"].tolist()[-1]
+     )
+#+end_src
+
+#+begin_example
+The last object has an maximum distance to its touching neighbors of 36.055511474609375
+#+end_example
+
+<<c6e78678-d763-455d-aec7-af09963a29b2>>
+#+begin_src python
+for d in [10, 20, 40, 80]:
+    print("There are",
+          stats["proximal_neighbor_count_d" + str(d)].tolist()[-1],
+          "objects around the last labeled object within a radius of",
+          d,
+          "pixels"
+         )
+#+end_src
+
+#+begin_example
+There are 0.0 objects around the last labeled object within a radius of 10 pixels
+There are 0.0 objects around the last labeled object within a radius of 20 pixels
+There are 6.0 objects around the last labeled object within a radius of 40 pixels
+There are 6.0 objects around the last labeled object within a radius of 80 pixels
+#+end_example
+
+<<7544c773-d918-4c8e-a989-21b40bfccd23>>
+#+begin_src python
+for n in [1,2,3,4,5,6]:
+    print("The " + str(n) + ". neighbor of the last label is",
+          stats["maximum_distance_of_n" + str(n) + "_nearest_neighbors"].tolist()[-1],
+          "pixels away."
+    )
+#+end_src
+
+#+begin_example
+The 1. neighbor of the last label is 31.62277603149414 pixels away.
+The 2. neighbor of the last label is 31.62277603149414 pixels away.
+The 3. neighbor of the last label is 31.62277603149414 pixels away.
+The 4. neighbor of the last label is 32.99831771850586 pixels away.
+The 5. neighbor of the last label is 36.055511474609375 pixels away.
+The 6. neighbor of the last label is 36.055511474609375 pixels away.
+#+end_example
+
+<<d9ff5a1a-2e04-41b1-954b-70f7e4b28f8f>>
+#+begin_src python
+for n in [1,2,3,4,5,6]:
+    print("The average distance to the " + str(n) + " neighbors of the last label is",
+          stats["average_distance_of_n" + str(n) + "_nearest_neighbors"].tolist()[-1],
+          "pixels."
+    )
+#+end_src
+
+#+begin_example
+The average distance to the 1 neighbors of the last label is 31.62277603149414 pixels.
+The average distance to the 2 neighbors of the last label is 31.62277603149414 pixels.
+The average distance to the 3 neighbors of the last label is 31.622777938842773 pixels.
+The average distance to the 4 neighbors of the last label is 31.966663360595703 pixels.
+The average distance to the 5 neighbors of the last label is 32.7844352722168 pixels.
+The average distance to the 6 neighbors of the last label is 33.329612731933594 pixels.
+#+end_example
+
+<<1bdc1f51-6908-4457-a8b0-0b12311d6fb2>>
+** Tocuh count and touch portion
+   :PROPERTIES:
+   :CUSTOM_ID: tocuh-count-and-touch-portion
+   :END:
+Just for reader's convenience we visualize the label image again.
+
+<<a52ec48f-c03b-4f4f-8d0f-ed5fc599419f>>
+#+begin_src python
+labels
+#+end_src
+
+#+begin_example
+cl.OCLArray([[1, 1, 1, ..., 3, 3, 3],
+       [1, 1, 1, ..., 3, 3, 3],
+       [1, 1, 1, ..., 3, 3, 3],
+       ...,
+       [5, 5, 5, ..., 4, 4, 4],
+       [5, 5, 5, ..., 4, 4, 4],
+       [5, 5, 5, ..., 4, 4, 4]], dtype=uint32)
+#+end_example
+
+<<07b6bb22-d99f-43dc-b6bb-122d6b8eeda0>>
+#+begin_src python
+print("The last labelled object has", 
+      stats["touch_count_sum"].tolist()[-1],
+      "pixels where it touches others")
+#+end_src
+
+#+begin_example
+The last labelled object has 160.0 pixels where it touches others
+#+end_example
+
+<<c3948bdf-fbf3-453f-917d-bb6f442cc1b8>>
+#+begin_src python
+print("The last labelled object touches an other object with at least", 
+      stats["minimum_touch_count"].tolist()[-1],
+      "pixels")
+#+end_src
+
+#+begin_example
+The last labelled object touches an other object with at least 20.0 pixels
+#+end_example
+
+<<c35a35a1-3f23-4395-8a90-00b72ab17fae>>
+#+begin_src python
+print("The last labelled object touches an other object with up to", 
+      stats["maximum_touch_count"].tolist()[-1],
+      "pixels")
+#+end_src
+
+#+begin_example
+The last labelled object touches an other object with up to 40.0 pixels
+#+end_example
+
+<<22d28dbb-c13a-45be-a542-07a1d52f1873>>
+#+begin_src python
+print("The last labelled object touches an other object with at least", 
+      stats["minimum_touch_portion"].tolist()[-1] * 100,
+      "percent of its border")
+#+end_src
+
+#+begin_example
+The last labelled object touches an other object with at least 12.5 percent of its border
+#+end_example
+
+<<68498ed8-664a-414b-8145-9d0968aae32f>>
+#+begin_src python
+print("The last labelled object touches an other object with up to", 
+      stats["maximum_touch_portion"].tolist()[-1] * 100,
+      "percent of its border")
+#+end_src
+
+#+begin_example
+The last labelled object touches an other object with up to 25.0 percent of its border
+#+end_example
+
+<<e0534b4f-2784-4c53-b4ca-f4e8b980e2a4>>
+** Visualization of statistics
+   :PROPERTIES:
+   :CUSTOM_ID: visualization-of-statistics
+   :END:
+We can visualize those measurements in parametric map images.
+
+For visualization of the table columns as maps, we typically need to
+prefix the measurements with a =0=. This =0= represents the measurement
+of the background.
+
+<<27f65f82-e567-4d44-aeed-72911698b61c>>
+#+begin_src python
+stats["touching_neighbor_count"].tolist()
+#+end_src
+
+#+begin_example
+[3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 6.0]
+#+end_example
+
+<<2011c972-feeb-4588-af55-7d03b78e79e8>>
+#+begin_src python
+list_of_measurements = cle.prefix_in_x([stats["touching_neighbor_count"].tolist()])
+list_of_measurements
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0., 3., 3., 3., 3., 3., 3., 6.]], dtype=float32)
+#+end_example
+
+<<e6d09d49-a594-4acf-ae6c-36218276dd5f>>
+#+begin_src python
+cle.replace_intensities(labels, list_of_measurements)
+#+end_src
+
+#+begin_example
+cl.OCLArray([[3., 3., 3., ..., 3., 3., 3.],
+       [3., 3., 3., ..., 3., 3., 3.],
+       [3., 3., 3., ..., 3., 3., 3.],
+       ...,
+       [3., 3., 3., ..., 3., 3., 3.],
+       [3., 3., 3., ..., 3., 3., 3.],
+       [3., 3., 3., ..., 3., 3., 3.]], dtype=float32)
+#+end_example
+
+<<f47a73e6-1f9f-4fb8-98c2-70dd6fda943c>>
+As more realistic example, we visualize the measurements in an image
+stack of a Tribolium embryo. The dataset, curtesy of Daniela Vorkel /
+Myers lab / MPI-CBG / CSBD can be
+[[https://github.com/clEsperanto/clesperanto_example_data/blob/main/Lund-100MB.tif][downloaded
+here]].
+
+<<ed12c5ef-9cde-4b1e-a7e1-eeabe8439130>>
+#+begin_src python
+embryo = imread("../../../clesperanto_example_data/Lund-100MB.tif")[3]
+
+bg_subtracted = cle.top_hat_box(embryo, radius_x=5, radius_y=5)
+
+nuclei_labels = cle.voronoi_otsu_labeling(bg_subtracted, spot_sigma=0.5, outline_sigma=1)
+
+cell_estimation = cle.dilate_labels(nuclei_labels, radius=12)
+#+end_src
+
+<<21bfab9d-baee-4b6e-8320-a981b7b7e1b9>>
+#+begin_src python
+fig, axs = plt.subplots(1, 4, figsize=(10,10))
+
+axs[0].set_title("Raw")
+cle.imshow(embryo, plot=axs[0])
+axs[1].set_title("Background subtracted")
+cle.imshow(bg_subtracted, plot=axs[1])
+axs[2].set_title("Nuclei segmentation")
+cle.imshow(nuclei_labels, plot=axs[2], labels=True)
+axs[3].set_title("Cell estimation")
+cle.imshow(cell_estimation, plot=axs[3], labels=True)
+#+end_src
+
+[[file:125bfaa6fa54fc9ce10777ffeafe76ab8e04bdc0.png]]
+
+<<0620605a-9b59-42d3-bfe9-fa7d2f540569>>
+#+begin_src python
+tribolium_statistics = pd.DataFrame(cle.statistics_of_labelled_neighbors(cell_estimation))
+tribolium_statistics.head()
+#+end_src
+
+#+begin_example
+   label  touching_neighbor_count  minimum_distance_of_touching_neighbors  \
+0      1                     11.0                               10.348568   
+1      2                      4.0                                9.680110   
+2      3                      7.0                                7.612343   
+3      4                      4.0                                9.382964   
+4      5                      8.0                                9.382964   
+
+   average_distance_of_touching_neighbors  \
+0                               15.763863   
+1                               11.968576   
+2                               13.007790   
+3                               11.711300   
+4                               13.527851   
+
+   maximum_distance_of_touching_neighbors  proximal_neighbor_count_d10  \
+0                               25.492878                          0.0   
+1                               15.206567                          1.0   
+2                               15.458411                          1.0   
+3                               13.744253                          1.0   
+4                               17.916573                          1.0   
+
+   proximal_neighbor_count_d20  proximal_neighbor_count_d40  \
+0                          9.0                         42.0   
+1                          5.0                         26.0   
+2                          7.0                         44.0   
+3                          9.0                         39.0   
+4                          8.0                         37.0   
+
+   proximal_neighbor_count_d80  proximal_neighbor_count_d160  ...  \
+0                        195.0                         665.0  ...   
+1                        149.0                         568.0  ...   
+2                        201.0                         690.0  ...   
+3                        190.0                         648.0  ...   
+4                        180.0                         620.0  ...   
+
+   average_distance_of_n10_nearest_neighbors  \
+0                                  15.164477   
+1                                  19.315979   
+2                                  16.436604   
+3                                  15.705339   
+4                                  15.669672   
+
+   maximum_distance_of_n20_nearest_neighbors  \
+0                                  27.046114   
+1                                  35.638351   
+2                                  28.811810   
+3                                  28.550455   
+4                                  29.883175   
+
+   average_distance_of_n20_nearest_neighbors  distance_to_most_distant_other  \
+0                                  20.066113                      482.901642   
+1                                  25.482178                      505.435364   
+2                                  21.466221                      473.300323   
+3                                  20.369110                      486.618164   
+4                                  21.231649                      494.449829   
+
+   touch_count_sum  minimum_touch_count  maximum_touch_count  \
+0           1586.0                 12.0                373.0   
+1           1077.0                 38.0                486.0   
+2            632.0                  4.0                308.0   
+3            584.0                 48.0                214.0   
+4           1499.0                 15.0                420.0   
+
+   minimum_touch_portion  maximum_touch_portion  \
+0               0.007566               0.235183   
+1               0.035283               0.451253   
+2               0.006329               0.487342   
+3               0.082192               0.366438   
+4               0.010007               0.280187   
+
+   standard_deviation_touch_portion  
+0                          0.065240  
+1                          0.117224  
+2                          0.100555  
+3                          0.085616  
+4                          0.067357  
+
+[5 rows x 37 columns]
+#+end_example
+
+<<cc2ec4f6-02c5-4600-8d9b-42517ff87e94>>
+#+begin_src python
+def visualize(label_image, statistics, column):
+    list_of_measurements = cle.prefix_in_x([statistics[column].tolist()])
+    
+    return cle.replace_intensities(label_image, list_of_measurements)
+#+end_src
+
+<<ea87ecbd-4757-467e-aa0d-548eceffa58d>>
+#+begin_src python
+visualize(cell_estimation, tribolium_statistics, "label")
+#+end_src
+
+#+begin_example
+cl.OCLArray([[[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       ...,
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]]], dtype=float32)
+#+end_example
+
+<<0a938830-fa56-4eea-b868-8860b0475696>>
+*** Number of touching neighbors and proximal neighbors
+    :PROPERTIES:
+    :CUSTOM_ID: number-of-touching-neighbors-and-proximal-neighbors
+    :END:
+
+<<368cb0a1-24e4-454b-a92c-e628c55ecbf3>>
+#+begin_src python
+visualize(cell_estimation, tribolium_statistics, "touching_neighbor_count")
+#+end_src
+
+#+begin_example
+cl.OCLArray([[[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       ...,
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]]], dtype=float32)
+#+end_example
+
+<<7c4df2d9-7b6e-4924-a947-d72a5d579934>>
+#+begin_src python
+visualize(cell_estimation, tribolium_statistics, "proximal_neighbor_count_d10")
+#+end_src
+
+#+begin_example
+cl.OCLArray([[[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       ...,
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]]], dtype=float32)
+#+end_example
+
+<<81219e01-ac2c-4a9e-a7c3-6fdd151f6ecc>>
+#+begin_src python
+visualize(cell_estimation, tribolium_statistics, "proximal_neighbor_count_d20")
+#+end_src
+
+#+begin_example
+cl.OCLArray([[[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       ...,
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]]], dtype=float32)
+#+end_example
+
+<<a1e2c91e-d1c4-4a24-9e71-422f81111e86>>
+#+begin_src python
+visualize(cell_estimation, tribolium_statistics, "proximal_neighbor_count_d40")
+#+end_src
+
+#+begin_example
+cl.OCLArray([[[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       ...,
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]]], dtype=float32)
+#+end_example
+
+<<2cc75c39-15ae-4034-b9c1-8bd4082eb146>>
+*** Distances to touching neighbors
+    :PROPERTIES:
+    :CUSTOM_ID: distances-to-touching-neighbors
+    :END:
+
+<<02878043-cf73-4ac3-8531-2b23e934dcde>>
+#+begin_src python
+visualize(cell_estimation, tribolium_statistics, "minimum_distance_of_touching_neighbors")
+#+end_src
+
+#+begin_example
+cl.OCLArray([[[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       ...,
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]]], dtype=float32)
+#+end_example
+
+<<693675a0-df78-4131-9e7f-5bd2c1904d1c>>
+#+begin_src python
+visualize(cell_estimation, tribolium_statistics, "average_distance_of_touching_neighbors")
+#+end_src
+
+#+begin_example
+cl.OCLArray([[[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       ...,
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]]], dtype=float32)
+#+end_example
+
+<<6c1288b0-6e00-4c4c-9ad4-f208870f90b0>>
+#+begin_src python
+visualize(cell_estimation, tribolium_statistics, "maximum_distance_of_touching_neighbors")
+#+end_src
+
+#+begin_example
+cl.OCLArray([[[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       ...,
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]]], dtype=float32)
+#+end_example
+
+<<97777408-8516-4a51-8fcf-9863a745f8d5>>
+*** Distance to nearest neighbors
+    :PROPERTIES:
+    :CUSTOM_ID: distance-to-nearest-neighbors
+    :END:
+
+<<ac4a6ed6-9443-4536-958a-c8edf3269429>>
+#+begin_src python
+visualize(cell_estimation, tribolium_statistics, "maximum_distance_of_n1_nearest_neighbors")
+#+end_src
+
+#+begin_example
+cl.OCLArray([[[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       ...,
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]]], dtype=float32)
+#+end_example
+
+<<d006f8c0-2637-47a5-9a83-f2434ab198ee>>
+#+begin_src python
+visualize(cell_estimation, tribolium_statistics, "maximum_distance_of_n6_nearest_neighbors")
+#+end_src
+
+#+begin_example
+cl.OCLArray([[[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       ...,
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]]], dtype=float32)
+#+end_example
+
+<<09451225-0da1-4609-ac2e-bf2d5cdc0710>>
+#+begin_src python
+visualize(cell_estimation, tribolium_statistics, "maximum_distance_of_n10_nearest_neighbors")
+#+end_src
+
+#+begin_example
+cl.OCLArray([[[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       ...,
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]]], dtype=float32)
+#+end_example
+
+<<30e65657-d813-4f06-8581-404650503532>>
+*** Distance to the most distant other label
+    :PROPERTIES:
+    :CUSTOM_ID: distance-to-the-most-distant-other-label
+    :END:
+
+<<6d8584f2-b470-461c-b01a-35a442e1a034>>
+#+begin_src python
+visualize(cell_estimation, tribolium_statistics, "distance_to_most_distant_other")
+#+end_src
+
+#+begin_example
+cl.OCLArray([[[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       ...,
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]]], dtype=float32)
+#+end_example
+
+<<0101dee8-43db-4b17-b099-ee9df5f9b149>>
+*** Touch count
+    :PROPERTIES:
+    :CUSTOM_ID: touch-count
+    :END:
+Touch count is the number of voxels labels touch others.
+
+<<32cf884f-4125-40c1-a1c0-7c788fcaac61>>
+#+begin_src python
+visualize(cell_estimation, tribolium_statistics, "touch_count_sum")
+#+end_src
+
+#+begin_example
+cl.OCLArray([[[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       ...,
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]]], dtype=float32)
+#+end_example
+
+<<74dba3d1-346d-4e04-8872-cc627048f1a8>>
+#+begin_src python
+visualize(cell_estimation, tribolium_statistics, "minimum_touch_count")
+#+end_src
+
+#+begin_example
+cl.OCLArray([[[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       ...,
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]]], dtype=float32)
+#+end_example
+
+<<f483ff3c-182a-4029-bbe6-aa2b60960f25>>
+#+begin_src python
+visualize(cell_estimation, tribolium_statistics, "maximum_touch_count")
+#+end_src
+
+#+begin_example
+cl.OCLArray([[[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       ...,
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]]], dtype=float32)
+#+end_example
+
+<<8edd095a-e9b1-4f7f-a72f-d7240b0db4f0>>
+*** Touch portion
+    :PROPERTIES:
+    :CUSTOM_ID: touch-portion
+    :END:
+Touch portion is the relative amount of pixels where objects touch one
+other object divided by the number of all pixels where the object
+touches others.
+
+<<7a900a57-640f-4dd7-988d-6bee8f9ff72a>>
+#+begin_src python
+visualize(cell_estimation, tribolium_statistics, "minimum_touch_portion")
+#+end_src
+
+#+begin_example
+cl.OCLArray([[[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       ...,
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]]], dtype=float32)
+#+end_example
+
+<<5ffa76f0-0204-4cb7-867d-32af5192d719>>
+#+begin_src python
+visualize(cell_estimation, tribolium_statistics, "maximum_touch_portion")
+#+end_src
+
+#+begin_example
+cl.OCLArray([[[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       ...,
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]]], dtype=float32)
+#+end_example
+
+<<08ab71b0-88b3-4b12-b37e-c579e4b4d0d0>>
+#+begin_src python
+visualize(cell_estimation, tribolium_statistics, "standard_deviation_touch_portion")
+#+end_src
+
+#+begin_example
+cl.OCLArray([[[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       ...,
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]],
+
+       [[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]]], dtype=float32)
+#+end_example
+
+<<7adbd75a-cdb4-46f0-a858-8795b8f8c081>>
+#+begin_src python
+#+end_src

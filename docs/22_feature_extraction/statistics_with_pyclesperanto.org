@@ -1,0 +1,233 @@
+* Basic statistics with pyclesperanto
+  :PROPERTIES:
+  :CUSTOM_ID: basic-statistics-with-pyclesperanto
+  :END:
+A common use case for image processing in the biology context is
+deriving statistics of segmented objects. clEsperanto offers a function
+for that:
+[[https://clij.github.io/clij2-docs/reference_statisticsOfLabelledPixels][statistics_of_labelled_pixels]].
+
+#+begin_src python
+import pyclesperanto_prototype as cle
+
+import pandas as pd
+from skimage.io import imread, imsave, imshow
+import matplotlib
+import numpy as np
+
+# initialize GPU
+cle.select_device("RTX")
+#+end_src
+
+#+begin_example
+<Apple M1 Max on Platform: Apple (2 refs)>
+#+end_example
+
+#+begin_src python
+# load data
+image = imread('../../data/blobs.tif')
+
+# segment the image
+labels = cle.voronoi_otsu_labeling(image, spot_sigma=3.5)
+cle.imshow(labels, labels=True)
+#+end_src
+
+[[file:e3b447fef7bd897ccf9cdd5d59817236afd7c84d.png]]
+
+** Deriving basic statistics of labelled objects
+   :PROPERTIES:
+   :CUSTOM_ID: deriving-basic-statistics-of-labelled-objects
+   :END:
+
+#+begin_src python
+statistics = cle.statistics_of_labelled_pixels(image, labels)
+statistics.keys()
+#+end_src
+
+#+begin_example
+dict_keys(['label', 'original_label', 'bbox_min_x', 'bbox_min_y', 'bbox_min_z', 'bbox_max_x', 'bbox_max_y', 'bbox_max_z', 'bbox_width', 'bbox_height', 'bbox_depth', 'min_intensity', 'max_intensity', 'sum_intensity', 'area', 'mean_intensity', 'sum_intensity_times_x', 'mass_center_x', 'sum_intensity_times_y', 'mass_center_y', 'sum_intensity_times_z', 'mass_center_z', 'sum_x', 'centroid_x', 'sum_y', 'centroid_y', 'sum_z', 'centroid_z', 'sum_distance_to_centroid', 'mean_distance_to_centroid', 'sum_distance_to_mass_center', 'mean_distance_to_mass_center', 'standard_deviation_intensity', 'max_distance_to_centroid', 'max_distance_to_mass_center', 'mean_max_distance_to_centroid_ratio', 'mean_max_distance_to_mass_center_ratio'])
+#+end_example
+
+We can use [[https://pandas.pydata.org/][pandas]] to process that kind
+of tabular data.
+
+#+begin_src python
+table = pd.DataFrame(statistics)
+table
+#+end_src
+
+#+begin_example
+    label  original_label  bbox_min_x  bbox_min_y  bbox_min_z  bbox_max_x  \
+0       1               1         0.0        81.0         0.0        19.0   
+1       2               2         0.0       129.0         0.0        16.0   
+2       3               3         3.0        39.0         0.0        13.0   
+3       4               4         5.0       156.0         0.0        27.0   
+4       5               5        10.0         0.0         0.0        35.0   
+..    ...             ...         ...         ...         ...         ...   
+56     57              57       236.0         0.0         0.0       255.0   
+57     58              58       244.0        94.0         0.0       255.0   
+58     59              59       250.0       123.0         0.0       255.0   
+59     60              60       233.0       136.0         0.0       255.0   
+60     61              61       250.0       192.0         0.0       255.0   
+
+    bbox_max_y  bbox_max_z  bbox_width  bbox_height  ...  centroid_z  \
+0        114.0         0.0        20.0         34.0  ...         0.0   
+1        150.0         0.0        17.0         22.0  ...         0.0   
+2         51.0         0.0        11.0         13.0  ...         0.0   
+3        181.0         0.0        23.0         26.0  ...         0.0   
+4         29.0         0.0        26.0         30.0  ...         0.0   
+..         ...         ...         ...          ...  ...         ...   
+56        29.0         0.0        20.0         30.0  ...         0.0   
+57       115.0         0.0        12.0         22.0  ...         0.0   
+58       127.0         0.0         6.0          5.0  ...         0.0   
+59       167.0         0.0        23.0         32.0  ...         0.0   
+60       209.0         0.0         6.0         18.0  ...         0.0   
+
+    sum_distance_to_centroid  mean_distance_to_centroid  \
+0                5287.089844                   9.475071   
+1                2064.469482                   6.702823   
+2                 463.362244                   4.064581   
+3                3969.405273                   8.304195   
+4                4421.953613                   9.136268   
+..                       ...                        ...   
+56               4585.168457                   8.903239   
+57               1184.635986                   5.807039   
+58                 53.630829                   1.986327   
+59               4798.240234                   9.174456   
+60                359.631714                   4.230961   
+
+    sum_distance_to_mass_center  mean_distance_to_mass_center  \
+0                   5299.439941                      9.497204   
+1                   2064.989746                      6.704512   
+2                    463.446014                      4.065316   
+3                   3969.532715                      8.304461   
+4                   4421.724121                      9.135794   
+..                          ...                           ...   
+56                  4598.605957                      8.929332   
+57                  1188.550781                      5.826229   
+58                    53.704212                      1.989045   
+59                  4810.059082                      9.197054   
+60                   360.904083                      4.245930   
+
+    standard_deviation_intensity  max_distance_to_centroid  \
+0                      37.766109                 17.577013   
+1                      37.528027                 11.395502   
+2                      26.381859                  6.690430   
+3                      43.438278                 13.714880   
+4                      37.722134                 20.016039   
+..                           ...                       ...   
+56                     40.097881                 16.315195   
+57                     40.151653                 12.327801   
+58                     18.981472                  3.287124   
+59                     41.817959                 19.726730   
+60                     43.186157                  8.888371   
+
+    max_distance_to_mass_center  mean_max_distance_to_centroid_ratio  \
+0                     17.626616                             1.855080   
+1                     11.287270                             1.700105   
+2                      6.719399                             1.646032   
+3                     13.820534                             1.651560   
+4                     19.977444                             2.190833   
+..                          ...                                  ...   
+56                    15.981338                             1.832501   
+57                    12.012736                             2.122906   
+58                     3.216963                             1.654876   
+59                    19.146832                             2.150180   
+60                     8.803941                             2.100792   
+
+    mean_max_distance_to_mass_center_ratio  
+0                                 1.855979  
+1                                 1.683533  
+2                                 1.652860  
+3                                 1.664230  
+4                                 2.186722  
+..                                     ...  
+56                                1.789757  
+57                                2.061837  
+58                                1.617341  
+59                                2.081844  
+60                                2.073501  
+
+[61 rows x 37 columns]
+#+end_example
+
+#+begin_src python
+table.describe()
+#+end_src
+
+#+begin_example
+           label  original_label  bbox_min_x  bbox_min_y  bbox_min_z  \
+count  61.000000       61.000000   61.000000   61.000000        61.0   
+mean   31.000000       31.000000  128.245895  113.409836         0.0   
+std    17.752934       17.752934   77.687981   74.343658         0.0   
+min     1.000000        1.000000    0.000000    0.000000         0.0   
+25%    16.000000       16.000000   58.000000   58.000000         0.0   
+50%    31.000000       31.000000  129.000000  113.000000         0.0   
+75%    46.000000       46.000000  199.000000  166.000000         0.0   
+max    61.000000       61.000000  250.000000  249.000000         0.0   
+
+       bbox_max_x  bbox_max_y  bbox_max_z  bbox_width  bbox_height  ...  \
+count   61.000000   61.000000        61.0   61.000000    61.000000  ...   
+mean   148.836060  135.672134         0.0   21.590164    23.262295  ...   
+std     76.843819   73.211273         0.0    6.502248     8.152508  ...   
+min     13.000000   23.000000         0.0    6.000000     5.000000  ...   
+25%     75.000000   75.000000         0.0   17.000000    20.000000  ...   
+50%    148.000000  136.000000         0.0   21.000000    23.000000  ...   
+75%    212.000000  196.000000         0.0   25.000000    28.000000  ...   
+max    255.000000  253.000000         0.0   42.000000    52.000000  ...   
+
+       centroid_z  sum_distance_to_centroid  mean_distance_to_centroid  \
+count        61.0                 61.000000                  61.000000   
+mean          0.0               3504.359375                   7.510857   
+std           0.0               2726.386963                   2.190415   
+min           0.0                 53.630829                   1.986327   
+25%           0.0               1617.387451                   6.126468   
+50%           0.0               3057.676758                   7.606161   
+75%           0.0               4890.122070                   9.136268   
+max           0.0              13825.639648                  13.825640   
+
+       sum_distance_to_mass_center  mean_distance_to_mass_center  \
+count                    61.000000                     61.000000   
+mean                   3505.712891                      7.514835   
+std                    2726.795654                      2.189549   
+min                      53.704212                      1.989045   
+25%                    1617.882080                      6.128341   
+50%                    3057.704346                      7.606230   
+75%                    4891.035156                      9.135794   
+max                   13824.682617                     13.824682   
+
+       standard_deviation_intensity  max_distance_to_centroid  \
+count                     61.000000                 61.000000   
+mean                      38.998928                 13.153982   
+std                        6.226861                  4.019384   
+min                       18.981472                  3.287124   
+25%                       36.568157                 10.284315   
+50%                       39.194824                 12.852437   
+75%                       43.016975                 15.419342   
+max                       51.311035                 26.949856   
+
+       max_distance_to_mass_center  mean_max_distance_to_centroid_ratio  \
+count                    61.000000                            61.000000   
+mean                     13.143246                             1.757816   
+std                       4.042030                             0.184103   
+min                       3.216963                             1.556777   
+25%                      10.368382                             1.635635   
+50%                      12.946156                             1.700105   
+75%                      15.526697                             1.791790   
+max                      27.543896                             2.234677   
+
+       mean_max_distance_to_mass_center_ratio  
+count                               61.000000  
+mean                                 1.754179  
+std                                  0.177547  
+min                                  1.558537  
+25%                                  1.617460  
+50%                                  1.697701  
+75%                                  1.802883  
+max                                  2.248647  
+
+[8 rows x 37 columns]
+#+end_example
+
+#+begin_src python
+#+end_src

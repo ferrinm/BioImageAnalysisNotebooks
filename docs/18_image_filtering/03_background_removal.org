@@ -1,0 +1,170 @@
+(image-filtering:background_removal=)
+
+* Background removal filters
+  :PROPERTIES:
+  :CUSTOM_ID: background-removal-filters
+  :END:
+There are also background removal filters. If there is a more or less
+homogeneous intensity spread over the whole image, potentially
+increasing in a direction, it is recommended to remove this background
+before segmenting the image.
+
+#+begin_src python
+import numpy as np
+from skimage.io import imread
+from pyclesperanto_prototype import imshow
+from skimage.filters import gaussian
+from skimage.restoration import rolling_ball 
+from skimage.morphology import disk
+import matplotlib.pyplot as plt
+from skimage.filters import difference_of_gaussians
+from skimage.morphology import white_tophat
+#+end_src
+
+As example image, we will work with a zebrafish eye data set (Courtesy
+of Mauricio Rocha Martins, Norden lab, MPI CBG). As you can see, there
+is some intensity spread around the nuclei we want to segment later on.
+The source of this background signal is out-of-focus light.
+
+#+begin_src python
+# load zfish image and extract a channel
+zfish_image = imread('../../data/zfish_eye.tif')[:,:,0]
+
+imshow(zfish_image)
+#+end_src
+
+[[file:6f473baebff1367e986141bcc7b7916f38bd13a3.png]]
+
+To subtract the background, we need to determine it first. We can use
+the
+[[https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_rolling_ball.html][rolling-ball
+algorithm]] for that. The radius parameter configures how distant pixels
+should be taken into account for determining the background intensity.
+
+#+begin_src python
+background_rolling = rolling_ball(zfish_image, radius=25)
+
+imshow(background_rolling)
+#+end_src
+
+[[file:039cc668b02965975c52a1fb2af9fa933d82eff2.png]]
+
+Afterwards, we subtract the background from the original and display all
+three images:
+
+#+begin_src python
+zfish_rolling = zfish_image - background_rolling
+
+fig, axs = plt.subplots(1, 3, figsize=(15,10))
+
+# first row
+imshow(zfish_image, plot=axs[0])
+axs[0].set_title("Original")
+imshow(background_rolling, plot=axs[1])
+axs[1].set_title("Background (rolling ball)")
+imshow(zfish_rolling, plot=axs[2])
+axs[2].set_title("Background subtracted")
+#+end_src
+
+#+begin_example
+Text(0.5, 1.0, 'Background subtracted')
+#+end_example
+
+[[file:4c9b47362c8a329dbd857e3295a87c9a1e6a8969.png]]
+
+We could do the same using a Gaussian blur filter.
+
+#+begin_src python
+background_gaussian = gaussian(zfish_image, sigma=20, preserve_range=True)
+
+zfish_gaussian = zfish_image - background_gaussian
+
+fig, axs = plt.subplots(1, 3, figsize=(15,10))
+
+# first row
+imshow(zfish_image, plot=axs[0])
+axs[0].set_title("Original")
+imshow(background_gaussian, plot=axs[1])
+axs[1].set_title("Background (Gaussian)")
+imshow(zfish_gaussian, plot=axs[2])
+axs[2].set_title("Background subtracted")
+#+end_src
+
+#+begin_example
+Text(0.5, 1.0, 'Background subtracted')
+#+end_example
+
+[[file:74b3c53de17308d97651b23cc0a4c371e95d22b9.png]]
+
+In some scenarios it also makes sense to divide the image by the
+background. This helps for example to make all nuclei in this image have
+similar intensities. This could be advantageous for nuclei segmentation.
+
+#+begin_src python
+background_gaussian = gaussian(zfish_image, sigma=50, preserve_range=True)
+
+zfish_gaussian = zfish_image / background_gaussian
+
+fig, axs = plt.subplots(1, 3, figsize=(15,10))
+
+# first row
+imshow(zfish_image, plot=axs[0])
+axs[0].set_title("Original")
+imshow(background_gaussian, plot=axs[1])
+axs[1].set_title("Background (Gaussian)")
+imshow(zfish_gaussian, plot=axs[2])
+axs[2].set_title("Background divided")
+#+end_src
+
+#+begin_example
+Text(0.5, 1.0, 'Background divided')
+#+end_example
+
+[[file:7861f832d4eef6824a9a4249fd09ae063ef6d549.png]]
+
+** Other background subtraction techniques
+   :PROPERTIES:
+   :CUSTOM_ID: other-background-subtraction-techniques
+   :END:
+There are other techniques for background subtraction such as the
+[[https://scikit-image.org/docs/dev/auto_examples/applications/plot_morphology.html#white-tophat][top-hat]].
+Furthermore, the
+[[https://scikit-image.org/docs/stable/auto_examples/filters/plot_dog.html][Difference
+of Gaussians (DoG)]] is a technique for combined denoising and
+background removal.
+
+#+begin_src python
+# DoG
+
+zfish_dog = difference_of_gaussians(zfish_image, 0, 15)
+
+# Top-Hat
+zfish_top_hat = white_tophat(zfish_image, disk(15))
+
+fig, axs = plt.subplots(1, 3, figsize=(15,10))
+
+# first row
+imshow(zfish_dog, plot=axs[0], min_display_intensity=0)
+axs[0].set_title("Difference of Gaussian")
+imshow(zfish_top_hat, plot=axs[1])
+axs[1].set_title("Top hat")
+imshow(zfish_rolling, plot=axs[2])
+axs[2].set_title("Rolling ball algorithm")
+#+end_src
+
+#+begin_example
+Text(0.5, 1.0, 'Rolling ball algorithm')
+#+end_example
+
+[[file:690eb6adc864c2eac71580d03d7d6397f5b48519.png]]
+
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Apply different algorithms and radii to remove the background in the
+zebrafish eye dataset. Zoom into the dataset using cropping and figure
+out how to make the background go away optimally.
+
+#+begin_src python
+#+end_src

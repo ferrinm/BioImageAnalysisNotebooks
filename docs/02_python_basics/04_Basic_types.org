@@ -1,0 +1,305 @@
+<<5fa37873>>
+* Basic types in python
+  :PROPERTIES:
+  :CUSTOM_ID: basic-types-in-python
+  :END:
+Variables in python can hold different types of numbers and also other
+things such as text, images and more complex objects.
+
+We can also print out the type of a variable.
+
+See also
+
+- [[https://docs.python.org/3/library/stdtypes.html][Built-in types in
+  python]]
+- [[https://realpython.com/python-data-types/][Basic types in python]]
+
+This is an integer number:
+
+<<e95849c6>>
+#+begin_src python
+a = 5
+#+end_src
+
+<<a263822b>>
+#+begin_src python
+type(a)
+#+end_src
+
+#+begin_example
+int
+#+end_example
+
+<<3a6be7b8>>
+And this is a floating point variable:
+
+<<a516e7c1>>
+#+begin_src python
+b = 3.5
+#+end_src
+
+<<66661ed1>>
+#+begin_src python
+type(b)
+#+end_src
+
+#+begin_example
+float
+#+end_example
+
+<<99aec830>>
+When combining variables of different types, Python makes a decision
+which type the new variable should have
+
+<<2f182cd9>>
+#+begin_src python
+c = a + b
+#+end_src
+
+<<c6e68377>>
+#+begin_src python
+type(c)
+#+end_src
+
+#+begin_example
+float
+#+end_example
+
+<<933a5b96>>
+* Strings
+  :PROPERTIES:
+  :CUSTOM_ID: strings
+  :END:
+Variables can also hold text. We call them a "string" in this case, and
+define them by surrounding the value with either single quotes =' '= or
+double quotes =" "=:
+
+<<d233f613>>
+#+begin_src python
+first_name = "Robert"
+last_name = 'Haase'
+#+end_src
+
+<<b6d41406>>
+Strings can be concatenated using the =+= operator:
+
+<<b420698c>>
+#+begin_src python
+first_name + last_name
+#+end_src
+
+#+begin_example
+'RobertHaase'
+#+end_example
+
+<<a3d6173d>>
+#+begin_src python
+first_name + " " + last_name
+#+end_src
+
+#+begin_example
+'Robert Haase'
+#+end_example
+
+<<1ec0678e>>
+If we want to have single and double quotation marks within our text, we
+can put them in like this:
+
+<<795ae689>>
+#+begin_src python
+text = "She said 'Hi'."
+print(text)
+#+end_src
+
+#+begin_example
+She said 'Hi'.
+#+end_example
+
+<<b362013b>>
+#+begin_src python
+text = 'He said "How are you?".'
+print(text)
+#+end_src
+
+#+begin_example
+He said "How are you?".
+#+end_example
+
+<<c110ba70-d036-4710-a31d-690619387bf3>>
+#+begin_src python
+text = 'He said \'How are you?\'.'
+print(text)
+#+end_src
+
+#+begin_example
+He said 'How are you?'.
+#+end_example
+
+<<0d09f2c9>>
+** Combining strings and numbers
+   :PROPERTIES:
+   :CUSTOM_ID: combining-strings-and-numbers
+   :END:
+
+<<5429a062>>
+When combining variables of numeric types and string types, errors may
+appear:
+
+<<4698af1b>>
+#+begin_src python
+first_name + a
+#+end_src
+
+#+begin_example
+---------------------------------------------------------------------------
+TypeError                                 Traceback (most recent call last)
+Input In [12], in <cell line: 1>()
+----> 1 first_name + a
+
+TypeError: can only concatenate str (not "int") to str
+#+end_example
+
+<<9f7da8aa>>
+Those can be prevented by converting the numeric variable to a string
+type using the =str()= function:
+
+<<4dcb76f5>>
+#+begin_src python
+first_name + str(a)
+#+end_src
+
+#+begin_example
+'Robert5'
+#+end_example
+
+<<9dea8ae1>>
+You can also convert strings to numbers in case they contain numbers:
+
+<<ee227469>>
+#+begin_src python
+d = "5"
+#+end_src
+
+<<7429b783>>
+#+begin_src python
+int(d)
+#+end_src
+
+#+begin_example
+5
+#+end_example
+
+<<e504db1c>>
+#+begin_src python
+a + int(d)
+#+end_src
+
+#+begin_example
+10
+#+end_example
+
+<<7e020198>>
+If the string does not contain a number, an error message may appear:
+
+<<e30cac65>>
+#+begin_src python
+int("hello")
+#+end_src
+
+#+begin_example
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+Input In [17], in <cell line: 1>()
+----> 1 int("hello")
+
+ValueError: invalid literal for int() with base 10: 'hello'
+#+end_example
+
+<<8491727e>>
+#+begin_src python
+int("")
+#+end_src
+
+#+begin_example
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+Input In [18], in <cell line: 1>()
+----> 1 int("")
+
+ValueError: invalid literal for int() with base 10: ''
+#+end_example
+
+<<47f13c1d>>
+#+begin_src python
+int("5")
+#+end_src
+
+#+begin_example
+5
+#+end_example
+
+<<42afe2d0-54a3-499b-91c8-38e24f46b8a0>>
+** f-strings
+   :PROPERTIES:
+   :CUSTOM_ID: f-strings
+   :END:
+Instead of having to manually convert numbers to strings in order to
+assemble them with other strings, we can resort to f-strings which are
+defined by simply adding an =f= before the opening quote of a regular
+string:
+
+<<7c09db40-9744-452e-90c1-1c1e6c38e699>>
+#+begin_src python
+f"This is an f-string"
+#+end_src
+
+#+begin_example
+'This is an f-string'
+#+end_example
+
+<<12d5f1be-1e6a-4a3b-bf2d-4e1f4bdad0d9>>
+We can now add variables directly in this text by surrounding them with
+curly brackets:
+
+<<878f0760-a54b-4070-9ef6-6cad337f9579>>
+#+begin_src python
+f"This is an f-string. a's value is {a}. Doubling the value of a gives {2*a}."
+#+end_src
+
+#+begin_example
+"This is an f-string. a's value is 5. Doubling the value of a gives 10."
+#+end_example
+
+<<23524143-d78f-42a4-8900-0392b8e056b7>>
+As you can see above, f-strings can contain as many variables as needed
+and curly brackets can contain more than just a variable. We can even
+execute functions inside them:
+
+<<63495e54-2568-40d9-a6d3-ca84e86942a9>>
+#+begin_src python
+f"The first_name variable contains {first_name.lower().count('r')} r letters."
+#+end_src
+
+#+begin_example
+'The first_name variable contains 2 r letters.'
+#+end_example
+
+<<aa036de2>>
+* Exercise
+  :PROPERTIES:
+  :CUSTOM_ID: exercise
+  :END:
+[[https://en.wikipedia.org/wiki/Marie_Curie][Marie Curie's]] name and
+birthdate are stored in variables. Concatenate them in one string
+variable and print it out. The output should be "Marie Curie, * 7
+November 1867"
+
+<<3cbf8c1c>>
+#+begin_src python
+first_name = "Marie"
+last_name = "Curie"
+
+birthday_day = 7
+birthday_month = "November"
+birthday_year = 1867
+#+end_src

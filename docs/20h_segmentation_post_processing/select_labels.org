@@ -1,0 +1,141 @@
+<<687bcc7f>>
+* Select labels using machine learning
+  :PROPERTIES:
+  :CUSTOM_ID: select-labels-using-machine-learning
+  :END:
+[[https://github.com/haesleinhuepf/apoc][apoc]] allows selecting labeled
+objects according to properties such as size, shape and intensity in a
+corresponding image. In this example, we will select elongated objects
+from an instance segmentation of blobs.
+
+<<988fb38d>>
+#+begin_src python
+import apoc
+
+from skimage.io import imread
+import pyclesperanto_prototype as cle
+import numpy as np
+
+cle.select_device('RTX')
+#+end_src
+
+#+begin_example
+<NVIDIA GeForce RTX 3050 Ti Laptop GPU on Platform: NVIDIA CUDA (1 refs)>
+#+end_example
+
+<<77a11609>>
+#+begin_src python
+image = imread('../../data/blobs.tif')
+labels = cle.label(cle.threshold_otsu(image))
+annotation = imread('../../data/label_annotation.tif')
+#+end_src
+
+<<5ddb17a5>>
+#+begin_src python
+cle.imshow(image)
+cle.imshow(labels, labels=True)
+cle.imshow(annotation, labels=True)
+#+end_src
+
+[[file:2c88485d126415b770876bb0ef0f5b736b69a824.png]]
+
+[[file:c8ffe274172353730bf39a17d6b5bc60ec384326.png]]
+
+[[file:9ab9956e60e74a63625d9f97775ed32db9cb839a.png]]
+
+<<52237028>>
+** Training
+   :PROPERTIES:
+   :CUSTOM_ID: training
+   :END:
+For training the classifier, you need to specify features. In the
+following we use mean and standard deviation intensity within the
+labeled objects and the object size and shape.
+
+<<949f510e-553b-4cb6-9c61-7bba25d7d6f3>>
+#+begin_src python
+features = 'area,mean_max_distance_to_centroid_ratio,standard_deviation_intensity'
+
+cl_filename = "object_selector.cl"
+
+# Create an object classifier
+apoc.erase_classifier(cl_filename) # delete it if it was existing before
+classifier = apoc.ObjectSelector(cl_filename, positive_class_identifier=1)
+
+# train it
+classifier.train(features, labels, annotation, image)
+#+end_src
+
+<<b8bca411>>
+** Prediction
+   :PROPERTIES:
+   :CUSTOM_ID: prediction
+   :END:
+After the classifier was trained, we can use it to select objects.
+
+<<1dc4f741>>
+#+begin_src python
+result = classifier.predict(labels, image)
+
+print(result.max())
+
+cle.imshow(result, labels=True)
+#+end_src
+
+#+begin_example
+23.0
+#+end_example
+
+[[file:1076b94ee5871bb90072e12dfd2b761fb5ad54cb.png]]
+
+<<5617b86c-a88c-4ea3-8527-ca451cfb3cc4>>
+One can also load the classifier from disc and apply it to another
+dataset. We demonstrate that by applying the classifier to a rotated
+version of the image and label image from above.
+
+<<9a0baca1-c52d-4bcd-9de9-857dd37b4a78>>
+#+begin_src python
+image1 = image.T
+labels1 = cle.label(cle.threshold_otsu(image1))
+
+classifier = apoc.ObjectSelector(cl_filename)
+
+result = classifier.predict(labels1, image1)
+
+print(result.max())
+
+cle.imshow(result, labels=True)
+#+end_src
+
+#+begin_example
+23.0
+#+end_example
+
+[[file:2a9103dab9c6c46f3471af362551d3bf11a99457.png]]
+
+<<1cf5c272-c3e9-4e3f-ad7f-9bcb26a3f363>>
+After training, we can ask the classifier how important features were
+while doing the prediction.
+
+<<86296840-4622-4e0f-a47f-e25fa791b5ee>>
+#+begin_src python
+classifier.feature_importances()
+#+end_src
+
+#+begin_example
+{'area': 0.29573084473661354,
+ 'mean_max_distance_to_centroid_ratio': 0.4264564597125618,
+ 'standard_deviation_intensity': 0.27781269555082466}
+#+end_example
+
+<<e42815c8-8173-4afd-82b8-e32f8180459c>>
+* Exercise
+  :PROPERTIES:
+  :CUSTOM_ID: exercise
+  :END:
+Use the code and example images above to train a classifier that selects
+all small objects in the label image.
+
+<<61566d27-d4eb-4fe6-84c8-2d6dcd20f693>>
+#+begin_src python
+#+end_src

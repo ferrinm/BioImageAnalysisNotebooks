@@ -1,0 +1,395 @@
+<<1d3dce24-ccbc-4312-8d6f-aa5c86cc4933>>
+* Metrics to investigate segmentation quality
+  :PROPERTIES:
+  :CUSTOM_ID: metrics-to-investigate-segmentation-quality
+  :END:
+
+<<5e6f7bf5-bf06-4c3c-bc97-2dba166cf4c2>>
+When we apply a segmentation algorithm to an image, we can ask for good
+reason how good the segmentation result is. Actually, a common problem
+is that checking and improving the quality of segmentation results is
+often omitted and done rather by the the appearance of the segmentation
+result than by actually quantifying it. So lets look at different ways
+to achieve this quantification.
+
+<<8fccf5ce-24cb-47ca-bb66-8f3ca4e88ac7>>
+#+begin_src python
+from skimage.io import imread, imshow
+import napari
+from the_segmentation_game import metrics as metrics_game
+import pyclesperanto_prototype as cle
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from sklearn import metrics
+from sklearn.metrics import PrecisionRecallDisplay
+#+end_src
+
+<<d5fe10ac-2bea-4c15-99f2-095084655bd6>>
+For this, we will explore a dataset of the marine annelid Platynereis
+dumerilii from [[https://doi.org/10.5281/zenodo.1063531][Ozpolat, B. et
+al]] licensed
+by [[https://creativecommons.org/licenses/by/4.0/legalcode][CC BY 4.0]].
+We will concentrate on a single timepoint.
+
+<<d64b0b3e-b7f3-44e6-8161-dd35adf77188>>
+We already have ground truth (gt) annotations and segmentation result
+and are now just importing them.
+
+<<81ce5553-8787-4358-8191-df762a1940a4>>
+#+begin_src python
+gt = imread("../../data/Platynereis_tp7_channel1_rescaled(256x256x103)_gt.tif")
+segmentation = imread("../../data/Platynereis_tp7_channel1_rescaled(256x256x103)_voronoi_otsu_label_image.tif")
+#+end_src
+
+<<38be2107-82cb-4596-888f-6557d7eeb3cf>>
+For image visualization, we will use napari.
+
+<<12461da7-7476-4475-84e6-d3cc6ac5cc84>>
+#+begin_src python
+viewer = napari.Viewer()
+#+end_src
+
+#+begin_example
+WARNING: QWindowsWindow::setGeometry: Unable to set geometry 1086x680+1195+219 (frame: 1104x727+1186+181) on QWidgetWindow/"_QtMainWindowClassWindow" on "\\.\DISPLAY1". Resulting geometry: 905x925+1193+212 (frame: 923x972+1184+174) margins: 9, 38, 9, 9 minimum size: 374x575 MINMAXINFO maxSize=0,0 maxpos=0,0 mintrack=392,622 maxtrack=0,0)
+#+end_example
+
+<<7fddff52-d2c3-40b1-a67e-efe1da860555>>
+Now we are adding gt and segmentation result as labels to our
+napari-viewer:
+
+<<778fcf4f-681e-42e7-a3db-37eaa8787e81>>
+#+begin_src python
+viewer.add_labels(gt, name = 'Ground truth')
+viewer.add_labels(segmentation, name = 'Segmentation')
+#+end_src
+
+#+begin_example
+<Labels layer 'Segmentation' at 0x267db70ac40>
+#+end_example
+
+<<29cb213c-f915-4a2f-86da-1f68a5fb3ac0>>
+And change in the viewer from 2D to 3D view:
+
+<<cedb179e-7e7f-4874-a56e-7ef64a454559>>
+#+begin_src python
+viewer.dims.ndisplay=3
+#+end_src
+
+<<46763013-af0f-4fb4-ac05-57fb8011cbaf>>
+In gallery view, you can see on the left now our segmentation result and
+the right our gt:
+
+<<13b30408-1160-491e-8eeb-18380db3d6f9>>
+#+begin_src python
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:38c8aaef174b4bded606b32b2e8ba620abeb1668.png]]
+
+<<5bd5fa6a-e004-4b09-ae0a-913b2833891b>>
+For determining the quality of a segmentation result, we need a metric.
+There are different useful metrics:
+
+<<08ff1133-2ff9-4142-9645-f67769841866>>
+** Jaccard index
+   :PROPERTIES:
+   :CUSTOM_ID: jaccard-index
+   :END:
+
+<<cb4fbcf2-f1c3-4108-b10c-e11a6471ed11>>
+The [[https://en.wikipedia.org/wiki/Jaccard_index][*Jaccard index*]] is
+a measure to investigate the similarity or difference of sample sets
+
+<<fdb029f5-c3b0-4baf-94af-b2dd6809e1e7>>
+In
+[[https://www.napari-hub.org/plugins/the-segmentation-game][the-segmentation-game]],
+we can find 3 different implementations of the Jaccard index:
+
+The *sparse Jaccard Index* measures the overlap lying between 0 (no
+overlap) and 1 (perfect overlap). Therefore, the ground truth label is
+compared to the most overlapping segmented label. This value is then
+averaged over all annotated objects (see schematics).
+
+<<834cc873-c037-4024-99a0-f3ef975c95cc>>
+#+begin_src python
+# Jaccard index sparse
+print('Jaccard index sparse: %.3f' % metrics_game.jaccard_index_sparse(gt,segmentation))
+#+end_src
+
+#+begin_example
+Jaccard index sparse: 0.555
+#+end_example
+
+<<1b36457a-30b9-4dc7-b586-67010d01d419>>
+#+begin_src python
+scheme_sparse = imread('schematics/Jaccard_index_sparse.jpg')
+imshow(scheme_sparse)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x26781ec4af0>
+#+end_example
+
+[[file:7c7f9a03440d76fd4606cfec4a96918ae088da71.png]]
+
+<<45d27369-9cbf-4879-88cb-24c64b85b60c>>
+When using the *binary Jaccard Index*, gt and segmentation result are
+first binarized into foreground (= everything annotated) and background
+(= rest). Next, the overlap between the binary images is computed. This
+can be used for comparing binary segmentation results, e.g. thresholding
+techniques. However, when we try to compare our gt and segmentation, we
+get:
+
+<<d584a677-fbb2-45ed-8ce9-2456997f6e75>>
+#+begin_src python
+# Jaccard index binary
+print('Jaccard index binary: %.3f' % metrics_game.jaccard_index_binary(gt,segmentation))
+#+end_src
+
+#+begin_example
+Jaccard index binary: 0.709
+#+end_example
+
+<<75d6a6ab-48ef-4903-b5a6-6ab918399628>>
+The binary Jaccard index is way higher than the sparse Jaccard index
+because the outline of individual labels is not taken into account. Only
+the outline between fore- and background plays a role (see schematics
+below):
+
+<<d5630d74-d812-499e-a353-f0d2e0db95be>>
+#+begin_src python
+scheme_binary = imread('schematics/Jaccard_index_binary.jpg')
+imshow(scheme_binary)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x26781f077c0>
+#+end_example
+
+[[file:649c68f6dfd414dd64a9d635337978003052e73f.png]]
+
+<<1eaca595-b871-4aa0-9ad7-1b9db11a33ab>>
+So for cases like ours we should use the sparse Jaccard index and not
+the binary Jaccard index.
+
+<<15e5d57a-7f8b-46e4-a729-015a9f04d69a>>
+* Terminology: What are TP, TN, FP, FN
+  :PROPERTIES:
+  :CUSTOM_ID: terminology-what-are-tp-tn-fp-fn
+  :END:
+
+<<0b30b16f-9746-410e-8ec7-2ad057829730>>
+We can also use different matrices which need *true positives (TP)*,
+*true negatives (TN)*, *false positives (FP)* and *false negatives
+(FN)*.
+
+<<8a67184d-f05a-4585-ab80-c386b57260ad>>
+We want to compute these for a segmentation result. Therefore, we are
+treating the segmentation result as a two class thresholding-problem.
+The two classes are forground and background. To make this clearer, we
+binarize the gt and the segmentation result:
+
+<<19ea421e-3397-4fc8-803b-3227225dd753>>
+#+begin_src python
+threshold = 1
+gt_binary = gt >= threshold
+segmentation_binary = segmentation >= threshold
+#+end_src
+
+<<b898e0e9-c64f-49bb-b8a1-40ea7a5c611f>>
+#+begin_src python
+viewer.add_labels(gt_binary, name = 'Binary ground truth')
+viewer.add_labels(segmentation_binary, name = 'Binary segmentation result')
+#+end_src
+
+#+begin_example
+<Labels layer 'Binary segmentation result' at 0x26781f3c7f0>
+#+end_example
+
+<<770f6a5e-1502-49bb-b7f4-1cd3f6a95e98>>
+Now we have labels only consisting of foreground (1) and background (0)
+which we can nicely see in napari (gallery view):
+
+<<565c3982-5bce-41c1-8cf6-a988ad06d6b8>>
+#+begin_src python
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:655f823aeea37691303e03ca87b3ad584c0767c7.png]]
+
+<<7f9f1323-0264-4f6b-8554-780d14b22b68>>
+Now what are TP, TN, FP and FN?
+
+- *TP* are pixels which are in gt and segmentation result foreground (1)
+- *TN* are pixels which are in gt and segmentation result background (0)
+- *FP* are pixels which are in gt background (0) but in the segmentation
+  result foreground (1)
+- *FN* are pixels which are in gt foreground (1) but in the segmentation
+  result background (0)
+
+<<c92d0576-1069-4fae-b0c5-b19645c869fd>>
+** Confusion matrix
+   :PROPERTIES:
+   :CUSTOM_ID: confusion-matrix
+   :END:
+
+<<e11c1afb-69fa-4dfd-8b42-07d01cda4faa>>
+These 4 can be nicely shown in a
+[[https://en.wikipedia.org/wiki/Confusion_matrix][*confusion matrix*]].
+Therefore, we will use
+[[https://scikit-learn.org/stable/index.html][scikit-learn]] (see also
+[[https://scikit-learn.org/stable/modules/model_evaluation.html][metrics
+documentation]])
+
+<<c8d2ba3f-8531-46c9-9c21-ab9e80258232>>
+We now want to plot the confusion matrix of the binary images. To be
+able to use the confusion matrix, we need to turn our image into a
+1-dimensional array like this:
+
+<<0b59d740-9899-42b9-b0c5-1e784c5acc45>>
+#+begin_src python
+gt_1d = np.ravel(gt_binary)
+segmentation_1d = np.ravel(segmentation_binary)
+#+end_src
+
+<<665195e5-8071-4b8d-ac14-0a723c044c3e>>
+#+begin_src python
+confusion_matrix = metrics.confusion_matrix(gt_1d,segmentation_1d)
+
+cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix = confusion_matrix, display_labels = [False, True])
+
+cm_display.plot()
+plt.show()
+#+end_src
+
+[[file:9c2b7a5baef3ca8bcf650da76e38f9dcb0233def.png]]
+
+<<b4791132-8ed8-4003-b708-a1633e1f9a4d>>
+We can see that we mostly have *TN* which means that our image consist
+mostly of background.
+
+<<ad34129b-b16a-4525-bf38-97401c5c6466>>
+* Accuracy, Precision, Recall, F1-Score
+  :PROPERTIES:
+  :CUSTOM_ID: accuracy-precision-recall-f1-score
+  :END:
+
+<<38ad4d7f-6fc9-43c6-bb72-18583e3c76bc>>
+Now we are computing metrics which are based on the concept of TP, TN,
+FP and FN.
+
+<<9615a846-5607-42c6-a9ce-31134001d6b9>>
+[[https://en.wikipedia.org/wiki/Accuracy_and_precision][*Accuracy*]]
+closely agrees with the accepted value. You basically ask: /How well did
+my segmentation go regarding my two different classes (foreground and
+background)?/
+
+<<6d3ed36a-2e29-45fe-b419-94740260ffca>>
+#+begin_src python
+print('Accuracy: %.3f' % metrics.accuracy_score(gt_1d, segmentation_1d))
+#In binary classification, this function is equal to the jaccard_score function
+#+end_src
+
+#+begin_example
+Accuracy: 0.994
+#+end_example
+
+<<7dd6f038-ea4f-4467-b537-34ffa0b751c2>>
+This indicates that the segmentation algorithm performed correct in most
+instances.
+
+<<6d55a22d-64d2-4688-9bca-776697e4573f>>
+[[https://en.wikipedia.org/wiki/Accuracy_and_precision][*Precision*]]
+shows similarities between the measurements. You basically ask: /How
+well did my segmentation go regarding the predicion of foreground
+objects?/
+
+<<3a605729-0483-4273-9936-2cfe1a778b44>>
+#+begin_src python
+print('Precision: %.3f' % metrics.precision_score(gt_1d, segmentation_1d))
+#+end_src
+
+#+begin_example
+Precision: 0.836
+#+end_example
+
+<<9064d039-c3d9-4066-bc32-21f8d9b1dde1>>
+This means that FP were lowering down the precision score.
+
+<<c0966341-8c28-4692-b60b-6603d8cd6161>>
+[[https://en.wikipedia.org/wiki/Evaluation_of_binary_classifiers#Precision_and_recall][*Recall*]]
+is the true positive rate (TPR) aka /Sensitivity/. You basically ask:
+/How many instances were correctly identified as foreground?/
+
+<<c0832f06-b9dc-4115-a064-381eef003bae>>
+#+begin_src python
+print('Recall: %.3f' % metrics.recall_score(gt_1d, segmentation_1d))
+#+end_src
+
+#+begin_example
+Recall: 0.823
+#+end_example
+
+<<cd953ffb-490a-43f3-a776-3a12e0ccdabf>>
+This means that out of the positive class, the model did perform well,
+but FN were lowering down the recall-score.
+
+<<b5793a1d-db46-431f-9f1b-ff2aa36cd5b1>>
+[[https://en.wikipedia.org/wiki/Evaluation_of_binary_classifiers#Precision_and_recall][*F1-Score*]]
+is the harmonic mean between precision and recall score. You basically
+ask: /Can I find a compromise when choosing between precision and recall
+score?/ This results in a trade-off between high false-positives and
+false-negative rates.
+
+<<84dc9201-a915-44a5-9a7c-322946bebd9d>>
+In our case, precision and recall were very similar which means it is
+not really needed to compute the F1-Score. If we compute it we get a
+similar outcome:
+
+<<d5248c66-b11e-4156-9e51-9978e43a12c5>>
+#+begin_src python
+print('F1 Score: %.3f' % metrics.f1_score(gt_1d, segmentation_1d))
+#+end_src
+
+#+begin_example
+F1 Score: 0.830
+#+end_example
+
+<<aeed2e7c-372c-43c3-938b-980107dd8bf1>>
+* Exercise
+  :PROPERTIES:
+  :CUSTOM_ID: exercise
+  :END:
+
+<<b2b74b70-1039-49dc-bf15-5e03cef930ae>>
+Now, we produce a gt and a segmentation result ourselves:
+
+<<07872040-42d9-4790-9b22-41dc561547ef>>
+#+begin_src python
+gt_new = np.array([[0, 1, 1],
+               [0, 1, 0]])
+segmentation_new = np.array([[0, 1, 0],
+                       [0, 1, 1]])
+#+end_src
+
+<<2d6c5c73-6245-4930-9358-e1f7b727ba4f>>
+#+begin_src python
+fig, ax = plt.subplots(1,2)
+
+ax[0].imshow(gt_new)
+ax[0].set_title('gt')
+ax[1].imshow(segmentation_new)
+ax[1].set_title('segmentation result')
+#+end_src
+
+#+begin_example
+Text(0.5, 1.0, 'segmentation result')
+#+end_example
+
+[[file:13c046b8d2752ab3e286430dc750e7848b756958.png]]
+
+<<e90c485e-2279-4c25-9a5e-347251c62b04>>
+As you can see, they are binary images consisting out of 0 (dark blue)
+and 1 (yellow). Can you compute a confusion matrix for this example? Try
+it out and interpret the results you get!

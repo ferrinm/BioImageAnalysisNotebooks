@@ -1,0 +1,64 @@
+<<0c9a0a63-ea1b-42da-9467-7ff037fb2d8f>>
+#+begin_src python
+from bia_bob import bob
+import stackview
+import numpy as np
+#+end_src
+
+<<4459f953-2e2f-447f-9c6f-d6a07e370720>>
+#+begin_src python
+binary_image = np.asarray([
+    [1,0,0,0,0,0],
+    [0,1,0,0,0,0],
+    [0,0,1,0,0,0],
+    [0,0,0,1,0,0],
+    [0,0,0,1,0,0],
+    [0,0,0,1,0,0],
+])
+#+end_src
+
+<<bfe95e23-1b85-44e6-ba65-d2ea2b4050c5>>
+#+begin_src python
+import numpy as np
+from skimage import io
+import skan
+
+# Convert binary image into a graph representation
+graph = skan.Skeleton(binary_image)
+
+# Extract the coordinates of the polyline from the graph
+polyline = graph.coordinates
+
+# Print the result
+print(polyline)
+#+end_src
+
+#+begin_example
+[[0 0]
+ [1 1]
+ [2 2]
+ [3 3]
+ [4 3]
+ [5 3]]
+#+end_example
+
+<<39a32340-a947-4eac-b1e3-5db12852ea57>>
+#+begin_src python
+# Initialize a list to store the distances
+distances = [0]
+
+# Compute the distance between each pair of consecutive points in the polyline
+# Iterate over pairs of points using zip and calculate the Euclidean distance 
+# between 'point' and 'follower' for each pair
+# Append the distance to the list 'distances'
+for point, follower in zip(polyline[:-1], polyline[1:]):
+    d = euclidean(point, follower)
+    distances.append(np.sum(distances[-1]) + d)
+
+# distances will contain the cumulative distances
+distances
+#+end_src
+
+<<2da17e03-8b86-4cf2-b113-440315f5ef7d>>
+#+begin_src python
+#+end_src

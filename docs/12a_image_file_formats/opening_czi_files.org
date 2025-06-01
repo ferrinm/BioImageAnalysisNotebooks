@@ -1,0 +1,113 @@
+<<9a5d38ce-7834-474c-a01f-feb2bb725368>>
+* Opening CZI files
+  :PROPERTIES:
+  :CUSTOM_ID: opening-czi-files
+  :END:
+When working with microscopy image data, many file formats are
+circulating such as the Carl Zeiss Image (CZI) format. In this notebook,
+we will open a =.czi= file using the
+[[https://pypi.org/project/czifile/][=czifile= library]].
+
+Note: It is recommended to use
+[[https://github.com/AllenCellModeling/aicsimageio][AICSImageIO]] for
+reading CZI files as shown in this
+[[file:image_file_formats:aicsimagio][notebook]].
+
+See also
+
+- [[https://forum.image.sc/t/reading-czi-file-in-python/39768/11][Reading
+  CZI file in Python (image.sc thread)]])
+
+<<57a0066c-e88d-410f-850f-6cef85c7de31>>
+#+begin_src python
+import czifile
+
+from pathlib import Path
+from skimage.io import imshow
+import numpy as np
+#+end_src
+
+<<bdf4c522-cfcb-4adf-b470-d5f57d459ad4>>
+We can open an image usually by providing a path to it to an =imread=
+function. In the following we are using an image showing a Drosophila
+wing during pupal stage kindly provided by Romina Piscitello-Gómez (MPI
+CBG).
+
+<<f61a6ee6-d028-46e7-ac4b-c35ad2c4efec>>
+#+begin_src python
+image = czifile.imread(Path("../../data/PupalWing.czi"))
+#+end_src
+
+<<210c75ca-2d3c-40c9-9031-ffe817d54cb4>>
+A first good step is to inspect the dimensionality of the image.
+
+<<0a933bd6-1f6f-400a-8abc-3ae927339f4b>>
+#+begin_src python
+image.shape
+#+end_src
+
+#+begin_example
+(1, 1, 1, 80, 520, 692, 1)
+#+end_example
+
+<<2b976cfb-dfc3-42de-8cb2-496020ccc48f>>
+These formats usually have extra dimensions to accomodate many different
+data shapes. This is their common order when working with CZI files:
+
+- 'X': 'Width'
+- 'Y': 'Height'
+- 'C': 'Channel'
+- 'Z': 'Slice' (depth)
+- 'T': 'Time'
+- 'R': 'Rotation'
+- 'S': 'Scene' / contiguous regions of interest in a mosaic image
+
+<<7ee192aa-1b0e-475b-b7f3-c1acea1291e3>>
+We know that our image had three dimensions when we acquired it. One
+trick to get rid of the unecessary extra dimensions is the
+[[https://numpy.org/doc/stable/reference/generated/numpy.squeeze.html][np.squeeze]]
+function.
+
+<<e9bcb586-d68f-4522-b0f5-4034cde096be>>
+#+begin_src python
+image_squeezed = np.squeeze(image)
+image_squeezed.shape
+#+end_src
+
+#+begin_example
+(80, 520, 692)
+#+end_example
+
+<<851c4e61-10a1-4fb0-aba7-27351d2795a5>>
+The image is a numpy array and thus, we can work with it normally.
+
+<<e7fced41-75c4-40fa-940f-3a081f5f4632>>
+#+begin_src python
+type(image_squeezed)
+#+end_src
+
+#+begin_example
+numpy.ndarray
+#+end_example
+
+<<3bdc0625-54a1-4114-8dc5-7745299db522>>
+#+begin_src python
+cropped_slice_image = image_squeezed[40, 200:400, 500:700]
+
+imshow(cropped_slice_image)
+#+end_src
+
+#+begin_example
+C:\Users\haase\mambaforge\envs\bio39\lib\site-packages\skimage\io\_plugins\matplotlib_plugin.py:150: UserWarning: Low image data range; displaying image with stretched contrast.
+  lo, hi, cmap = _get_display_range(image)
+#+end_example
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x2347feaee50>
+#+end_example
+
+[[file:c150e944b9e45dc2ef9c2f9a6ef82b17fd2d7ff7.png]]
+
+<<0f56ce1e-3b3b-42a7-b358-bd09c0879058>>
+#+begin_src python
+#+end_src

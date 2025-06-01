@@ -1,0 +1,166 @@
+<<3b84ddbc-2079-48c9-a38b-b0a34abd6d27>>
+* Multivariate views
+  :PROPERTIES:
+  :CUSTOM_ID: multivariate-views
+  :END:
+
+<<23618ebe-f01c-47b9-aa85-ce4ad6d01619>>
+In this notebook, we show a few examples of how to have plots with
+graphs of different types in a figure, like having a scatter plot with
+marginal distributions or even a multivariate plot with pair
+relationships of all properties in a table.
+
+Because these plots involve managing subplots, they are all figure-level
+functions.
+
+<<ec137599-b8bd-4666-b5f7-13e94243b50e>>
+#+begin_src python
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+#+end_src
+
+<<88932903-b980-42a3-b6e8-3f42327735c6>>
+We start by loading a table of measurments into a pandas DataFrame.
+
+<<c0a502d8-9181-47b4-8e6b-63b37ed3a8d4>>
+#+begin_src python
+df = pd.read_csv("../../data/BBBC007_analysis.csv")
+df
+#+end_src
+
+#+begin_example
+     area  intensity_mean  major_axis_length  minor_axis_length  aspect_ratio  \
+0     139       96.546763          17.504104          10.292770      1.700621   
+1     360       86.613889          35.746808          14.983124      2.385805   
+2      43       91.488372          12.967884           4.351573      2.980045   
+3     140       73.742857          18.940508          10.314404      1.836316   
+4     144       89.375000          13.639308          13.458532      1.013432   
+..    ...             ...                ...                ...           ...   
+106   305       88.252459          20.226532          19.244210      1.051045   
+107   593       89.905565          36.508370          21.365394      1.708762   
+108   289      106.851211          20.427809          18.221452      1.121086   
+109   277      100.664260          20.307965          17.432920      1.164920   
+110    46       70.869565          11.648895           5.298003      2.198733   
+
+              file_name  
+0    20P1_POS0010_D_1UL  
+1    20P1_POS0010_D_1UL  
+2    20P1_POS0010_D_1UL  
+3    20P1_POS0010_D_1UL  
+4    20P1_POS0010_D_1UL  
+..                  ...  
+106  20P1_POS0007_D_1UL  
+107  20P1_POS0007_D_1UL  
+108  20P1_POS0007_D_1UL  
+109  20P1_POS0007_D_1UL  
+110  20P1_POS0007_D_1UL  
+
+[111 rows x 6 columns]
+#+end_example
+
+<<ed4b3c99-c91c-46e5-b83f-0767205dfca5>>
+** Plotting joint and marginal distributions
+   :PROPERTIES:
+   :CUSTOM_ID: plotting-joint-and-marginal-distributions
+   :END:
+
+<<a14bad1a-c992-4fc3-8da9-8a9e07e1560b>>
+To have a joint distribution of two variables with the marginal
+distributions on the sides, we can use =jointplot=.
+
+<<f6ca04a6-23b7-4851-8089-1faa8d02c000>>
+#+begin_src python
+sns.jointplot(data=df, x="aspect_ratio", y="area")
+#+end_src
+
+#+begin_example
+<seaborn.axisgrid.JointGrid at 0x250479ad070>
+#+end_example
+
+[[file:4fe7a7aa4f82cf14f2e33a259e967b5215754d1f.png]]
+
+<<3f400c05-00e1-4295-9681-857871b6be51>>
+It is possible to separate groups by passing a categorical property to
+the =hue= argument. This has an effect on the marginal distribution,
+turning them from histogram to kde plots.
+
+<<3e9fcfc2-8634-4f80-b361-538c5e084117>>
+#+begin_src python
+sns.jointplot(data=df, x="aspect_ratio", y="area", hue = 'file_name')
+#+end_src
+
+#+begin_example
+<seaborn.axisgrid.JointGrid at 0x250479c9d90>
+#+end_example
+
+[[file:9de43a80f30dcf4f9b185b92dfce7d5fa75b7b81.png]]
+
+<<d180362a-29a1-42b5-8734-bf23ef5f1442>>
+** Plotting many distributions at once
+   :PROPERTIES:
+   :CUSTOM_ID: plotting-many-distributions-at-once
+   :END:
+
+<<165c2544-3086-486d-b9a4-0f4eeb83e2ed>>
+The above examples displayed a plot with relationship between two
+properties. This can be further expanded with the =pairplot= function
+
+<<c25b9980-1525-4500-ae37-c6ad8550da77>>
+#+begin_src python
+sns.pairplot(data=df)
+#+end_src
+
+#+begin_example
+<seaborn.axisgrid.PairGrid at 0x2504805e730>
+#+end_example
+
+[[file:d88cd7115eba73b9e85702adc58bd43ac9629b3f.png]]
+
+<<c9b2cd94-b738-4c18-b30a-c2b5bcb5fc32>>
+#+begin_src python
+sns.pairplot(data=df, hue="file_name")
+#+end_src
+
+#+begin_example
+<seaborn.axisgrid.PairGrid at 0x2504a5fba60>
+#+end_example
+
+[[file:286d644c6871461603c9e3a53814e35ca9fb1c4a.png]]
+
+<<adc9dfae-4165-491c-8854-249a3ec03a8b>>
+If you have too many points, displaying every single point may yield
+graphs too poluted. An alternative visualization in this case could be a
+2D histogram plot. We can do that by changing the =kind= argument to
+"hist".
+
+<<99eace07-edbf-4d1f-adf4-d286561a04bd>>
+#+begin_src python
+sns.pairplot(data=df, hue="file_name", kind = "hist")
+#+end_src
+
+#+begin_example
+<seaborn.axisgrid.PairGrid at 0x2504a613e50>
+#+end_example
+
+[[file:b131ce8f5139ac5c961f09dfd7c096fa13b1458a.png]]
+
+<<0e4abd4d-743d-49e4-a05b-0e5b84cca506>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+
+<<0351b141-d20a-4629-b6b5-906b70f17b0d>>
+You may have noticed that the =pairplot= is redundant in some plots
+because the upper diagonal displays the same relationships rotated.
+
+Redraw the =pairplot= to display only the lower diagonal of the plots.
+
+/Hint: explore the properties of the
+[[https://seaborn.pydata.org/generated/seaborn.pairplot.html#seaborn.pairplot][pairplot]]/
+
+<<bfb57fec-b803-4910-a9d4-f45fe1aff60e>>
+#+begin_src python
+#+end_src

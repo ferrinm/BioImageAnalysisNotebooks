@@ -1,0 +1,127 @@
+<<2d31db30-a623-4b57-b87b-aa4c456b1933>>
+** Splitting touching objects
+   :PROPERTIES:
+   :CUSTOM_ID: splitting-touching-objects
+   :END:
+A common use-case for the watershed algorithm is splitting touching
+objects. In this notebook we will split objects in binary images that
+have a roundish shape and touch each other.
+
+<<80d09227-5427-40b3-b477-9d11877c35cf>>
+#+begin_src python
+from skimage.io import imread
+import napari_segment_blobs_and_things_with_membranes as nsbatwm
+import napari_simpleitk_image_processing as nsitk
+import stackview
+#+end_src
+
+<<4b0d6b44-0d78-467b-bed7-071f67819f56>>
+Starting point for this is a binary image, e.g. made using
+[[image-segmentation:thresholding][thresholding]].
+
+<<87cb2de1-5fb3-443c-8048-c1803e524655>>
+#+begin_src python
+nuclei = imread('../../data/mitosis_mod.tif')
+
+stackview.insight(nuclei)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[ 19,  29,  44, ...,  88, 115, 113],
+                  [ 19,  29,  55, ...,  87, 101, 112],
+                  [ 25,  36,  61, ...,  90,  90, 106],
+                  ...,
+                  [ 20,  21,  20, ...,  57,  33,  40],
+                  [ 22,  25,  25, ...,  41,  34,  40],
+                  [ 20,  25,  18, ...,  41,  35,  39]], dtype=uint8)
+#+end_example
+
+<<df9d6678-fb39-4bcb-9001-04c00264498b>>
+#+begin_src python
+binary = nsbatwm.threshold_otsu(nuclei).astype(bool)
+
+binary
+#+end_src
+
+#+begin_example
+<__array_function__ internals>:180: RuntimeWarning: Converting input from bool to <class 'numpy.uint8'> for compatibility.
+#+end_example
+
+#+begin_example
+StackViewNDArray([[False, False, False, ...,  True,  True,  True],
+                  [False, False, False, ...,  True,  True,  True],
+                  [False, False, False, ...,  True,  True,  True],
+                  ...,
+                  [False, False, False, ..., False, False, False],
+                  [False, False, False, ..., False, False, False],
+                  [False, False, False, ..., False, False, False]])
+#+end_example
+
+<<63e40577>>
+We can then split the touching object by only taking the binary image
+into account. The underlying algorithm aims to produce similar results
+to
+[[https://imagej.nih.gov/ij/docs/menus/process.html#watershed][ImageJ's
+binary watershed algorithm]] and the implementation here also works in
+3D.
+
+<<a4740a57>>
+#+begin_src python
+split_objects = nsbatwm.split_touching_objects(binary)
+split_objects
+#+end_src
+
+#+begin_example
+StackViewNDArray([[False, False, False, ...,  True,  True,  True],
+                  [False, False, False, ...,  True,  True,  True],
+                  [False, False, False, ...,  True,  True,  True],
+                  ...,
+                  [False, False, False, ..., False, False, False],
+                  [False, False, False, ..., False, False, False],
+                  [False, False, False, ..., False, False, False]])
+#+end_example
+
+<<87a98644-7bba-4d21-a2c0-75aaf16574e6>>
+The =split_touching_objects= function also has a parameter =sigma= that
+allows controlling how aggressive objects should be split. To make more
+splits, enter a smaller number than 3.5 which is the default.
+
+<<94006d68-6c1e-4723-a244-c697e672f3b0>>
+#+begin_src python
+split_objects2 = nsbatwm.split_touching_objects(binary, sigma=2)
+split_objects2
+#+end_src
+
+#+begin_example
+StackViewNDArray([[False, False, False, ...,  True,  True,  True],
+                  [False, False, False, ...,  True,  True,  True],
+                  [False, False, False, ...,  True,  True,  True],
+                  ...,
+                  [False, False, False, ..., False, False, False],
+                  [False, False, False, ..., False, False, False],
+                  [False, False, False, ..., False, False, False]])
+#+end_example
+
+<<8d3b4ab7-7a2a-4945-a13a-f39afaba8495>>
+It is also possible to retrieve a label image as result. Note that in
+this case, the black line/gap between objects will not be present.
+
+<<5ed59887-f13f-4ca9-bee3-b2fda27ecbc5>>
+#+begin_src python
+touching_labels = nsitk.touching_objects_labeling(binary)
+touching_labels
+#+end_src
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 2, 2, 2],
+                  [0, 0, 0, ..., 2, 2, 2],
+                  [0, 0, 0, ..., 2, 2, 2],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<a91eafee-498a-4a93-9c6a-7715ce7a9b6b>>
+#+begin_src python
+#+end_src

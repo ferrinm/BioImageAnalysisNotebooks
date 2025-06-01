@@ -1,0 +1,84 @@
+<<2bac9780-3f38-4f74-9a22-577e2a4c6643>>
+* Sorting lists
+  :PROPERTIES:
+  :CUSTOM_ID: sorting-lists
+  :END:
+When working with simple forms of data, e.g. a list of measurements, it
+might be useful to sort them. With this, we could for example quickly
+access the smallest numbers in a list.
+
+Let's start again with a list of numbers
+
+<<24617c60-0f20-4d12-ae69-b99630fbd919>>
+#+begin_src python
+data = [34, 0, 65, 23, 51, 9, 50, 78, 34, 100]
+data
+#+end_src
+
+#+begin_example
+[34, 0, 65, 23, 51, 9, 50, 78, 34, 100]
+#+end_example
+
+<<21077e88-518e-4f68-94b8-2d77e87b4058>>
+There is the
+[[https://docs.python.org/3/library/stdtypes.html?highlight=sort#list.sort][sort]]
+operation, which actually modifies a list:
+
+<<b6ea27f0-1a39-4750-be11-f32302f9221a>>
+#+begin_src python
+data.sort()
+data
+#+end_src
+
+#+begin_example
+[0, 9, 23, 34, 34, 50, 51, 65, 78, 100]
+#+end_example
+
+<<047fd778-15dc-4d31-8029-f403ad4f555a>>
+Hence, we should execute Jupyter notebook cells in order because the
+=data= variable is afterwards modified (we should do this anyway).
+
+After sorting, this will give us the three smallest entries in the list:
+
+<<37a90146-5349-483f-a59f-65a085e11210>>
+#+begin_src python
+data[:3]
+#+end_src
+
+#+begin_example
+[0, 9, 23]
+#+end_example
+
+<<ed4fa049-f856-4dce-9611-bfd15aea4b0f>>
+And this will give us the three largest numbers:
+
+<<a7cf8c3e-6728-4b2a-aa55-09fb813ca566>>
+#+begin_src python
+data[-3:]
+#+end_src
+
+#+begin_example
+[65, 78, 100]
+#+end_example
+
+<<59652f9a-e7f8-430a-af79-80d91a902bef>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Find out the [[https://en.wikipedia.org/wiki/Median][median]] of these
+two lists of numbers:
+
+<<50f4cac1-b627-45af-a966-908e09812cfe>>
+#+begin_src python
+data1 = [6, 4, 3, 4, 8, 10]
+#+end_src
+
+<<6b3c6eec-c6af-451a-bf3f-098463166531>>
+#+begin_src python
+data2 = [6, 4, 3, 4, 8, 10, 8]
+#+end_src
+
+<<3cec52eb-8d46-4431-8f28-387e98e8091c>>
+#+begin_src python
+#+end_src

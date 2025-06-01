@@ -1,0 +1,323 @@
+<<8db0f497-bab9-4e19-b7ee-11af06f0aa6d>>
+* Simulation of image formation + image restoration
+  :PROPERTIES:
+  :CUSTOM_ID: simulation-of-image-formation--image-restoration
+  :END:
+In this notebook we artificially assemble a microscope image from
+simulated nuclei, noise and background. Afterwards, we use classical
+image processing techniques to remove noise and background.
+
+<<74dbbf56-bc74-4bcf-a6cc-6d0f07696bc0>>
+#+begin_src python
+import pyclesperanto_prototype as cle
+import numpy as np
+#+end_src
+
+<<1ce24e52-2d89-424b-aee8-5900c479fa55>>
+#+begin_src python
+image_size = (100, 100)
+
+# noise configuration
+noise_level = 2
+
+# background configuration
+camera_offset = 100
+background_sigma = 25
+background_intensity = 5
+
+# nuclei configuration
+nuclei_radius = 5
+nuclei_blur_sigma = 1
+nuclei_number = 10
+nuclei_intensity = 5
+#+end_src
+
+<<dbc22f26-5bd3-4651-b40e-c302bd8533b8>>
+#+begin_src python
+# by pinning the random seed, we can make the code repeatable
+np.random.seed(42)
+#+end_src
+
+<<5d69ab67-53ec-4b74-9cb0-06bebf633bb3>>
+** Noise
+   :PROPERTIES:
+   :CUSTOM_ID: noise
+   :END:
+Here we assume that the noise in the image is
+[[https://en.wikipedia.org/wiki/Poisson_distribution][Poisson
+distributed]], a common assumtion in microscopy.
+
+<<9cf55dac-720c-4de6-bfec-dfaba8e4d4ca>>
+#+begin_src python
+noise_image = np.random.poisson(noise_level, image_size)
+
+cle.imshow(noise_image, colorbar=True)
+#+end_src
+
+[[file:038527410e492ba83f72046fab39335bd92aa72c.png]]
+
+<<f2cc3852-06b6-4edf-b27c-3fd090675b61>>
+** Background
+   :PROPERTIES:
+   :CUSTOM_ID: background
+   :END:
+Background intensity in fluorescence microscopy images typically comes
+from out-of-focus light. We can simulate this by placing light sources
+as single pixels and blurring them with a Gaussian filter. Furthermore,
+many microscope cameras have a so called camera offset. No pixel will
+ever have intensity below this value.
+
+<<0d9f867a-c694-4cad-8df3-fef65ef5dd5f>>
+#+begin_src python
+# create empty image
+background = np.zeros(image_size)
+
+# place light sources
+background[20, 10] += 1
+background[50, 80] += 1
+background[60, 50] += 1
+
+# blur them massively
+background = cle.gaussian_blur(background, sigma_x=background_sigma, sigma_y=background_sigma)
+
+# normalize the image so that the maximum intensity has a defined value
+background = background / background.max() * background_intensity
+
+# add camera offsert
+background = background + camera_offset
+
+background
+#+end_src
+
+#+begin_example
+cl.OCLArray([[102.02708 , 102.05994 , 102.09012 , ..., 100.354485, 100.342865,
+        100.3312  ],
+       [102.09299 , 102.12704 , 102.158325, ..., 100.38394 , 100.37136 ,
+        100.358734],
+       [102.1577  , 102.192924, 102.22533 , ..., 100.41521 , 100.4016  ,
+        100.387955],
+       ...,
+       [100.162254, 100.17418 , 100.18678 , ..., 100.57553 , 100.55186 ,
+        100.52856 ],
+       [100.15136 , 100.16256 , 100.17441 , ..., 100.53596 , 100.51383 ,
+        100.492065],
+       [100.14104 , 100.15154 , 100.16266 , ..., 100.49834 , 100.477684,
+        100.457375]], dtype=float32)
+#+end_example
+
+<<1aafb78b-d6a4-4049-8b82-8ac9c53a66ef>>
+** Nuclei
+   :PROPERTIES:
+   :CUSTOM_ID: nuclei
+   :END:
+Next we place nuclei in an image at random positions. We blur them a bit
+to simulate the
+[[https://en.wikipedia.org/wiki/Point_spread_function][point-spread-function]]
+of the microscope.
+
+<<aff4c227-8b70-4f43-9570-be2361949a3b>>
+#+begin_src python
+# retrieve a defined number of random positions
+nuclei_positions = np.random.random((nuclei_number, 2)) * image_size
+
+# write 1 at these locations
+nuclei_image = cle.pointlist_to_labelled_spots(nuclei_positions.T, np.zeros(image_size))
+nuclei_image = (nuclei_image > 0) * nuclei_intensity
+
+# enlarge the nuclei by a define radius
+nuclei_image = cle.maximum_sphere(nuclei_image, radius_x=nuclei_radius, radius_y=nuclei_radius)
+
+# blur the image to make it look more realistic
+nuclei_image = cle.gaussian_blur(nuclei_image, sigma_x=nuclei_blur_sigma, sigma_y=nuclei_blur_sigma)
+
+nuclei_image
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       ...,
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.]], dtype=float32)
+#+end_example
+
+<<10f2dda4-a4c5-4d59-a0bc-c702d4ff9213>>
+** Image formation
+   :PROPERTIES:
+   :CUSTOM_ID: image-formation
+   :END:
+A microscopy image is the sum of the scence and the effect described
+above.
+
+<<2e7408b3-0bc0-4c59-99be-091f6dccf9b7>>
+#+begin_src python
+sum_image = np.asarray(noise_image + background + nuclei_image)
+
+cle.imshow(sum_image, colorbar=True)
+#+end_src
+
+[[file:315d44449b2890d97defd894ea4be579d3d256ac.png]]
+
+<<e67e21db-1fb0-4c04-b86f-1ed75f8c0b41>>
+** Image segmentation
+   :PROPERTIES:
+   :CUSTOM_ID: image-segmentation
+   :END:
+If we now applied a segmentation algorithm to this image as it is, it
+might lead to a wrong result.
+
+<<c91246ea-1cf4-49cb-805c-91999c609c4e>>
+#+begin_src python
+binary = cle.threshold_otsu(sum_image.astype(np.float32))
+
+binary
+#+end_src
+
+#+begin_example
+cl.OCLArray([[1, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint8)
+#+end_example
+
+<<fc9ca967-a855-4559-b67e-8359683be5c8>>
+** Background removal
+   :PROPERTIES:
+   :CUSTOM_ID: background-removal
+   :END:
+To fix this problem, we need to remove the background intensity first.
+
+<<6367a28b-b597-4e16-b22d-d43b1274491b>>
+#+begin_src python
+background_removed = cle.top_hat_box(sum_image, radius_x=10, radius_y=10)
+
+background_removed
+#+end_src
+
+#+begin_example
+cl.OCLArray([[3.8403397 , 0.87319946, 2.9033813 , ..., 1.9769974 , 0.9653778 ,
+        0.        ],
+       [2.90625   , 2.9403    , 0.97158813, ..., 0.98750305, 0.9749222 ,
+        2.9622955 ],
+       [0.9647751 , 0.        , 0.94418335, ..., 0.98648834, 0.97288513,
+        0.95923615],
+       ...,
+       [1.9481506 , 2.9600754 , 0.97267914, ..., 1.9328156 , 1.9091415 ,
+        0.88584137],
+       [0.        , 0.9756546 , 1.987503  , ..., 0.        , 0.        ,
+        1.9782333 ],
+       [2.9896774 , 1.988884  , 0.        , ..., 1.9623795 , 2.963852  ,
+        0.9435425 ]], dtype=float32)
+#+end_example
+
+<<4fb92440-6255-414b-bc65-019e77658f65>>
+** Noise removal
+   :PROPERTIES:
+   :CUSTOM_ID: noise-removal
+   :END:
+We can also remove the noise from the image.
+
+<<0d7c19a9-602e-4960-8763-c845e098b34a>>
+#+begin_src python
+noise_removed1 = cle.mean_sphere(sum_image, radius_x=3, radius_y=3)
+
+noise_removed1
+#+end_src
+
+#+begin_example
+cl.OCLArray([[104.74284 , 104.3482  , 104.095535, ..., 101.47704 , 101.363914,
+        101.35629 ],
+       [104.30064 , 104.044365, 103.93013 , ..., 101.66889 , 101.658714,
+        101.65071 ],
+       [104.04146 , 103.820206, 103.74111 , ..., 101.83249 , 101.82167 ,
+        101.675224],
+       ...,
+       [102.205376, 101.97187 , 101.775345, ..., 102.33887 , 102.285355,
+        101.99471 ],
+       [101.98917 , 101.82425 , 101.76516 , ..., 102.513435, 102.288475,
+        102.136536],
+       [102.05105 , 101.98929 , 101.72292 , ..., 102.66122 , 102.23012 ,
+        101.940834]], dtype=float32)
+#+end_example
+
+<<cda35368-b92f-465a-aead-21f952917c5c>>
+And this can also be done on the background-subtracted image.
+
+<<acb11be1-29e6-4c68-b937-4755ef3633c0>>
+#+begin_src python
+noise_removed = cle.mean_sphere(background_removed, radius_x=3, radius_y=3)
+
+noise_removed
+#+end_src
+
+#+begin_example
+cl.OCLArray([[2.5495512, 2.1518824, 1.8934631, ..., 1.0838996, 0.9818381,
+        0.9806079],
+       [2.0891273, 1.8271031, 1.7071246, ..., 1.2431078, 1.249447 ,
+        1.2490945],
+       [1.7942544, 1.5672424, 1.4824032, ..., 1.3784474, 1.3799691,
+        1.2459035],
+       ...,
+       [1.9805651, 1.7442198, 1.5428588, ..., 1.6989396, 1.6650388,
+        1.3941103],
+       [1.7917184, 1.6217978, 1.5557053, ..., 1.914941 , 1.7043592,
+        1.5668714],
+       [1.8778669, 1.8098779, 1.5343451, ..., 2.0801234, 1.6664302,
+        1.393364 ]], dtype=float32)
+#+end_example
+
+<<872d9c72-87d4-48ef-b35a-4e12f05176e8>>
+** Image segmentation II
+   :PROPERTIES:
+   :CUSTOM_ID: image-segmentation-ii
+   :END:
+After correcting the image, we can try segmentation again.
+
+<<ef191066-f7f0-4cb3-9b8d-e7035bda97aa>>
+#+begin_src python
+binary2 = cle.threshold_otsu(noise_removed.astype(np.float32))
+
+binary2
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint8)
+#+end_example
+
+<<cbd4b49c-415d-4a0d-8b80-47d3bc195b5b>>
+#+begin_src python
+# sneak preview: watershed
+import napari_segment_blobs_and_things_with_membranes as nsbatwm
+binary3 = nsbatwm.split_touching_objects(binary2)
+
+binary3
+#+end_src
+
+#+begin_example
+<__array_function__ internals>:180: RuntimeWarning: Converting input from bool to <class 'numpy.uint8'> for compatibility.
+#+end_example
+
+#+begin_example
+StackViewNDArray([[False, False, False, ..., False, False, False],
+                  [False, False, False, ..., False, False, False],
+                  [False, False, False, ..., False, False, False],
+                  ...,
+                  [False, False, False, ..., False, False, False],
+                  [False, False, False, ..., False, False, False],
+                  [False, False, False, ..., False, False, False]])
+#+end_example
+
+<<181953bc-002a-4b4a-92f2-10e08e4dc48e>>
+#+begin_src python
+#+end_src

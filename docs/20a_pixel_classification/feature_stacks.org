@@ -1,0 +1,261 @@
+<<ce720e69>>
+* Generating feature stacks
+  :PROPERTIES:
+  :CUSTOM_ID: generating-feature-stacks
+  :END:
+Machine learning algorithms such as Random Forest Classifiers, e.g. as
+implemented in [[https://github.com/haesleinhuepf/apoc][APOC]] use
+feature stacks for pixel classification. Feature stacks are lists of
+images of the same size (2D or 3D). APOC brings a utility function for
+generating feature stacks. It takes an image and a feature specification
+string as input to produce a feature stack.
+
+Let's start with loading an example image and making a convenience
+function for visualization:
+
+<<030613f9>>
+#+begin_src python
+from skimage.io import imread, imshow
+import numpy as np
+import apoc
+import matplotlib.pyplot as plt
+#+end_src
+
+<<d8988ae1-376d-44e1-9f66-1e031f29c6ea>>
+We start again with the blobs example image.
+
+<<876a57d6-5657-40d0-8474-874332120ac0>>
+#+begin_src python
+image = imread('../../data/blobs.tif')
+imshow(image)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x7f9ba9333580>
+#+end_example
+
+[[file:b595f1490e1feddd74644d14f8d58ee167a99eb5.png]]
+
+<<f4aeec42-0234-4bb5-a3ea-baf0367cdf67>>
+We furthermore define a utility function for visualizing feature stacks.
+
+<<b7dc08cb>>
+#+begin_src python
+def visualize(feature_stack):
+    """
+    Shows lists of images in rows of three
+    """
+    if len(feature_stack) == 0:
+        return
+    
+    # show feature images
+    width = 3
+    height = int(len(feature_stack) / 3)
+    if height * width < len(feature_stack):
+        height = height + 1    
+    
+    fig, axes = plt.subplots(height, width, figsize=(10,10))
+
+    for i, f in enumerate(feature_stack):
+        if height > 1:
+            axes[int(i / 3)][i % 3].imshow(f, cmap=plt.cm.gray)
+        else:
+            axes[i].imshow(f, cmap=plt.cm.gray)
+
+    w = len(feature_stack) % width
+    if w > 0:
+        w = width - w
+        while (w > 0):
+            if height > 1:
+                axes[-1][width - w].set_visible(False)
+            else:
+                axes[width - w].set_visible(False)
+            w = w - 1
+
+    plt.show()        
+#+end_src
+
+<<00e6aada>>
+** Feature stacks
+   :PROPERTIES:
+   :CUSTOM_ID: feature-stacks
+   :END:
+A feature stack is a list of 2D or 3D images, typically derived from an
+original image. If you don't specify any feature specfication, a stack
+will be generated with the original image, a blurred version and an edge
+image:
+
+<<1779cf91>>
+#+begin_src python
+feature_stack = apoc.generate_feature_stack(image)
+
+visualize(feature_stack)
+#+end_src
+
+[[file:1b3b22f49fbefded02ed7a167d375a90c4b38855.png]]
+
+<<a5aa384a>>
+There are also some pre-defined Feature sets:
+
+<<ff35131a>>
+#+begin_src python
+for f in apoc.PredefinedFeatureSet:
+    print(f)
+    visualize(apoc.generate_feature_stack(image, f))
+#+end_src
+
+#+begin_example
+PredefinedFeatureSet.custom
+PredefinedFeatureSet.small_quick
+#+end_example
+
+[[file:fab121127d5cfb2b55606fadaaeb8b07394995f1.png]]
+
+#+begin_example
+PredefinedFeatureSet.medium_quick
+#+end_example
+
+[[file:f4beb868fb5d5bfe45d0a1c052778bb6932c80e2.png]]
+
+#+begin_example
+PredefinedFeatureSet.large_quick
+#+end_example
+
+[[file:282a9ea9a87d3c59d7f686e29b27eea28f8737c1.png]]
+
+#+begin_example
+PredefinedFeatureSet.small_dog_log
+#+end_example
+
+[[file:f3912e3e35a367b1515b98e712ee265c2f78c029.png]]
+
+#+begin_example
+PredefinedFeatureSet.medium_dog_log
+#+end_example
+
+[[file:afc2f97e2ea39e97836eb02de7c6b321bfc7a8b3.png]]
+
+#+begin_example
+PredefinedFeatureSet.large_dog_log
+#+end_example
+
+[[file:8a4b409e2a321df95c9769d0029906a138728575.png]]
+
+#+begin_example
+PredefinedFeatureSet.object_size_1_to_2_px
+#+end_example
+
+[[file:79fe0c163a4fcce078951d1095b60181f17790a7.png]]
+
+#+begin_example
+PredefinedFeatureSet.object_size_1_to_5_px
+#+end_example
+
+[[file:c9b96d0ac460ba000516be0c377543d321d12c01.png]]
+
+#+begin_example
+PredefinedFeatureSet.object_size_3_to_8_px
+#+end_example
+
+[[file:6c2ca9bde4c907070f9094a5b4e1c51e109856bb.png]]
+
+#+begin_example
+PredefinedFeatureSet.object_size_5_to_10_px
+#+end_example
+
+[[file:fea91a3fb98d75d6f719d00164c57f7644175b10.png]]
+
+#+begin_example
+PredefinedFeatureSet.object_size_10_to_15_px
+#+end_example
+
+[[file:518cc8443d732a8c9e222b79df75cfc704a4062f.png]]
+
+#+begin_example
+PredefinedFeatureSet.object_size_15_to_20_px
+#+end_example
+
+[[file:3acd13fb60ad4e8c2162a182b3c523ba8a661e33.png]]
+
+#+begin_example
+PredefinedFeatureSet.object_size_20_to_25_px
+#+end_example
+
+[[file:db03bc4884341668e29340ed0d845ab783c4cf25.png]]
+
+#+begin_example
+PredefinedFeatureSet.object_size_25_to_50_px
+#+end_example
+
+[[file:329cce622fe031d9a0549b5a82a2e3cd72122fbd.png]]
+
+#+begin_example
+PredefinedFeatureSet.object_size_50_to_100_px
+#+end_example
+
+[[file:92413fb7913007cf1a5109a4aad46eac4bb384a8.png]]
+
+<<c19f0a02>>
+** Custom feature definitions
+   :PROPERTIES:
+   :CUSTOM_ID: custom-feature-definitions
+   :END:
+You can furthermore, define specific features corresponding to
+[[https://clij.github.io/clij2-docs/reference__pyclesperanto][clesperanto
+filters]]:
+
+<<a8ec8ee9>>
+#+begin_src python
+feature_stack = apoc.generate_feature_stack(image, "gaussian_blur=3 mean_box=3 top_hat_box=3")
+
+visualize(feature_stack)
+#+end_src
+
+[[file:d3aa329e6b5a3913641e96800abaf5a62348d7a6.png]]
+
+<<5b10b336>>
+#+begin_src python
+feature_stack = apoc.generate_feature_stack(image, "maximum_box=3 difference_of_gaussian=5 sobel=0")
+
+visualize(feature_stack)
+#+end_src
+
+[[file:7755ff92e5bcd5a00085e343235550f938639e72.png]]
+
+<<3a75ec9d>>
+You can also vary radii / sigmas of the fetures:
+
+<<b0c88bd7>>
+#+begin_src python
+feature_stack = apoc.generate_feature_stack(image, "gaussian_blur=1 gaussian_blur=5 gaussian_blur=10 gaussian_blur=20")
+
+visualize(feature_stack)
+#+end_src
+
+[[file:f47c45b956523d8eee5bd13bce5efee9ea1e1d10.png]]
+
+<<ec17911f>>
+Furthermore, some features can be combined, for example you can compute
+the sobel of a Gaussian or a Laplacian of a Gaussian
+
+<<08a6a70d>>
+#+begin_src python
+feature_stack = apoc.generate_feature_stack(image, "sobel_of_gaussian_blur=1 sobel_of_gaussian_blur=5 sobel_of_gaussian_blur=10")
+
+visualize(feature_stack)
+#+end_src
+
+[[file:f6d594c01dc1f787d212b438228cc8c7e654874a.png]]
+
+<<df5afa49>>
+#+begin_src python
+feature_stack = apoc.generate_feature_stack(image, "laplace_box_of_gaussian_blur=1 laplace_box_of_gaussian_blur=5 laplace_box_of_gaussian_blur=10")
+
+visualize(feature_stack)
+#+end_src
+
+[[file:7c7dd456c9a74733c2822765cf312205ad6844ab.png]]
+
+<<3d0e5010>>
+#+begin_src python
+#+end_src

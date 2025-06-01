@@ -1,0 +1,262 @@
+<<fc3fe598>>
+#+begin_src python
+'''import the libraries'''
+
+import pandas as pd
+import seaborn as sns
+import pingouin as pg
+import matplotlib.pyplot as plt
+#+end_src
+
+<<ead9b490>>
+** Load the data
+   :PROPERTIES:
+   :CUSTOM_ID: load-the-data
+   :END:
+
+<<bb7a0ebf>>
+#+begin_src python
+df = pd.read_csv('../../data/drugs.csv', delimiter = ';')
+df.head()
+#+end_src
+
+#+begin_example
+    Drug   Value
+0  drugY  25.355
+1  drugC  13.093
+2  drugC  10.114
+3  drugX   7.798
+4  drugY  18.043
+#+end_example
+
+<<836016e6>>
+#+begin_src python
+df.describe()
+#+end_src
+
+#+begin_example
+            Value
+count  200.000000
+mean    16.084485
+std      7.223956
+min      6.269000
+25%     10.445500
+50%     13.936500
+75%     19.380000
+max     38.247000
+#+end_example
+
+<<b73a544d>>
+** Checking the data
+   :PROPERTIES:
+   :CUSTOM_ID: checking-the-data
+   :END:
+
+<<4e8ceb80>>
+#+begin_src python
+plt.figure(figsize=(12, 8))
+sns.violinplot(data = df, x='Drug', y='Value', palette="Set3")
+sns.swarmplot(data = df, x='Drug', y='Value', color = "black")
+sns.despine()
+plt.yticks(fontsize = 20)
+plt.xticks(fontsize = 20)
+sns.despine()
+plt.tight_layout()
+#+end_src
+
+[[file:ff52fbf4cc31dce9ef8c5b104d3db2a7924f5051.png]]
+
+<<8d601fd4>>
+** Does drugY leads to a statistically significant different effect when
+compared to other drugs?
+   :PROPERTIES:
+   :CUSTOM_ID: does-drugy-leads-to-a-statistically-significant-different-effect-when-compared-to-other-drugs
+   :END:
+
+<<f5fde48d>>
+** We can use Pingouin to answer that question
+   :PROPERTIES:
+   :CUSTOM_ID: we-can-use-pingouin-to-answer-that-question
+   :END:
+An open-source statistical package written in Python 3
+
+[[https://pingouin-stats.org/#]]
+
+It can be installed with: =pip install pingouin=
+
+<<283249b1>>
+#+begin_src python
+'''check unique drugs'''
+df.Drug.unique()
+#+end_src
+
+#+begin_example
+array(['drugY', 'drugC', 'drugX', 'drugA', 'drugB'], dtype=object)
+#+end_example
+
+<<589ead90>>
+** Example for selecting a condition
+   :PROPERTIES:
+   :CUSTOM_ID: example-for-selecting-a-condition
+   :END:
+
+<<843a0c4c>>
+#+begin_src python
+df.Value[df.Drug=='drugC']
+#+end_src
+
+#+begin_example
+1      13.093
+2      10.114
+7      11.037
+10     11.767
+18      7.298
+47     10.291
+55     14.160
+82      9.712
+84     10.067
+102    13.127
+149     8.151
+155    10.537
+158    10.444
+193     6.769
+195    11.567
+196    12.006
+Name: Value, dtype: float64
+#+end_example
+
+<<9a1f11c3>>
+** t-test example for comparing drugY and drugX
+   :PROPERTIES:
+   :CUSTOM_ID: t-test-example-for-comparing-drugy-and-drugx
+   :END:
+
+<<814e9493>>
+#+begin_src python
+pg.ttest(df.Value[df.Drug=='drugY'], df.Value[df.Drug=='drugX'])
+#+end_src
+
+#+begin_example
+                T         dof alternative         p-val           CI95%  \
+T-test  16.696903  123.981604   two-sided  1.630022e-33  [10.33, 13.11]   
+
+         cohen-d       BF10  power  
+T-test  2.349314  7.494e+31    1.0  
+#+end_example
+
+<<7da1c105>>
+** Is the data normally distributed?
+   :PROPERTIES:
+   :CUSTOM_ID: is-the-data-normally-distributed
+   :END:
+
+<<62628ef1>>
+#+begin_src python
+print(pg.normality(df.Value[df.Drug=='drugA']))
+print(pg.normality(df.Value[df.Drug=='drugB']))
+print(pg.normality(df.Value[df.Drug=='drugC']))
+print(pg.normality(df.Value[df.Drug=='drugX']))
+print(pg.normality(df.Value[df.Drug=='drugY']))
+#+end_src
+
+#+begin_example
+              W      pval  normal
+Value  0.953592  0.346752    True
+             W      pval  normal
+Value  0.90758  0.106378    True
+              W      pval  normal
+Value  0.965695  0.764989    True
+              W      pval  normal
+Value  0.962828  0.092268    True
+              W      pval  normal
+Value  0.912185  0.000013   False
+#+end_example
+
+<<32d8a98e>>
+** The Kruskal-Wallis H-test
+   :PROPERTIES:
+   :CUSTOM_ID: the-kruskal-wallis-h-test
+   :END:
+The Kruskal-Wallis H-test tests the null hypothesis that the population
+median of all of the groups are equal. It is a non-parametric version of
+ANOVA.
+
+<<2ad02555>>
+#+begin_src python
+pg.kruskal(df, dv= 'Value', between= 'Drug')
+#+end_src
+
+#+begin_example
+        Source  ddof1           H         p-unc
+Kruskal   Drug      4  148.658098  3.946995e-31
+#+end_example
+
+<<d7425a64>>
+** The Mann--Whitney U test (also called Wilcoxon rank-sum test) is a
+non-parametric test of the null hypothesis
+   :PROPERTIES:
+   :CUSTOM_ID: the-mannwhitney-u-test-also-called-wilcoxon-rank-sum-test-is-a-non-parametric-test-of-the-null-hypothesis
+   :END:
+
+<<174241ed>>
+#+begin_src python
+p1 = pg.mwu(df.Value[df.Drug=='drugY'], df.Value[df.Drug=='drugX'])
+p1
+#+end_src
+
+#+begin_example
+      U-val alternative         p-val  RBC  CLES
+MWU  4914.0   two-sided  9.521006e-24 -1.0   1.0
+#+end_example
+
+<<d0ea1da7>>
+#+begin_src python
+p2 = pg.mwu(df.Value[df.Drug=='drugY'], df.Value[df.Drug=='drugA'])
+p2
+#+end_src
+
+#+begin_example
+      U-val alternative         p-val  RBC  CLES
+MWU  2093.0   two-sided  1.516924e-13 -1.0   1.0
+#+end_example
+
+<<33e0a612>>
+#+begin_src python
+p3 =  pg.mwu(df.Value[df.Drug=='drugY'], df.Value[df.Drug=='drugB'])
+p3
+#+end_src
+
+#+begin_example
+      U-val alternative         p-val  RBC  CLES
+MWU  1456.0   two-sided  2.080982e-10 -1.0   1.0
+#+end_example
+
+<<a428b7e0>>
+#+begin_src python
+p4 =  pg.mwu(df.Value[df.Drug=='drugY'], df.Value[df.Drug=='drugC'])
+p4
+#+end_src
+
+#+begin_example
+      U-val alternative         p-val  RBC  CLES
+MWU  1456.0   two-sided  2.080982e-10 -1.0   1.0
+#+end_example
+
+<<491f92d6>>
+* P-values correction for multiple comparisons.
+  :PROPERTIES:
+  :CUSTOM_ID: p-values-correction-for-multiple-comparisons
+  :END:
+
+<<93d934e2>>
+#+begin_src python
+'''Benjamini–Hochberg FDR correction of an array of p-values'''
+
+pvals = [p1['p-val'].values[0], p2['p-val'].values[0], p3['p-val'].values[0], p4['p-val'].values[0]]
+reject, pvals_corr = pg.multicomp(pvals, method='fdr_bh')
+print(reject, pvals_corr)
+#+end_src
+
+#+begin_example
+[ True  True  True  True] [3.80840221e-23 3.03384727e-13 2.08098222e-10 2.08098222e-10]
+#+end_example

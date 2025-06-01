@@ -1,0 +1,105 @@
+* Affine transforms using scikit-image
+  :PROPERTIES:
+  :CUSTOM_ID: affine-transforms-using-scikit-image
+  :END:
+This notebook demonstrates how to apply affine transforms to 3D images.
+
+#+begin_src python
+import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
+from skimage.io import imread
+#+end_src
+
+#+begin_src python
+# Laod example data
+np_array = imread('../../data/Haase_MRT_tfl3d1.tif')
+np_array.shape
+#+end_src
+
+#+begin_example
+(192, 256, 256)
+#+end_example
+
+To setup an affine transform, you can do this using a 4x4 transform
+matrix:
+
+#+begin_src python
+transform_matrix = np.asarray([
+    [1, 0, 0, 50],
+    [0, 2, 0, 0],
+    [0, 0, 0.5, 0],
+    [0, 0, 0, 1]
+])
+#+end_src
+
+Scikit-image only supports 2D transforms and thus, we pick a slice to
+transform it:
+
+#+begin_src python
+# pull image stack from GPU and pick a slice
+image = np_array[100]
+
+from skimage.io import imshow
+imshow(image)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x25a6cff0d30>
+#+end_example
+
+[[file:11d3a6272e52cdb9c3043d22a886f7b17485aa92.png]]
+
+We now define an affine transform using scikit-image and apply it to the
+image.
+
+#+begin_src python
+from skimage import transform as tf
+
+# define transform with #scikit image
+transform = tf.AffineTransform(scale=0.5, translation=[10,0])
+
+transformed_image = tf.warp(image, transform.inverse)
+imshow(transformed_image)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x25a6edb8d60>
+#+end_example
+
+[[file:830b9fba16d88ad4aa04ddd4c83f9ff89c439f67.png]]
+
+** Interoperability with clesperanto
+   :PROPERTIES:
+   :CUSTOM_ID: interoperability-with-clesperanto
+   :END:
+Next, we push this single plane image to the GPU and transform it using
+pyclesperanto
+
+#+begin_src python
+import pyclesperanto_prototype as cle
+
+cle.select_device('RTX')
+#+end_src
+
+#+begin_example
+<gfx90c on Platform: AMD Accelerated Parallel Processing (2 refs)>
+#+end_example
+
+#+begin_src python
+image_gpu = cle.push(image)
+
+# define transform with #scikit image
+from skimage import transform as tf
+transform = tf.AffineTransform(scale=0.5, translation=[10,0])
+
+transformed_image = cle.affine_transform(image_gpu, transform=transform)
+cle.imshow(transformed_image, color_map="Greys_r")
+#+end_src
+
+#+begin_example
+c:\structure\code\pyclesperanto_prototype\pyclesperanto_prototype\_tier9\_imshow.py:14: UserWarning: The imshow parameter color_map is deprecated. Use colormap instead.
+  warnings.warn("The imshow parameter color_map is deprecated. Use colormap instead.")
+#+end_example
+
+[[file:40e7ba44ae5a292bd232b148454b82a49d2530c8.png]]

@@ -1,0 +1,128 @@
+<<66346941-c0dd-4a3e-a311-18d42e8d0c1c>>
+* Edges of labels
+  :PROPERTIES:
+  :CUSTOM_ID: edges-of-labels
+  :END:
+When processing biological objects in image such as cells and nuclei, it
+may make sense to identify all pixels that lie on the surface of an
+object. This notebook demonstrates how to select pixels on the border of
+nuclei, just in case we would like to measure intensity in the nuclear
+envelope.
+
+<<89eb8c62-b850-454e-9ab9-34efefea3dc3>>
+#+begin_src python
+import pyclesperanto_prototype as cle
+import numpy as np
+from skimage.io import imread
+import stackview
+#+end_src
+
+<<47ab799a-9380-434c-9404-e22d8b2bf5ac>>
+#+begin_src python
+image = cle.asarray(imread("../../data/mitosis_mod.tif")[0:40,25:65])
+image
+#+end_src
+
+#+begin_example
+cl.OCLArray([[20., 17., 17., ..., 28., 23., 20.],
+       [23., 26., 18., ..., 23., 30., 20.],
+       [16., 22., 16., ..., 31., 22., 42.],
+       ...,
+       [36., 35., 36., ..., 49., 38., 46.],
+       [38., 27., 38., ..., 43., 40., 49.],
+       [38., 39., 40., ..., 44., 36., 44.]], dtype=float32)
+#+end_example
+
+<<772b513d-f373-4b56-999c-9afe3bf1fa28>>
+We then segment the nuclei.
+
+<<172ecb71-dce5-410c-adf4-cefafd12a2e3>>
+#+begin_src python
+label_image = cle.voronoi_otsu_labeling(image, spot_sigma=2, outline_sigma=1)
+label_image
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<467006cb-2580-4914-b552-4fa6a3f0c18e>>
+From the nuclei label image we can extract another label image which
+contains all pixels that are on the edge of the labels.
+
+<<944c5dd8-b60e-4a6b-9092-25ad308311b2>>
+#+begin_src python
+edge_label_image = cle.reduce_labels_to_label_edges(label_image)
+edge_label_image
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<bea89253-6b4a-4626-ab45-c3ca1d4ee7db>>
+In case one wanted to measure in thicker areas along the borders, we
+could expand the borders.
+
+<<59eb486d-3821-4b25-951d-ecab72dd9119>>
+#+begin_src python
+thicker_edges = cle.dilate_labels(edge_label_image, radius=1)
+thicker_edges
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<ee361b5d-92a3-41c1-a31a-6583736e1bab>>
+For visualization purposes we can also view the original image with the
+label borders on top.
+
+<<3c4eb43a-616d-402a-93c3-3c3f528fc2d6>>
+#+begin_src python
+stackview.imshow(image, continue_drawing=True)
+stackview.imshow(edge_label_image, alpha=0.6, labels=True)
+#+end_src
+
+[[file:8c3db1d1a00f297daa16b6e8f10074413456b23f.png]]
+
+<<84779ce5-8e0c-4174-9b23-75803c93a776>>
+It is also possible to retrieve a 2-pixel thick boundary binary image of
+edges between labels and backgroaund.
+
+<<8596dc8a-33bc-4c37-83b2-227119d5f7fe>>
+#+begin_src python
+cle.detect_label_edges(label_image)
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint8)
+#+end_example
+
+<<8fa6e929-ee67-49f4-a1e8-142b90027180>>
+#+begin_src python
+#+end_src

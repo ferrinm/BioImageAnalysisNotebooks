@@ -1,0 +1,150 @@
+<<002d960d-6eb6-46b9-bc22-8bf74c78caeb>>
+* Brightness and Contrast
+  :PROPERTIES:
+  :CUSTOM_ID: brightness-and-contrast
+  :END:
+
+<<e84a1034-8f32-4256-9553-5fae498d338c>>
+When visualizing images in Jupyter notebooks it is important to show
+them in a way that a reader can see what we're writing about. Therefore,
+adjusting brightness and contrast is important. We can do this by
+modifying the /display range/, the range of displayed grey values.
+
+For demonstration purposes we use the
+[[https://scikit-image.org/docs/stable/api/skimage.data.html#skimage.data.cells3d][cells3d
+example image of scikit-image]].
+
+<<42f9d13c-9a40-4993-9156-d79344c883ca>>
+#+begin_src python
+import numpy as np
+from skimage.data import cells3d
+from skimage.io import imread
+import stackview
+#+end_src
+
+<<9c5cc83f-eebc-48c6-9075-eb54bb8389fd>>
+The =cells3d= dataset is a 4D-image. Using array-acces we extract a
+single 2D slice and show it.
+
+<<97b54f86-62c2-4e99-a71d-0324c1a80749>>
+#+begin_src python
+image = cells3d()[30,0]
+image.shape
+#+end_src
+
+#+begin_example
+(256, 256)
+#+end_example
+
+<<77bb99c3-ffc2-43c0-94f3-c1a425f56fcd>>
+#+begin_src python
+stackview.insight(image)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[4496, 5212, 6863, ..., 2917, 2680, 2642],
+                  [4533, 5146, 7555, ..., 2843, 2857, 2748],
+                  [4640, 6082, 8452, ..., 3372, 3039, 3128],
+                  ...,
+                  [1339, 1403, 1359, ..., 4458, 4314, 4795],
+                  [1473, 1560, 1622, ..., 3967, 4531, 4204],
+                  [1380, 1368, 1649, ..., 3091, 3558, 3682]], dtype=uint16)
+#+end_example
+
+<<1f550fa2-7622-4efb-ae40-a50ec35d07d6>>
+Notice that here the colorbar ranges from 0 to about 45000. Minimum and
+maxium intensity are also given on the right.
+
+<<dfb093d6-08b3-4c9f-8008-6df49ffef367>>
+You can also tune minimum and maximum display intensity manually like
+this:
+
+<<c0dcae73-eef8-430f-be41-9c2b55b4575c>>
+#+begin_src python
+stackview.display_range(image)
+#+end_src
+
+#+begin_example
+{"model_id":"02d53947343e4b25bb8259f4b328f73c","version_major":2,"version_minor":0}
+#+end_example
+
+<<6887a8f2-6df0-4f8c-930e-07885c2c0701>>
+For specifying a fixed maximum intensity for display, you can use the
+imshow function:
+
+<<04c398ce-8d0f-44ad-b690-87d66c3c2746>>
+#+begin_src python
+stackview.imshow(image, max_display_intensity=10000)
+#+end_src
+
+[[file:0ab38437ac48664e3130e0be79bfa5c61508ac7f.png]]
+
+<<9f1911ee-0f59-48ea-a3bf-b106d763505d>>
+** Adjusting visualization independent from the specific image
+   :PROPERTIES:
+   :CUSTOM_ID: adjusting-visualization-independent-from-the-specific-image
+   :END:
+The next image we open may, or may not, have a similar grey-value range.
+It makes sense to analyse the intensity distribution of the image.
+Percentiles are the way to go. E.g. the 95th percentile specifies the
+intensity threshold under which 95% of the image are. One could use this
+as an upper limit for display. This would also work for other images,
+where the intensity distribution is different.
+
+<<46de1a6f-3a17-47fb-bc92-4fd9f8426679>>
+#+begin_src python
+upper_limit = np.percentile(image, 95)
+upper_limit
+#+end_src
+
+#+begin_example
+6580.0
+#+end_example
+
+<<e0f71b8c-20d1-448f-aa75-4bba2fba8385>>
+We can use this value to configure the display. Note the colorbar has a
+maximum of this value now. Hence, the pixels with intensity above this
+value may be shown wrongly.
+
+<<6d9eb298-9725-4d1e-820f-6bb20d1bb245>>
+#+begin_src python
+stackview.imshow(image, max_display_intensity=upper_limit, colorbar=True)
+#+end_src
+
+[[file:f4bad0bc98785e0b304ba53ca296c89d800ed917.png]]
+
+<<f1e1392d-1449-4747-b00f-bdd12e443336>>
+* Exercise
+  :PROPERTIES:
+  :CUSTOM_ID: exercise
+  :END:
+
+<<4daf3695-ab10-48b7-8f95-1017abdfe797>>
+The =M51= dataset (taken from ImageJ's example images) is also an image
+that is hard to display correctly. After loading it, it is displayed
+like this:
+
+<<14e84722-4e69-430e-9ed2-c8b473265f18>>
+#+begin_src python
+m51 = imread("../../data/m51.tif")
+
+stackview.insight(m51)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[218, 245, 235, ..., 296, 303, 279],
+                  [254, 268, 267, ..., 269, 265, 254],
+                  [266, 254, 255, ..., 269, 245, 248],
+                  ...,
+                  [251, 242, 242, ..., 197, 207, 205],
+                  [250, 250, 240, ..., 210, 202, 203],
+                  [233, 247, 248, ..., 203, 199, 203]], dtype=uint16)
+#+end_example
+
+<<d03049b3-a583-4227-a8c2-5af9e941494e>>
+Study the intensity distribution of the image and show it up to its 99th
+percentile.
+
+<<2c7665ee-90ad-4737-b095-195d658b49b3>>
+#+begin_src python
+#+end_src

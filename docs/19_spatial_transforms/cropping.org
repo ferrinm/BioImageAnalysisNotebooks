@@ -1,0 +1,195 @@
+<<e19f7365-4a77-46e8-9bc5-1888e30a0c18>>
+* Slicing and cropping
+  :PROPERTIES:
+  :CUSTOM_ID: slicing-and-cropping
+  :END:
+When working with larger image data, it often makes sense to crop out
+regions and focus on them for further analysis. For cropping images, we
+use the same ":"-syntax, we used when [[file:lists-and-tuples][indexing
+in lists]] and [[file:multi-dimensional-image-stacks][exploring
+multi-dimensional image data]].
+
+<<ccf080b3-230c-4d76-ab83-288a1a5e871f>>
+#+begin_src python
+import numpy as np
+from skimage.io import imread, imshow
+#+end_src
+
+<<dcbed17c-65cf-47af-817d-01ef3c95ca30>>
+We start by loading a 3D image and printing its size.
+
+<<a3975a58-9686-4277-bc18-e945ec2c8522>>
+#+begin_src python
+image = imread("../../data/Haase_MRT_tfl3d1.tif")
+
+image.shape
+#+end_src
+
+#+begin_example
+(192, 256, 256)
+#+end_example
+
+<<02770cda-1afd-44e5-9524-539823e3fc32>>
+** Slicing
+   :PROPERTIES:
+   :CUSTOM_ID: slicing
+   :END:
+For visualizing 3D images using scikit-image's =imshow=, we need to
+select a slice to visualize. For example, a Z-slice:
+
+<<d6151527-8e19-4d3b-9b1f-2d4b7911c999>>
+#+begin_src python
+slice_image = image[100]
+
+imshow(slice_image)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x2b54f73d340>
+#+end_example
+
+[[file:11d3a6272e52cdb9c3043d22a886f7b17485aa92.png]]
+
+<<dd9a71c8-5545-4722-8461-ba3bcd2d22e3>>
+We can also select a plane where all pixels have the same Y-position. We
+just need to specify, that we would like to keep all pixels in Z using
+the =:= syntax.
+
+<<362e9112-da59-4422-a272-68f9a8c433ca>>
+#+begin_src python
+slice_image = image[:, 100]
+
+imshow(slice_image)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x2b54f836af0>
+#+end_example
+
+[[file:c9a4f50788ed0caf8f70df000c1c309c956b7bfe.png]]
+
+<<a1a49d4b-f5a3-4d3d-97c4-585bf4e12769>>
+** Cropping
+   :PROPERTIES:
+   :CUSTOM_ID: cropping
+   :END:
+We can also select a sub-stack using indexing in the square brackets.
+
+<<80ec5e4a-e58c-4151-8265-6e817a9eee2c>>
+#+begin_src python
+sub_stack = image[50:150]
+
+sub_stack.shape
+#+end_src
+
+#+begin_example
+(100, 256, 256)
+#+end_example
+
+<<2d4826f1-c1f9-4b41-9337-2a1ca412b91f>>
+We can also select a sub-region in X. If we want to keep all pixels
+along Z and Y (the first two dimensions), we just specify =:= to keep
+all.
+
+<<65bf5024-67aa-4906-a8f7-15d8c3041da1>>
+#+begin_src python
+sub_region_x = image[:, :, 100:200]
+
+imshow(sub_region_x[100])
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x2b54f8ae850>
+#+end_example
+
+[[file:85da58d82982000c233f45d01c1b8623240f11ec.png]]
+
+<<9ba80a47-39d5-4468-80db-1e464cc8068f>>
+For selectinng all pixels in one direction above a given value, we just
+need to specify the start before =:=.
+
+<<046a8d9d-91f1-4bf0-8772-2acadf9d5f10>>
+#+begin_src python
+sub_region_y = image[:, 100:]
+
+imshow(sub_region_y[100])
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x2b54f90ae20>
+#+end_example
+
+[[file:a07e38026828023769461de74c17420b7b9128a2.png]]
+
+<<9f2e4e8e-ce44-4b40-a785-d0778621ea0b>>
+Similarly, we can select all pixels up to a given position.
+
+<<69750900-0d20-4da2-af6f-74ced06fcd7a>>
+#+begin_src python
+sub_region_x2 = image[:, :, :50]
+
+imshow(sub_region_x2[100])
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x2b550943d30>
+#+end_example
+
+[[file:b9163a0b88fd5a2c39881d3964f3895467b20052.png]]
+
+<<2e57cdaf-f796-45d1-9946-1994058ffa95>>
+Last but not least, this is how a cropped cube is specified.
+
+<<591ce455-9294-4646-b6d5-3e9cc68dd901>>
+#+begin_src python
+cropped_cube = image[80:130, 120:170, :50]
+
+cropped_cube.shape
+#+end_src
+
+#+begin_example
+(50, 50, 50)
+#+end_example
+
+<<0daddc3e-3cd2-44f3-b1e2-077f5db5d583>>
+#+begin_src python
+imshow(cropped_cube[20])
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x2b5509a4a00>
+#+end_example
+
+[[file:8a21e44bc9fe67d91c7ea9d3162d8c47c494e434.png]]
+
+<<f584ad8e-0b84-4573-8905-6615a02eaef1>>
+And this is how a maximum-intensity projections of this cropped cube
+look like.
+
+<<7ec326ec-6f4d-4a46-aa67-19e4f19cd37e>>
+#+begin_src python
+maximum_intensity_projection_along_z = np.max(cropped_cube, axis=0) 
+imshow(maximum_intensity_projection_along_z)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x2b550a03f40>
+#+end_example
+
+[[file:75dc5046b5a23e7a7577e276333b98426d434e17.png]]
+
+<<ab6536de-0009-44a5-afe3-99aae730e21e>>
+#+begin_src python
+maximum_intensity_projection_along_y = np.max(cropped_cube, axis=1) 
+imshow(maximum_intensity_projection_along_y)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x2b550a5e8e0>
+#+end_example
+
+[[file:c8d7ac93e4f77c0d975df63ff0c19a667c1efcd9.png]]
+
+<<a2ba8f6e-5ee3-4048-812d-1a4d9f2f6bdd>>
+#+begin_src python
+#+end_src

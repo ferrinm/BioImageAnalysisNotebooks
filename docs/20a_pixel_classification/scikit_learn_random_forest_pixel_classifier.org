@@ -1,0 +1,337 @@
+<<suffering-festival>>
+* Pixel classification using Scikit-learn
+  :PROPERTIES:
+  :CUSTOM_ID: pixel-classification-using-scikit-learn
+  :END:
+Pixel classification is a technique for assigning pixels to multiple
+classes. If there are two classes (object and background), we are
+talking about binarization. In this example we use a
+[[https://en.wikipedia.org/wiki/Random_forest][random forest
+classifier]] for pixel classification.
+
+See also
+
+- [[https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html][Scikit-learn
+  random forest]]
+- [[https://ceholden.github.io/open-geo-tutorial/python/chapter_5_classification.html][Classification
+  of land cover by Chris Holden]]
+
+<<extreme-papua>>
+#+begin_src python
+from sklearn.ensemble import RandomForestClassifier
+
+from skimage.io import imread, imshow
+import numpy as np
+import napari
+#+end_src
+
+<<0df4445b-3426-494b-9fde-2337ea59731c>>
+As example image, use the image set
+[[https://bbbc.broadinstitute.org/bbbc/BBBC038][BBBC038v1]], available
+from the Broad Bioimage Benchmark Collection
+[[https://doi.org/10.1038/s41592-019-0612-7][Caicedo et al., Nature
+Methods, 2019]].
+
+<<oriental-appointment>>
+#+begin_src python
+image = imread('../../data/BBBC038/0bf4b1.tif')
+
+imshow(image)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x7f817af51ac0>
+#+end_example
+
+[[file:983a1790793aee2e7af87f204480aa70cf203111.png]]
+
+<<unavailable-harvey>>
+For demonstrating how the algorithm works, we annotate two small regions
+on the left of the image with values 1 and 2 for background and
+foreground (objects).
+
+<<canadian-progress>>
+#+begin_src python
+annotation = np.zeros(image.shape)
+annotation[0:10,0:10] = 1
+annotation[45:55,10:20] = 2
+
+imshow(annotation, vmin=0, vmax=2)
+#+end_src
+
+#+begin_example
+/Users/haase/opt/anaconda3/envs/bio_39/lib/python3.9/site-packages/skimage/io/_plugins/matplotlib_plugin.py:150: UserWarning: Low image data range; displaying image with stretched contrast.
+  lo, hi, cmap = _get_display_range(image)
+/Users/haase/opt/anaconda3/envs/bio_39/lib/python3.9/site-packages/skimage/io/_plugins/matplotlib_plugin.py:150: UserWarning: Float image out of standard range; displaying image with stretched contrast.
+  lo, hi, cmap = _get_display_range(image)
+#+end_example
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x7f81180937c0>
+#+end_example
+
+[[file:b546b11396554890d93bedf872855f6c8df3fa98.png]]
+
+<<touched-application>>
+** Generating a feature stack
+   :PROPERTIES:
+   :CUSTOM_ID: generating-a-feature-stack
+   :END:
+Pixel classifiers such as the random forest classifier takes multiple
+images as input. We typically call these images a feature stack because
+for every pixel exist now multiple values (features). In the following
+example we create a feature stack containing three features:
+
+- The original pixel value
+- The pixel value after a Gaussian blur
+- The pixel value of the Gaussian blurred image processed through a
+  Sobel operator.
+
+Thus, we denoise the image and detect edges. All three images serve the
+pixel classifier to differentiate positive and negative pixels.
+
+<<liberal-monster>>
+#+begin_src python
+from skimage import filters
+
+def generate_feature_stack(image):
+    # determine features
+    blurred = filters.gaussian(image, sigma=2)
+    edges = filters.sobel(blurred)
+
+    # collect features in a stack
+    # The ravel() function turns a nD image into a 1-D image.
+    # We need to use it because scikit-learn expects values in a 1-D format here. 
+    feature_stack = [
+        image.ravel(),
+        blurred.ravel(),
+        edges.ravel()
+    ]
+    
+    # return stack as numpy-array
+    return np.asarray(feature_stack)
+
+feature_stack = generate_feature_stack(image)
+
+# show feature images
+import matplotlib.pyplot as plt
+fig, axes = plt.subplots(1, 3, figsize=(10,10))
+
+# reshape(image.shape) is the opposite of ravel() here. We just need it for visualization.
+axes[0].imshow(feature_stack[0].reshape(image.shape), cmap=plt.cm.gray)
+axes[1].imshow(feature_stack[1].reshape(image.shape), cmap=plt.cm.gray)
+axes[2].imshow(feature_stack[2].reshape(image.shape), cmap=plt.cm.gray)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x7f817b16d5e0>
+#+end_example
+
+[[file:d9a02dfbcc113ed0cc154aee97cc9d0ebfde8c4b.png]]
+
+<<painful-english>>
+** Formatting data
+   :PROPERTIES:
+   :CUSTOM_ID: formatting-data
+   :END:
+We now need to format the input data so that it fits to what scikit
+learn expects. Scikit-learn asks for an array of shape (n, m) as input
+data and (n) annotations. n corresponds to number of pixels and m to
+number of features. In our case m = 3.
+
+<<plastic-botswana>>
+#+begin_src python
+def format_data(feature_stack, annotation):
+    # reformat the data to match what scikit-learn expects
+    # transpose the feature stack
+    X = feature_stack.T
+    # make the annotation 1-dimensional
+    y = annotation.ravel()
+    
+    # remove all pixels from the feature and annotations which have not been annotated
+    mask = y > 0
+    X = X[mask]
+    y = y[mask]
+
+    return X, y
+
+X, y = format_data(feature_stack, annotation)
+
+print("input shape", X.shape)
+print("annotation shape", y.shape)
+#+end_src
+
+#+begin_example
+input shape (200, 3)
+annotation shape (200,)
+#+end_example
+
+<<following-swedish>>
+** Training the random forest classifier
+   :PROPERTIES:
+   :CUSTOM_ID: training-the-random-forest-classifier
+   :END:
+We now train the
+[[https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html][random
+forest classifier]] by providing the feature stack X and the annotations
+y.
+
+<<chronic-terminology>>
+#+begin_src python
+classifier = RandomForestClassifier(max_depth=2, random_state=0)
+classifier.fit(X, y)
+#+end_src
+
+#+begin_example
+RandomForestClassifier(max_depth=2, random_state=0)
+#+end_example
+
+<<according-enterprise>>
+** Predicting pixel classes
+   :PROPERTIES:
+   :CUSTOM_ID: predicting-pixel-classes
+   :END:
+After the classifier has been trained, we can use it to predict pixel
+classes for whole images. Note in the following code, we provide
+=feature_stack.T= which are more pixels then X in the commands above,
+because it also contains the pixels which were not annotated before.
+
+<<optimum-relevance>>
+#+begin_src python
+res = classifier.predict(feature_stack.T) - 1 # we subtract 1 to make background = 0
+imshow(res.reshape(image.shape))
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x7f817b59fd90>
+#+end_example
+
+[[file:75fb766e4579034dc56e69d8aa78c5d4ca62f8cf.png]]
+
+<<entitled-advantage>>
+** Interactive segmentation
+   :PROPERTIES:
+   :CUSTOM_ID: interactive-segmentation
+   :END:
+We can also use napari to annotate some regions as negative (label = 1)
+and positive (label = 2).
+
+<<institutional-harvey>>
+#+begin_src python
+# start napari
+viewer = napari.Viewer()
+
+# add image
+viewer.add_image(image)
+
+# add an empty labels layer and keet it in a variable
+labels = viewer.add_labels(np.zeros(image.shape).astype(int))
+#+end_src
+
+#+begin_example
+/Users/haase/opt/anaconda3/envs/bio_39/lib/python3.9/site-packages/napari_tools_menu/__init__.py:165: FutureWarning: Public access to Window.qt_viewer is deprecated and will be removed in
+v0.5.0. It is considered an "implementation detail" of the napari
+application, not part of the napari viewer model. If your use case
+requires access to qt_viewer, please open an issue to discuss.
+  self.tools_menu = ToolsMenu(self, self.qt_viewer.viewer)
+#+end_example
+
+<<direct-gateway>>
+Go ahead *after* annotating at least two regions with labels 1 and 2.
+
+Take a screenshot of the annotation:
+
+<<comparative-vermont>>
+#+begin_src python
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:e6f32c494cbc9b5cdd92fb08655f7001f1db0a15.png]]
+
+<<metallic-register>>
+Retrieve the annotations from the napari layer:
+
+<<catholic-symbol>>
+#+begin_src python
+manual_annotations = labels.data
+
+imshow(manual_annotations, vmin=0, vmax=2)
+#+end_src
+
+#+begin_example
+/Users/haase/opt/anaconda3/envs/bio_39/lib/python3.9/site-packages/skimage/io/_plugins/matplotlib_plugin.py:150: UserWarning: Low image data range; displaying image with stretched contrast.
+  lo, hi, cmap = _get_display_range(image)
+#+end_example
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x7f8158e05a30>
+#+end_example
+
+[[file:362b6e8d48d018ce7db6a7d6cd9c0b1d42722a99.png]]
+
+<<crude-figure>>
+As we have used functions in the example above, we can just repeat the
+same procedure with the manual annotations.
+
+<<phantom-papua>>
+#+begin_src python
+# generate features (that's actually not necessary, 
+# as the variable is still there and the image is the same. 
+# but we do it for completeness)
+feature_stack = generate_feature_stack(image)
+X, y = format_data(feature_stack, manual_annotations)
+
+# train classifier
+classifier = RandomForestClassifier(max_depth=2, random_state=0)
+classifier.fit(X, y)
+
+# process the whole image and show result
+result_1d = classifier.predict(feature_stack.T)
+result_2d = result_1d.reshape(image.shape)
+imshow(result_2d)
+#+end_src
+
+#+begin_example
+/Users/haase/opt/anaconda3/envs/bio_39/lib/python3.9/site-packages/skimage/io/_plugins/matplotlib_plugin.py:150: UserWarning: Low image data range; displaying image with stretched contrast.
+  lo, hi, cmap = _get_display_range(image)
+#+end_example
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x7f8138dea5e0>
+#+end_example
+
+[[file:6fa4248ffd91d6fcb881d34104e2de4974635b95.png]]
+
+<<incident-slovenia>>
+Also we add the result to napari.
+
+<<protective-timer>>
+#+begin_src python
+viewer.add_labels(result_2d)
+#+end_src
+
+#+begin_example
+<Labels layer 'result_2d' at 0x7f816a1faaf0>
+#+end_example
+
+<<exceptional-ridge>>
+#+begin_src python
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:e21e19573538135dfe4b51345376457173eeee28.png]]
+
+<<clinical-fifth>>
+* Exercise
+  :PROPERTIES:
+  :CUSTOM_ID: exercise
+  :END:
+Change the code so that you can annotate three different regions:
+
+- Nuclei
+- Background
+- The edges between blobs and background
+
+<<eastern-puzzle>>
+#+begin_src python
+#+end_src

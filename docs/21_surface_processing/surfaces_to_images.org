@@ -1,0 +1,221 @@
+<<da6d5a51-f8ac-4865-893e-10186189faa1>>
+* From surface data to image data
+  :PROPERTIES:
+  :CUSTOM_ID: from-surface-data-to-image-data
+  :END:
+In this notebook we will turn surfaces into binary and label images.
+
+<<2c16dfdc-32ff-43e9-a9df-56f0deecaf10>>
+#+begin_src python
+import napari_process_points_and_surfaces as nppas
+import vedo
+#+end_src
+
+<<b9048ddd-5930-46e4-bbf4-61f3ca985f41>>
+#+begin_src python
+mesh = vedo.load("../../data/branchoid.ply")
+surface = nppas.to_napari_surface_data(mesh)
+
+surface
+#+end_src
+
+#+begin_example
+(array([[25.5, 44. , 47. ],
+        [26. , 43.5, 47. ],
+        [26. , 44. , 46.5],
+        ...,
+        [74.5, 56. , 51. ],
+        [74.5, 56. , 52. ],
+        [74.5, 56. , 53. ]], dtype=float32),
+ array([[    2,     1,     0],
+        [    4,     3,     0],
+        [    4,     0,     1],
+        ...,
+        [19038, 18870, 18872],
+        [19038, 18872, 19039],
+        [19039, 18872, 18852]], dtype=int64))
+#+end_example
+
+<<ff91dc0c-d93f-4873-9e8f-3387fb0e27b1>>
+** Binary volumes
+   :PROPERTIES:
+   :CUSTOM_ID: binary-volumes
+   :END:
+A common task is to fill a volume to create a binary image stack.
+
+<<bbc09181-568f-49de-b3e4-17f28e25b5b8>>
+#+begin_src python
+binary_image = nppas.surface_to_binary_volume(surface)
+binary_image
+#+end_src
+
+#+begin_example
+StackViewNDArray([[[0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   ...,
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0]],
+
+                  [[0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   ...,
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0]],
+
+                  [[0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   ...,
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0]],
+
+                  ...,
+
+                  [[0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   ...,
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0]],
+
+                  [[0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   ...,
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0]],
+
+                  [[0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   ...,
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0]]])
+#+end_example
+
+<<588d25bb>>
+** Labeled surface voxels
+   :PROPERTIES:
+   :CUSTOM_ID: labeled-surface-voxels
+   :END:
+We can also sample points from the surface and turn these points into a
+label image.
+
+<<79a81bc5-56f0-4a51-a06f-0f93294b1b1b>>
+#+begin_src python
+point_cloud = nppas.sample_points_from_surface(surface, distance_fraction=0.01)
+point_cloud
+#+end_src
+
+#+begin_example
+array([[26. , 44. , 46.5],
+       [26. , 43.5, 48. ],
+       [26. , 43.5, 50. ],
+       ...,
+       [74.5, 55. , 52. ],
+       [74.5, 56. , 49. ],
+       [74.5, 56. , 51. ]], dtype=float32)
+#+end_example
+
+<<23c3fcd4-45bb-4d9e-a7df-2134942a4100>>
+#+begin_src python
+point_labels = nppas.points_to_labels(point_cloud)
+point_labels
+#+end_src
+
+#+begin_example
+StackViewNDArray([[[0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   ...,
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0]],
+
+                  [[0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   ...,
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0]],
+
+                  [[0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   ...,
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0]],
+
+                  ...,
+
+                  [[0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   ...,
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0]],
+
+                  [[0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   ...,
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0]],
+
+                  [[0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   ...,
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0]]])
+#+end_example
+
+<<427aa2f2-0140-4ca9-82c8-23fc314b3c52>>
+#+begin_src python
+point_labels[50]
+#+end_src
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]])
+#+end_example
+
+<<7e11ee27-22fa-4f17-b751-a017d3d2c1e7>>
+These labels can also be turned into points again.
+
+<<6a4939de-52e7-4e68-a78c-80490d444dc4>>
+#+begin_src python
+centroids = nppas.labels_to_centroids(point_labels)
+centroids[:10]
+#+end_src
+
+#+begin_example
+[(26.0, 44.0, 47.0),
+ (26.0, 44.0, 48.0),
+ (26.0, 44.0, 50.0),
+ (26.0, 44.0, 52.0),
+ (26.0, 44.0, 54.0),
+ (26.0, 45.0, 46.0),
+ (26.0, 45.0, 48.0),
+ (26.0, 45.0, 50.0),
+ (26.0, 45.0, 52.0),
+ (26.0, 45.0, 55.0)]
+#+end_example

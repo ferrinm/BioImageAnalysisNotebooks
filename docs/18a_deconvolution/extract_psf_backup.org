@@ -1,0 +1,196 @@
+<<c608bb42-2272-4d3f-a5a8-3f61ac4906a2>>
+* Determining the point-spread-function from a bead image by distilling
+  :PROPERTIES:
+  :CUSTOM_ID: determining-the-point-spread-function-from-a-bead-image-by-distilling
+  :END:
+In order to deconvolve a microsocpy image properly, we should determine
+the point-spread-function (PSF) of the microscope.
+
+See also
+
+- [[https://github.com/True-North-Intelligent-Algorithms/tnia-python/blob/main/notebooks/Deconvolution/extract_psf-Haase-beads.ipynb][PSF
+  destilling by Brian Northan]]
+
+<<a922962c-dd91-47d5-8caa-1006715a595c>>
+#+begin_src python
+import numpy as np
+from skimage.io import imread, imsave
+from pyclesperanto_prototype import imshow
+import pyclesperanto_prototype as cle
+import RedLionfishDeconv as rl
+#+end_src
+
+<<2226b905-e927-4103-8abf-5a75bba75456>>
+The example image data used here was acquired by Bert Nitzsche and
+Robert Haase (both MPI-CBG at that time) at the Light Microscopy
+Facility of MPI-CBG. Just for completeness, the voxel size is
+0.022x0.022x0.125 µm^3.
+
+<<a20c8b42-c663-40f2-a368-eb4cdf7673f7>>
+#+begin_src python
+bead_image = imread('../../data/Bead_Image1_crop.tif')
+bead_image.shape
+#+end_src
+
+#+begin_example
+(41, 150, 150)
+#+end_example
+
+<<6ac8eba5-30fc-4d1a-b664-d54004b82a4d>>
+Our example image shows fluorescent beads, ideally with a diameter
+smaller than the resolution of the imaging setup. Furthermore, the beads
+should emit light in the same wavelength as the sample we would like to
+deconvolve later on. In the following image crop we see four fluorescent
+beads. It is recommended to image a larger field of view, with at least
+25 beads. Also make sure that the beads do not stick to each other and
+are sparsely distributed.
+
+<<108046a1-17d9-4099-97cc-79b220e76eff>>
+#+begin_src python
+imshow(cle.maximum_x_projection(bead_image), colorbar=True)
+imshow(cle.maximum_y_projection(bead_image), colorbar=True)
+imshow(cle.maximum_z_projection(bead_image), colorbar=True)
+#+end_src
+
+[[file:73313d9e57d5507cf3fb1614c318c1ff0ae132f8.png]]
+
+[[file:27f3a57af2321b86b1b649a5d17f26936a692163.png]]
+
+[[file:75b84ddb11bae558be86c4a2cc603e11468e7003.png]]
+
+<<b68d86ac-938c-4162-838a-27839d78d47e>>
+For determining an average PSF, technically we would need to crop out
+all the individual beads, align them and then average the images.
+
+** Find bead centroids
+   :PROPERTIES:
+   :CUSTOM_ID: find-bead-centroids
+   :END:
+However, there is a trick to determine the PSF. For that, we simulate a
+perfect =object= image. For that, we extract the centroids of segmented
+beads and assume those are the real objects. Afterwards, we deconvolve
+the =bead_image= with the perfect =object= image to retrieve the PSF.
+Note: This will only work if there are no other objects in the image and
+if beads are not too dense.
+
+<<e268a872-a5cc-4033-b4f5-c3cc3a8ba2f1>>
+#+begin_src python
+# Segment objects
+label_image = cle.voronoi_otsu_labeling(bead_image)
+cle.imshow(label_image, labels=True)
+#+end_src
+
+[[file:03b870f7eb062bbbd8cc478e0085feaef1f70ede.png]]
+
+<<1c6a6a41-c7ed-4696-853b-3b2367ae2aa8>>
+#+begin_src python
+# Determine centroids
+labeled_centroids_image = cle.reduce_labels_to_centroids(label_image)
+
+# binarize
+object_image = labeled_centroids_image > 0
+
+cle.imshow(object_image)
+#+end_src
+
+[[file:652fb0b389170323cd6cae6f3b256a88ff9717c0.png]]
+
+<<9d433365-8679-464b-a8bb-6362c3138b76>>
+#+begin_src python
+object_image.min(), object_image.max()
+#+end_src
+
+#+begin_example
+(0.0, 1.0)
+#+end_example
+
+<<c97425db-e672-478d-a62f-30df991f7e48>>
+#+begin_src python
+iterations = 100
+
+#from skimage import restoration
+#psf = restoration.richardson_lucy(bead_image.astype(float), object_image.astype(float), num_iter=iterations)
+
+psf = rl.doRLDeconvolutionFromNpArrays(bead_image.astype(float), 
+                                       np.asarray(object_image).astype(float), 
+                                       niter=iterations, 
+                                       method='gpu', 
+                                       resAsUint8=False )
+#+end_src
+
+<<8c6641f5-6016-4b0e-b09c-d7a2ab68c709>>
+We can then inspect the average PSF in 3D. If the PSF is a bit
+off-center, this is not a big problem. However, if it touches the image
+boarde, that can cause problems later on.
+
+<<7369aa62-baf2-4ced-a1d2-419052d5aa12>>
+#+begin_src python
+imshow(cle.maximum_x_projection(psf), colorbar=True)
+imshow(cle.maximum_y_projection(psf), colorbar=True)
+imshow(cle.maximum_z_projection(psf), colorbar=True)
+#+end_src
+
+[[file:8c136d5b7c750332ae52ed6eca88571e56e07477.png]]
+
+[[file:89668459dcc8b956edd47231cc7a6560a84f2602.png]]
+
+[[file:be7a8f8abc1863cc4d147f28f680ae50e4fc59f1.png]]
+
+<<0e6c7be9-bdcb-42fb-aec0-6cf00fdafeb4>>
+We can crop the PSF by determining its center first and then selecting
+pixels around it.
+
+<<015ca2cf-e149-458f-aee5-83f6c0a6f26b>>
+#+begin_src python
+center = (np.asarray(psf.shape) / 2).astype(int)
+center
+#+end_src
+
+#+begin_example
+array([20, 75, 75])
+#+end_example
+
+<<5c553acb-308a-4e66-8b20-46bbdd6e626d>>
+#+begin_src python
+radius = 10
+
+cropped_psf = psf[center[0]-radius:center[0]+radius+1,
+                  center[1]-radius:center[1]+radius+1,
+                  center[2]-radius:center[2]+radius+1]
+
+imshow(cle.maximum_x_projection(cropped_psf), colorbar=True)
+imshow(cle.maximum_y_projection(cropped_psf), colorbar=True)
+imshow(cle.maximum_z_projection(cropped_psf), colorbar=True)
+cropped_psf.shape
+#+end_src
+
+[[file:6031d1647424e74f00c1dcd417b43988d39931be.png]]
+
+[[file:6031d1647424e74f00c1dcd417b43988d39931be.png]]
+
+[[file:6031d1647424e74f00c1dcd417b43988d39931be.png]]
+
+#+begin_example
+(21, 21, 21)
+#+end_example
+
+<<5f778610-70d5-425c-be62-71a4bcda35f6>>
+After we determined a well centered PSF, we can save it for later
+re-use. Before doing that, we normalize the PSF. Goal is to have an
+image where the total intensity is =1=. This makes sure that an image
+that is deconvolvolution using this PSF later on does not modify the
+image's intensity range.
+
+<<27d9d992-45f3-4a3d-b407-305040a05fc6>>
+#+begin_src python
+normalized_psf = psf / np.sum(psf)
+
+imshow(normalized_psf, colorbar=True)
+#+end_src
+
+[[file:be7a8f8abc1863cc4d147f28f680ae50e4fc59f1.png]]
+
+<<5a2c08fa-36e1-4630-b66b-91d31e3a68f1>>
+#+begin_src python
+imsave('../../data/psf.tif', normalized_psf)
+#+end_src

@@ -1,0 +1,211 @@
+<<ceeae24d-8211-40a7-8eca-85e211c23f55>>
+* Image variations using Stable Diffusion
+  :PROPERTIES:
+  :CUSTOM_ID: image-variations-using-stable-diffusion
+  :END:
+Models such as
+[[https://huggingface.co/runwayml/stable-diffusion-v1-5][Stable
+Diffusion]] can take images, vary them in a latent space and then return
+a new image that appears a variation of the original. This can be useful
+for producing multiple similar example images and studying if
+algorithms, e.g. for segmentation, are capable to process these image
+variations.
+
+The example shown here is adapted from
+[[https://huggingface.co/docs/diffusers/api/pipelines/stable_diffusion/img2img][this
+source]]
+
+<<af2a5eae-b8dd-48f9-92c0-48a4d19b4269>>
+#+begin_src python
+import requests
+import torch
+import PIL
+from io import BytesIO
+from skimage.io import imread
+import numpy as np
+import stackview
+import matplotlib.pyplot as plt
+from diffusers import StableDiffusionImg2ImgPipeline
+#+end_src
+
+<<ba0b1c27-7e87-40a5-9282-8e0f7f18eb3e>>
+We load a pipeline on the GPU first.
+
+<<cd9b3a81-0640-401c-bca6-e7a2d7f8d944>>
+#+begin_src python
+pipe = StableDiffusionImg2ImgPipeline.from_pretrained(
+            "runwayml/stable-diffusion-v1-5", 
+            torch_dtype=torch.float16)
+pipe = pipe.to("cuda")
+#+end_src
+
+#+begin_example
+{"model_id":"103bd03f72ae438ca199b21fc4740407","version_major":2,"version_minor":0}
+#+end_example
+
+#+begin_example
+`text_config_dict` is provided which will be used to initialize `CLIPTextConfig`. The value `text_config["id2label"]` will be overriden.
+`text_config_dict` is provided which will be used to initialize `CLIPTextConfig`. The value `text_config["bos_token_id"]` will be overriden.
+`text_config_dict` is provided which will be used to initialize `CLIPTextConfig`. The value `text_config["eos_token_id"]` will be overriden.
+#+end_example
+
+<<e2e21afd-70f7-41c0-98e6-8bfa688be609>>
+Here we load our numpy-array-like image and convert it to be a pillow
+image, which is the required input type.
+
+<<4c536040-b857-45b0-b599-3317cd43b0aa>>
+#+begin_src python
+image_np = imread("../../data/blobs.tif")
+image_rgb_np = np.asarray([image_np, image_np, image_np]).swapaxes(0, 2).swapaxes(0, 1)
+init_image = PIL.Image.fromarray(image_rgb_np)
+init_image = init_image.resize((512, 512))
+init_image
+#+end_src
+
+[[file:eb565d28ecf433a9841f7085f417a81ae087032b.jpg]]
+
+<<f5af5f73-a8fd-4ef4-b3c5-5bf885b4ac2f>>
+We can now vary this image using a prompt.
+
+<<5fee3b9d-00f6-43f1-817a-58f239b89e2e>>
+#+begin_src python
+image = pipe(
+              prompt="brighter blobs", 
+              image=init_image, 
+              strength=0.5, 
+              guidance_scale=7.5, 
+            ).images[0]
+image
+#+end_src
+
+#+begin_example
+{"model_id":"71e8f80319a74af5bf6704cb1d8f29ff","version_major":2,"version_minor":0}
+#+end_example
+
+[[file:6cf6115c8be571f38a2cd72a3046360909b60d3f.jpg]]
+
+<<88c19b7c-6244-4972-87c7-0947f53ab795>>
+The =strength= parameter allows us to tune how similar the new image
+should be to the original.
+
+<<79d77c6b-dbf6-4d67-96e6-017b852b8e75>>
+#+begin_src python
+strengths = [0, 0.5, 0.75, 1]
+
+fig, axs = plt.subplots(1, 5, figsize=(15, 15))
+axs[0].imshow(image_rgb_np)
+axs[0].set_title(f"original")
+
+for i, strength in enumerate(strengths):
+    image = pipe(
+              prompt="brighter blobs", 
+              image=init_image, 
+              strength=strength, 
+              guidance_scale=7.5, 
+            ).images[0]
+    
+    np_image = np.array(image)
+    axs[i+1].imshow(np_image)
+    axs[i+1].set_title(f"strength={strength}")
+#+end_src
+
+#+begin_example
+{"model_id":"d9ab0534472842aeb7d494d584c45c3a","version_major":2,"version_minor":0}
+#+end_example
+
+#+begin_example
+{"model_id":"32e53daa2338435eba017b4a0d9d8019","version_major":2,"version_minor":0}
+#+end_example
+
+#+begin_example
+{"model_id":"fb2f7ac86e96415485ffc4ca17f3feb0","version_major":2,"version_minor":0}
+#+end_example
+
+#+begin_example
+{"model_id":"00d9667a97f14bb983a8e6d545fa483d","version_major":2,"version_minor":0}
+#+end_example
+
+[[file:bab6821bcfa00300fc04f9d6cf67ed6b572a743c.png]]
+
+<<196e3c28-2741-45db-9fa7-833822dbb7ce>>
+Obviously, the model has not been trained [only] on bio-medical imaging
+data.
+
+<<943c89e0-7d39-472d-9d50-4679579cbca4>>
+#+begin_src python
+scales = [0, 7.5, 15, 30]
+
+fig, axs = plt.subplots(1, 5, figsize=(15, 15))
+axs[0].imshow(image_rgb_np)
+axs[0].set_title(f"original")
+
+for i, scale in enumerate(scales):
+    image = pipe(
+              prompt="brighter blobs", 
+              image=init_image, 
+              strength=0.75, 
+              guidance_scale=scale, 
+            ).images[0]
+    
+    np_image = np.array(image)
+    axs[i+1].imshow(np_image)
+    axs[i+1].set_title(f"guidance_scale={scale}")
+#+end_src
+
+#+begin_example
+{"model_id":"eda8f570bc9844439f9450b60e05f6e6","version_major":2,"version_minor":0}
+#+end_example
+
+#+begin_example
+{"model_id":"22717bf63b1e4bcc8837d01f53caf046","version_major":2,"version_minor":0}
+#+end_example
+
+#+begin_example
+{"model_id":"45ee27fea7cb494cbf9bab806b783d48","version_major":2,"version_minor":0}
+#+end_example
+
+#+begin_example
+{"model_id":"6092fc9729d042e6b9f438a8004f7675","version_major":2,"version_minor":0}
+#+end_example
+
+[[file:e4438002840e6e198968796bef21aba797bed67d.png]]
+
+<<f74f7723-ca46-450e-abdb-fc337d5a44a3>>
+With careful parameter tuning and prompting one can also achieve
+science-art.
+
+<<59a1b319-32d2-4973-9cd7-12d564dd6237>>
+#+begin_src python
+image = pipe(
+              prompt="cats instead of bright blobs", 
+              image=init_image, 
+              strength=0.5, 
+              guidance_scale=7.5, 
+            ).images[0]
+
+fig, axs = plt.subplots(1, 2, figsize=(15, 15))
+axs[0].imshow(image_rgb_np)
+axs[1].imshow(np.array(image))
+#+end_src
+
+#+begin_example
+{"model_id":"991e09f53b4a4de2baf3a3c2b5535ad1","version_major":2,"version_minor":0}
+#+end_example
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x29232a5ec50>
+#+end_example
+
+[[file:3b982d7d2c8e68fc0dc4e4e10c7a58943938941f.png]]
+
+<<e729ce1b-ca13-43ba-8b60-1bcdc8891a70>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Vary the blobs image in a way that the edges become smoother compared to
+the original.
+
+<<57c0870a-fcc9-414f-a2ef-32d67074a9c6>>
+#+begin_src python
+#+end_src

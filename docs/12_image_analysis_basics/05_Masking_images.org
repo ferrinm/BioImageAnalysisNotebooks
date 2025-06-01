@@ -1,0 +1,171 @@
+<<8109deef-c7bd-49eb-bd9b-4277c4d4ef87>>
+* Indexing numpy arrays
+  :PROPERTIES:
+  :CUSTOM_ID: indexing-numpy-arrays
+  :END:
+Indexing is the term used for selecting entries in an array, e.g.
+depending on its content. Again this is an operation that we cannot
+perform in a simple way using standard lists and where Numpy is very
+useful.
+
+As a first simple example, we create here a 1D Numpy array:
+
+<<396bbd4b-d770-4507-9d85-737437a0eacd>>
+#+begin_src python
+import numpy
+measurements = numpy.asarray([1, 17, 25, 3, 5, 26, 12])
+measurements
+#+end_src
+
+#+begin_example
+array([ 1, 17, 25,  3,  5, 26, 12])
+#+end_example
+
+<<f2404e7b-d2fd-4b61-b0fc-1cebceee8d08>>
+Our goal is now to recover in this array only values larger than a
+certain threshold, =10= for example. When we use simple Python
+variables, such comparisons can be done like this:
+
+<<27de0afe-61f0-4105-b4b2-b15c42da728f>>
+#+begin_src python
+a = 5
+b = a > 10
+b
+#+end_src
+
+#+begin_example
+False
+#+end_example
+
+<<2dbe703d-db50-4047-be25-07d7148a4b6e>>
+The output is a /boolean/ value which takes the value =True= or =False=.
+Luckily we can do the same thing with Numpy arrays:
+
+<<c40eca74-9d79-4659-b91e-aea0ae488dae>>
+#+begin_src python
+mask = measurements > 10
+mask
+#+end_src
+
+#+begin_example
+array([False,  True,  True, False, False,  True,  True])
+#+end_example
+
+<<f2d72d36-51a5-435e-bd71-087c990ba43c>>
+Instead of getting a single boolean value we now get a /Numpy array of
+booleans/. We can now apply use this array as a mask to our data to
+retrieve a new array that only contains masked values (=True= in the
+mask array). For this we use again brackets (like for selecting rows and
+columns), but use the mask instead of indices:
+
+<<94a8b9c4-aca8-47be-9b74-c305a82d4c41>>
+#+begin_src python
+measurements[mask]
+#+end_src
+
+#+begin_example
+array([17, 25, 26, 12])
+#+end_example
+
+<<929a246f-3582-4f61-96d1-7bd936533b4d>>
+** With images
+   :PROPERTIES:
+   :CUSTOM_ID: with-images
+   :END:
+Instead of using this simle 1D array, we can perform the same operation
+on an entire image. Let's import the blobs picture again:
+
+<<636f4921-260c-4ee2-b4f0-501c3f2fb310>>
+#+begin_src python
+from skimage.io import imread, imshow
+from microfilm.microplot import microshow
+#+end_src
+
+<<666604b3-1bbd-4b1a-a22f-2a794e628668>>
+#+begin_src python
+image = imread("../../data/blobs.tif")
+#+end_src
+
+<<39b3152f-babe-4c18-92f2-63b576c60512>>
+#+begin_src python
+microshow(image);
+#+end_src
+
+[[file:69add59627b2d0bcd1a11f97d292160f6e16145d.png]]
+
+<<08ec1893-df96-46df-9d58-aa57052c8b92>>
+#+begin_src python
+mask = image > 100
+mask
+#+end_src
+
+#+begin_example
+array([[False, False, False, ...,  True,  True,  True],
+       [False, False, False, ...,  True,  True,  True],
+       [False, False, False, ...,  True,  True,  True],
+       ...,
+       [False, False, False, ..., False, False, False],
+       [False, False, False, ..., False, False, False],
+       [False, False, False, ..., False, False, False]])
+#+end_example
+
+<<00552069-3b6b-4cd2-ae9b-98bfa7642b82>>
+Now we obtain a 2D array filled with boolean values. We can even look at
+it (white values are =True=):
+
+<<9a8e236b-faf0-4e1b-8f6d-0563f8f93086>>
+#+begin_src python
+microshow(mask);
+#+end_src
+
+[[file:b136abbba6d900c0974aba967b4e47e589f8a797.png]]
+
+<<34937999-eafc-45bc-8b8f-8d0a22f5155c>>
+And now we can do indexing to recover all pixel values above our
+threshold of 100:
+
+<<9daf9414-947d-449f-9469-ef58ec93a385>>
+#+begin_src python
+image[mask]
+#+end_src
+
+#+begin_example
+array([112, 152, 184, ..., 152, 128, 112], dtype=uint8)
+#+end_example
+
+<<66be8edb-e58b-4712-a5de-38709fb10db9>>
+#+begin_src python
+len(image[mask])
+#+end_src
+
+#+begin_example
+24969
+#+end_example
+
+<<04c7111d-fd2f-4435-88e3-5f892c236c3e>>
+We have 24969 pixels above the threshold.
+
+<<e2327ef7-c0c3-4c26-8e6c-3002a6abe439>>
+** Exercises
+   :PROPERTIES:
+   :CUSTOM_ID: exercises
+   :END:
+Create a new mask for all pixel values above 200.
+
+<<03f9825d-c806-4e85-b7ea-fa75b02e7299>>
+#+begin_src python
+#+end_src
+
+<<330a3186-c740-4be7-9eb9-91822d78e173>>
+Apply the mask to retrieve a new array with numbers above 200.
+
+<<78c9d414-310f-4771-aadc-a18032fe0408>>
+#+begin_src python
+#+end_src
+
+<<9d956a11-a549-4dda-bda1-25c3199a3cdc>>
+Compute the average of all pixels above 200.
+
+<<3a20c289-9191-47ba-bdac-aa1332d50c16>>
+#+begin_src python
+#+end_src

@@ -1,0 +1,211 @@
+<<legitimate-reynolds>>
+(image-segmentation:voronoi-otsu-labeling=)
+
+* Voronoi-Otsu-labeling
+  :PROPERTIES:
+  :CUSTOM_ID: voronoi-otsu-labeling
+  :END:
+This workflow for image segmentation is a rather simple and yet powerful
+approach, e.g. for detecting and segmenting nuclei in fluorescence
+micropscopy images. A nuclei marker such as nuclei-GFP, DAPI or
+histone-RFP in combination with various microscopy techniques can be
+used to generate images of suitable kind.
+
+<<coastal-cooling>>
+#+begin_src python
+from skimage.io import imread, imshow
+import matplotlib.pyplot as plt
+import pyclesperanto_prototype as cle
+import napari_segment_blobs_and_things_with_membranes as nsbatwm
+#+end_src
+
+<<7fa0ed18-2db1-472a-ad37-6588231a3fb9>>
+To demonstrate the workflow, we're using image data from the
+[[https://bbbc.broadinstitute.org/BBBC022][Broad Bio Image Challenge]]:
+We used image set BBBC022v1
+[[http://dx.doi.org/10.1371/journal.pone.0080999][Gustafsdottir et al.,
+PLOS ONE, 2013]], available from the Broad Bioimage Benchmark Collection
+[[http://dx.doi.org/10.1038/nmeth.2083][Ljosa et al., Nature Methods,
+2012]].
+
+<<aboriginal-medline>>
+#+begin_src python
+input_image = imread("../../data/BBBC022/IXMtest_A02_s9.tif")[:,:,0]
+
+input_crop = input_image[0:200, 200:400]
+
+fig, axs = plt.subplots(1, 2, figsize=(15, 15))
+cle.imshow(input_image, plot=axs[0])
+cle.imshow(input_crop, plot=axs[1])
+#+end_src
+
+[[file:8b92fbee83a98e8a3c011b4876d2508f44b4fa3b.png]]
+
+<<broke-northwest>>
+** Applying the algorithm
+   :PROPERTIES:
+   :CUSTOM_ID: applying-the-algorithm
+   :END:
+Voronoi-Otsu-labeling is a command in clesperanto, which asks for two
+sigma parameters. The first sigma controls how close detected cells can
+be (=spot_sigma=) and second controls how precise segmented objects are
+outlined (=outline_sigma=).
+
+<<functional-mercy>>
+#+begin_src python
+sigma_spot_detection = 5
+sigma_outline = 1
+
+segmented = cle.voronoi_otsu_labeling(input_image, spot_sigma=sigma_spot_detection, outline_sigma=sigma_outline)
+segmented_crop = segmented[0:200, 200:400]
+
+fig, axs = plt.subplots(1, 2, figsize=(15, 15))
+cle.imshow(segmented, labels=True, plot=axs[0])
+cle.imshow(segmented_crop, labels=True, plot=axs[1])
+#+end_src
+
+[[file:6248755cc3c5802d9c5c50cac7aeeaee5f43f5d5.png]]
+
+<<asian-architecture>>
+** How does it work?
+   :PROPERTIES:
+   :CUSTOM_ID: how-does-it-work
+   :END:
+The Voronoi-Otsu-Labeling workflow is a combination of Gaussian blur,
+spot detection, thresholding and binary watershed. The interested reader
+might want to see the
+[[https://github.com/clEsperanto/pyclesperanto_prototype/blob/master/pyclesperanto_prototype/_tier9/_voronoi_otsu_labeling.py][open
+source code]]. The approach is similar to applying a seeded watershed to
+a binary image, e.g. in
+[[https://imagej.net/plugins/marker-controlled-watershed][MorphoLibJ]]
+or
+[[https://scikit-image.org/docs/dev/api/skimage.segmentation.html#skimage.segmentation.watershed][scikit-image]].
+However, the seeds are computed automatically and cannot be passed.
+
+For demonstration purposes we do that only on the 2D cropped image shown
+above. If this algorithm is applied to 3D data, it is recommended to
+make it isotropic first.
+
+<<italian-mobility>>
+#+begin_src python
+image_to_segment = input_crop
+print(image_to_segment.shape)
+#+end_src
+
+#+begin_example
+(200, 200)
+#+end_example
+
+<<contemporary-questionnaire>>
+As a first step, we blur the image with a given sigma and detect maxima
+in the resulting image.
+
+<<persistent-happening>>
+#+begin_src python
+blurred = cle.gaussian_blur(image_to_segment, sigma_x=sigma_spot_detection, sigma_y=sigma_spot_detection, sigma_z=sigma_spot_detection)
+
+detected_spots = cle.detect_maxima_box(blurred, radius_x=0, radius_y=0, radius_z=0)
+
+number_of_spots = cle.sum_of_all_pixels(detected_spots)
+print("number of detected spots", number_of_spots)
+
+fig, axs = plt.subplots(1, 2, figsize=(15, 15))
+cle.imshow(blurred, plot=axs[0])
+cle.imshow(detected_spots, plot=axs[1])
+#+end_src
+
+#+begin_example
+number of detected spots 29.0
+#+end_example
+
+[[file:7ce45a71a84c6ab8f99821d252d8fd35faf689dc.png]]
+
+<<herbal-remark>>
+Furthermore, we start again from the cropped image and blur it again,
+with a different sigma. Afterwards, we threshold the image using
+[[https://doi.org/10.1109%2FTSMC.1979.4310076][Otsu's thresholding
+method (Otsu et al 1979)]].
+
+<<animated-digest>>
+#+begin_src python
+blurred = cle.gaussian_blur(image_to_segment, sigma_x=sigma_outline, sigma_y=sigma_outline, sigma_z=sigma_outline)
+
+binary = cle.threshold_otsu(blurred)
+
+fig, axs = plt.subplots(1, 2, figsize=(15, 15))
+cle.imshow(blurred, plot=axs[0])
+cle.imshow(binary, plot=axs[1])
+#+end_src
+
+[[file:c82effe2851c357c84adfcaa28457477a69988ed.png]]
+
+<<local-decade>>
+Afterwards, we take the binary spots image and the binary segmentation
+image and apply a =binary_and= operation to exclude spots which were
+detected in the background area. Those likely corresponded to noise.
+
+<<assisted-remark>>
+#+begin_src python
+selected_spots = cle.binary_and(binary, detected_spots)
+
+number_of_spots = cle.sum_of_all_pixels(selected_spots)
+print("number of selected spots", number_of_spots)
+
+fig, axs = plt.subplots(1, 3, figsize=(15, 15))
+cle.imshow(detected_spots, plot=axs[0])
+cle.imshow(binary, plot=axs[1])
+cle.imshow(selected_spots, plot=axs[2])
+#+end_src
+
+#+begin_example
+number of selected spots 11.0
+#+end_example
+
+[[file:bfde074ce41b1da3d0ed3f1539d4bed911b59785.png]]
+
+<<lovely-pharmaceutical>>
+Next, we separate the image space between the selected spots using a
+[[https://en.wikipedia.org/wiki/Voronoi_diagram#References][Voronoi
+diagram]] which is limited to the positive pixels in the binary image.
+
+<<mediterranean-corpus>>
+#+begin_src python
+voronoi_diagram = cle.masked_voronoi_labeling(selected_spots, binary)
+
+fig, axs = plt.subplots(1, 3, figsize=(15, 15))
+cle.imshow(selected_spots, plot=axs[0])
+cle.imshow(binary, plot=axs[1])
+cle.imshow(voronoi_diagram, labels=True, plot=axs[2])
+#+end_src
+
+[[file:08d9ec83f39cf3890c1a67be21ff6002c72625b9.png]]
+
+<<60c16c9a-b559-412e-8c63-186a19086cc3>>
+** Other Voronoi-Otsu-Labeling implementations
+   :PROPERTIES:
+   :CUSTOM_ID: other-voronoi-otsu-labeling-implementations
+   :END:
+There is an alternative implementation of the algorithm in the
+scriptable napari plugin
+[[https://github.com/haesleinhuepf/napari-segment-blobs-and-things-with-membranes][napari-segment-blobs-and-things-with-membranes]].
+
+<<56ae4972-94e1-4364-b5a1-3b5b54fb1340>>
+The code here is almost identical to the code above. The major
+difference is that we call =nsbatwm.voronoi_otsu_labeling()= instead of
+=cle.voronoi_otsu_labeling()=.
+
+<<aa3a5541-08b0-4ca9-8127-daac5c1dd97e>>
+#+begin_src python
+sigma_spot_detection = 5
+sigma_outline = 1
+
+segmented2 = nsbatwm.voronoi_otsu_labeling(input_image, spot_sigma=sigma_spot_detection, outline_sigma=sigma_outline)
+
+segmented_crop2 = segmented2[0:200, 200:400]
+
+fig, axs = plt.subplots(1, 2, figsize=(15, 15))
+cle.imshow(segmented2, labels=True, plot=axs[0])
+cle.imshow(segmented_crop2, labels=True, plot=axs[1])
+#+end_src
+
+[[file:0c50dff7062d003275bee443a8575eacf605d32d.png]]

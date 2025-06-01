@@ -1,0 +1,184 @@
+<<another-position>>
+* Label images
+  :PROPERTIES:
+  :CUSTOM_ID: label-images
+  :END:
+Conceptionally, label images are an extension of binary images. In a
+label image, all pixels with value 0 correspond to background, a special
+region which is not considered as any object. Pixels with a value larger
+than 0 denote that the pixel belongs to an object and identifies that
+object with the given number. A pixel with value =1= belongs to first
+object and pixels with value =2= belongs to a second object and so on.
+Ideally, objects are labeled subsequently, because then, the maximum
+intensity in a label image corresponds to the number of labeled objects
+in this image.
+
+* Connected component labeling
+  :PROPERTIES:
+  :CUSTOM_ID: connected-component-labeling
+  :END:
+We can technially use both alternatives for connected components
+labeling, depending on the connectivity that is used for connecting
+pixels in the
+[[https://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.label][label
+function]].
+
+Connectivity
+
+1. [[https://en.wikipedia.org/wiki/Von_Neumann_neighborhood][von
+   Neumann, 4-connected]]
+2. [[https://en.wikipedia.org/wiki/Moore_neighborhood][Moore,
+   8-connected]]
+
+** 4-connected component labeling
+   :PROPERTIES:
+   :CUSTOM_ID: 4-connected-component-labeling
+   :END:
+See also
+
+- [[https://en.wikipedia.org/wiki/Connected-component_labeling][Connected-component
+  labeling]]
+
+We start with a made up binary image.
+
+<<multiple-lebanon>>
+#+begin_src python
+import numpy as np
+import pyclesperanto_prototype as cle
+from pyclesperanto_prototype import imshow
+
+binary_image = np.asarray([
+    [1, 1, 0, 0, 0, 0 ,0],
+    [0, 0, 1, 0, 0, 0 ,0],
+    [0, 0, 0, 1, 1, 1 ,0],
+    [0, 0, 0, 1, 1, 1 ,0],
+    [1, 1, 0, 0, 0, 0 ,0],
+    [1, 1, 0, 0, 1, 1 ,1],
+    [1, 1, 0, 0, 1, 1 ,1],    
+])
+#+end_src
+
+<<eight-corpus>>
+#+begin_src python
+imshow(binary_image, color_map='Greys_r')
+#+end_src
+
+#+begin_example
+c:\structure\code\pyclesperanto_prototype\pyclesperanto_prototype\_tier9\_imshow.py:14: UserWarning: The imshow parameter color_map is deprecated. Use colormap instead.
+  warnings.warn("The imshow parameter color_map is deprecated. Use colormap instead.")
+#+end_example
+
+[[file:553a03085aea2f88a4edae93170c3ec4bff1abf4.png]]
+
+<<cardiac-coral>>
+This binary image can be interpreted in two ways: Either there are five
+rectangles with size ranging between 1 and 6. Alternatively, there are
+two rectangles with size 6 and one snake-like structure of size 9
+pixels.
+
+<<respective-packing>>
+#+begin_src python
+from skimage.measure import label
+labeled_4_connected = label(binary_image, connectivity=1)
+
+imshow(labeled_4_connected, labels=True)
+#+end_src
+
+[[file:063cb67ef0b84a46947550a5945b9d0b51e0f75e.png]]
+
+<<distinguished-stereo>>
+** 8-connected component labeling
+   :PROPERTIES:
+   :CUSTOM_ID: 8-connected-component-labeling
+   :END:
+
+<<sixth-tuning>>
+#+begin_src python
+from skimage.measure import label
+labeled_8_connected = label(binary_image, connectivity=2)
+
+imshow(labeled_8_connected, labels=True)
+#+end_src
+
+[[file:03653bfb79f84b4643dd8a6462f03efb3d9af0e6.png]]
+
+<<impossible-handle>>
+In practice, for counting cells, the connectivity is not so important.
+This is why the connectivity parameter is often not provided.
+
+<<8ee540e2-2fcb-4b5a-9e4d-c038a3db7ca9>>
+** Connected component labeling in clesperanto
+   :PROPERTIES:
+   :CUSTOM_ID: connected-component-labeling-in-clesperanto
+   :END:
+In clesperanto, both connectivity options for connected component
+labeling is implemented in two different functions. When labeling
+objects using the 4-connected pixel neighborhood, we consider the
+"diamond" neighborhood of all pixels.
+
+<<752b073f-891d-4904-8521-df57f92424be>>
+#+begin_src python
+labeled_4_connected2 = cle.connected_components_labeling_diamond(binary_image)
+
+imshow(labeled_4_connected2, labels=True)
+#+end_src
+
+[[file:8e0b57544930702f54d5d0310f36b79fc7008fb2.png]]
+
+<<c6571491-4a42-40da-87eb-1e5f3ea5f8ad>>
+The 8-connected neighborhood considers a "box" around all pixels.
+
+<<8420459d-77df-49ad-8760-4da61a58596a>>
+#+begin_src python
+labeled_8_connected2 = cle.connected_components_labeling_box(binary_image)
+
+imshow(labeled_8_connected2, labels=True)
+#+end_src
+
+[[file:03653bfb79f84b4643dd8a6462f03efb3d9af0e6.png]]
+
+<<c9d941e4-9158-45c5-95f5-2a3e25b9b7dc>>
+** Labeling in practice
+   :PROPERTIES:
+   :CUSTOM_ID: labeling-in-practice
+   :END:
+To demonstrate labeling in a practical use case, we label the blobs.tif
+image.
+
+<<accredited-minnesota>>
+#+begin_src python
+# Load data
+from skimage.io import imread
+blobs = imread("../../data/blobs.tif")
+
+# Thresholding
+from skimage.filters import threshold_otsu
+threshold = threshold_otsu(blobs)
+binary_blobs = blobs > threshold
+
+# Connected component labeling
+from skimage.measure import label
+labeled_blobs = label(binary_blobs)
+
+# Visualization
+import matplotlib.pyplot as plt
+fig, axs = plt.subplots(1, 3, figsize=(15,15))
+
+cle.imshow(blobs, plot=axs[0])
+cle.imshow(binary_blobs, plot=axs[1])
+cle.imshow(labeled_blobs, plot=axs[2], labels=True)
+#+end_src
+
+[[file:cd7bd0ff20655068e9384824faa7ecd0970eb86b.png]]
+
+<<invalid-vegetable>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Find out experimentally what the default setting of the connectivity
+parameter of the =skimage.measure.label= function is.
+
+<<endless-intervention>>
+#+begin_src python
+#+end_src

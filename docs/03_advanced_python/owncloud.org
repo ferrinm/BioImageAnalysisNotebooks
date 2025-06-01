@@ -1,0 +1,261 @@
+<<7d9ebe36-31df-4c90-b09e-65c9afedf3b1>>
+* Accessing image files in the owncloud
+  :PROPERTIES:
+  :CUSTOM_ID: accessing-image-files-in-the-owncloud
+  :END:
+*NOTE: This notebook has been moded to the section "remote files"*
+
+This notebook we will demonstrate how to download files from an owncloud
+server, how to process it locally and upload the results back to the
+server.
+
+Depending on which cloud we use, we may have to install different
+libaries.
+
+- Owncloud installation
+
+#+begin_example
+pip install pyocclient
+#+end_example
+
+- Nextcloud installation
+
+#+begin_example
+pip install pyncclient
+#+end_example
+
+<<558d6ae7-dead-4181-ae8b-bae3fa02cf64>>
+#+begin_src python
+from skimage.io import imread, imshow, imsave
+from napari_segment_blobs_and_things_with_membranes import voronoi_otsu_labeling
+import ipywidgets as widgets
+
+import owncloud
+# import nextcloud_client as owncloud
+#+end_src
+
+<<040f6ba3-ad0e-4640-86f0-29e7e39390fc>>
+** Login
+   :PROPERTIES:
+   :CUSTOM_ID: login
+   :END:
+After executing the next cell locally, you will see three input fields
+where you can enter the server url, username and password.
+
+[[file:login.png]]
+
+<<005749f6-513f-442e-83bc-24ebc27e6458>>
+#+begin_src python
+server_widget = widgets.Text(value='https://sharing.biotec.tu-dresden.de', description='Server')
+username_widget = widgets.Text(description='Username:')
+password_widget = widgets.Password(description='Password')
+
+widgets.VBox([server_widget, username_widget, password_widget])
+#+end_src
+
+#+begin_example
+{"model_id":"4c1c468cd2ef485399bc48a83025df81","version_major":2,"version_minor":0}
+#+end_example
+
+<<b6818166-4d90-4572-a83c-4ffcc94766ff>>
+*Do NOT hit Shift-Enter after entering username and password*
+
+<<4d904fd9-acbe-4d9c-9b28-a1073bc128cc>>
+#+begin_src python
+if username_widget.value == '':
+    raise RuntimeError('Enter username and password above')
+#+end_src
+
+<<daab6956-fa31-4660-be02-0dee8712e8dd>>
+#+begin_src python
+oc = owncloud.Client(server_widget.value)
+oc.login(username_widget.value, password_widget.value)
+#+end_src
+
+<<41a3a588-db89-42bd-83cf-cfde579fe45f>>
+A typical error message is 401: Access denied. Check your username and
+password.
+
+** Browsing the remote server
+   :PROPERTIES:
+   :CUSTOM_ID: browsing-the-remote-server
+   :END:
+To see if the connection was successful, we can just list the files in a
+given folder.
+
+<<815f1c03-e403-459b-8635-759ff750a732>>
+#+begin_src python
+# enter a folder on the owncloud drive that exists. '/' is the root folder.
+remote_folder = "/data/"
+
+for f in oc.list(remote_folder):
+    print (f.path)
+#+end_src
+
+#+begin_example
+/data/blobs.tif
+/data/blobs_labels.tif
+/data/testfolder/
+/data/zfish_nucl_env.tif
+#+end_example
+
+<<6b980b56-1e9c-4696-9fdb-deeaba5f659d>>
+#+begin_src python
+import tempfile
+temp_folder = tempfile.TemporaryDirectory(prefix="napari-owncloud")
+#+end_src
+
+<<989569f4-43cd-4a7a-81f0-2d82d75c8e3f>>
+#+begin_src python
+import os
+
+temp_dir = temp_folder.name.replace("\\", "/") + remote_folder
+
+os.path.isdir(temp_dir)
+#+end_src
+
+#+begin_example
+True
+#+end_example
+
+<<615b2875-168f-4ef7-9c86-574963e5a69f>>
+#+begin_src python
+os.mkdir(temp_dir)
+#+end_src
+
+#+begin_example
+---------------------------------------------------------------------------
+FileExistsError                           Traceback (most recent call last)
+Cell In [12], line 1
+----> 1 os.mkdir(temp_dir)
+
+FileExistsError: [WinError 183] Cannot create a file when that file already exists: 'C:/Users/haase/AppData/Local/Temp/napari-owncloudc0epk0iu/data/'
+#+end_example
+
+<<c08c077f-7c76-40a3-97d2-a16f435cf8c4>>
+** Retrieving a file
+   :PROPERTIES:
+   :CUSTOM_ID: retrieving-a-file
+   :END:
+We can download a file to a local directory.
+
+<<9e989c43-684e-41b6-af53-68515cfc3be2>>
+#+begin_src python
+# enter the source file here
+remote_source_file = '/data/blobs.tif'
+# enter the destination
+local_file = 'blobs.tif'
+
+oc.get_file(remote_path=remote_source_file, 
+            local_file=local_file)
+#+end_src
+
+#+begin_example
+True
+#+end_example
+
+<<abd6569b-d49e-40d7-89a9-2ce1e0e2745a>>
+** Image processing
+   :PROPERTIES:
+   :CUSTOM_ID: image-processing
+   :END:
+As we downloaded the file, image processing works as usual.
+
+<<c66d5f7a-9c7f-467c-ab23-2d2375d236dc>>
+#+begin_src python
+image = imread(local_file)
+imshow(image)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1d29730e760>
+#+end_example
+
+[[file:7dddae89ea316eecb9349194c32d02decb0cec4d.png]]
+
+<<54431d4f-e023-4b28-ba71-63631120c8c8>>
+#+begin_src python
+labels = voronoi_otsu_labeling(image, spot_sigma=3.5)
+labels
+#+end_src
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 4, 4, 4],
+                  [0, 0, 0, ..., 4, 4, 4],
+                  [0, 0, 0, ..., 4, 4, 4],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]])
+#+end_example
+
+<<0d184952-da5e-4e1c-8325-a0f4655169ad>>
+** Uploading results
+   :PROPERTIES:
+   :CUSTOM_ID: uploading-results
+   :END:
+Before uploading an image to the cloud we need to save it locally.
+
+<<e564bd91-73e9-4fa4-abab-854f74bf4fc0>>
+#+begin_src python
+local_file_to_upload = "blobs_labels.tif"
+
+imsave(local_file_to_upload, labels, check_contrast=False)
+#+end_src
+
+<<e8acac0f-9ce8-4266-9826-ac19b2c56721>>
+We will upload the file to this folder:
+
+<<810cd512-1570-4c1f-b552-77c700dc7794>>
+#+begin_src python
+remote_folder
+#+end_src
+
+#+begin_example
+'/data/'
+#+end_example
+
+<<8fb1558f-6d98-4eff-8fe2-f955533e6459>>
+#+begin_src python
+oc.put_file(remote_folder, local_file_to_upload)
+#+end_src
+
+#+begin_example
+True
+#+end_example
+
+<<d851413a-c6d7-4e69-b997-0217da2c5122>>
+Just to be sure, we check if the file arrived by printing out the files
+in the folder again.
+
+<<3e26590c-187e-4234-affa-d655285ec373>>
+#+begin_src python
+for f in oc.list(remote_folder):
+    print (f.path)
+#+end_src
+
+#+begin_example
+/data/blobs.tif
+/data/blobs_labels.tif
+/data/zfish_nucl_env.tif
+#+end_example
+
+<<c0de2827-e958-40c3-bbb5-ed616b7d2f8c>>
+** Logout
+   :PROPERTIES:
+   :CUSTOM_ID: logout
+   :END:
+When you're done, log out!
+
+<<43eb402f-349e-40e0-b1e5-adc551ce8a56>>
+#+begin_src python
+oc.logout()
+#+end_src
+
+#+begin_example
+True
+#+end_example
+
+<<44d3d55d-4dda-4016-b1c8-4b10e2f227af>>
+#+begin_src python
+#+end_src

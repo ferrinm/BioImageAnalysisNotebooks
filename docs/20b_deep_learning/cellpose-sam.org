@@ -1,0 +1,132 @@
+<<micro-analyst>>
+* Image Segmentation with CellPose-SAM
+  :PROPERTIES:
+  :CUSTOM_ID: image-segmentation-with-cellpose-sam
+  :END:
+Since Version 4 CellPose uses a variaton of the
+[[https://segment-anything.com/][Segment-Anything-Model]].
+
+See also
+
+- [[https://www.biorxiv.org/content/10.1101/2025.04.28.651001v1][Cellpose-SAM
+  preprint]]
+- [[https://github.com/MouseLand/cellpose][Cellpose on github]]
+- [[https://github.com/MouseLand/cellpose/blob/main/notebooks/run_Cellpose-SAM.ipynb][Cellpose-SAM
+  example notebook]]
+
+As usual, we start with loading an example image.
+
+<<50aa598d-3943-4651-8a28-c45253c5c19f>>
+#+begin_src python
+import cellpose
+#+end_src
+
+#+begin_example
+
+Welcome to CellposeSAM, cellpose v
+cellpose version: 	4.0.3 
+platform:       	win32 
+python version: 	3.11.11 
+torch version:  	2.6.0! The neural network component of
+CPSAM is much larger than in previous versions and CPU excution is slow. 
+We encourage users to use GPU/MPS if available. 
+
+
+#+end_example
+
+<<4799d0ae-93e1-41d9-93bb-ea0130a12612>>
+#+begin_src python
+from cellpose import models
+import stackview
+import numpy as np
+from skimage.data import human_mitosis
+from skimage.io import imread
+#+end_src
+
+<<adbb027d-98d9-49c0-bc5c-de4495552b2e>>
+#+begin_src python
+image = human_mitosis()
+stackview.insight(image)
+#+end_src
+
+#+begin_example
+[[ 8  8  8 ... 63 78 75]
+ [ 8  8  7 ... 67 71 71]
+ [ 9  8  8 ... 53 64 66]
+ ...
+ [ 8  9  8 ... 17 24 59]
+ [ 8  8  8 ... 17 22 55]
+ [ 8  8  8 ... 16 18 38]]
+#+end_example
+
+<<cordless-lebanon>>
+** Loading a pretrained model
+   :PROPERTIES:
+   :CUSTOM_ID: loading-a-pretrained-model
+   :END:
+CellPose-SAM comes with only a single model that generalizes for
+multiple images and channel variations.
+
+<<deadly-tunisia>>
+#+begin_src python
+model = models.CellposeModel(gpu=True)
+#+end_src
+
+<<derived-electricity>>
+We let the model "evaluate" the image to produce masks of segmented
+nuclei.
+
+<<c7495d0b-186d-4694-8aa5-867f98d84106>>
+#+begin_src python
+masks, flows, styles = model.eval(image, 
+                                  batch_size=32, 
+                                  flow_threshold=0.4, 
+                                  cellprob_threshold=0.0,
+                                  normalize={"tile_norm_blocksize": 0})
+#+end_src
+
+<<53de48e6-0a95-40dc-9dd7-3a032ab9d9de>>
+We convert the label image to integer type because many downstream
+libraries expect this.
+
+<<b07462eb-e856-49f1-bde9-ebe8127da599>>
+#+begin_src python
+masks = masks.astype(np.uint32)
+#+end_src
+
+<<264b0471-dfd3-4654-a02c-c8fcdce072f4>>
+#+begin_src python
+stackview.insight(masks)
+#+end_src
+
+#+begin_example
+[[0 0 0 ... 3 3 3]
+ [0 0 0 ... 3 3 3]
+ [0 0 0 ... 3 3 3]
+ ...
+ [0 0 0 ... 0 0 0]
+ [0 0 0 ... 0 0 0]
+ [0 0 0 ... 0 0 0]]
+#+end_example
+
+<<88578710-3658-4248-8de6-230c05c3ca98>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Load =../../data/blobs.tif= and apply Cellpose-SAM to it.
+
+<<12febfe7-9fb8-4e23-b869-4d918bfec3c9>>
+#+begin_src python
+#+end_src
+
+<<edd55427-811c-42da-9822-22707f22994a>>
+Load =../../data/membrane2d.tif= and apply Cellpose-SAM to it.
+
+<<9b0de7c4-aaaf-41b5-ba4a-5364451c8271>>
+#+begin_src python
+#+end_src
+
+<<0a428b22-830d-4012-9d8b-79cefd59d514>>
+#+begin_src python
+#+end_src

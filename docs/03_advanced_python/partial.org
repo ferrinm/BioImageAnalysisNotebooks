@@ -1,0 +1,119 @@
+<<406c429a-7821-4c45-8865-aacf55d61248>>
+* Partial functions
+  :PROPERTIES:
+  :CUSTOM_ID: partial-functions
+  :END:
+In some use-cases it might be necessary to collect a function together
+with some parameters together in one variable to execute it later.
+[[https://docs.python.org/3/library/functools.html#functools.partial][functools'
+=partial()=]] enables to do this.
+
+<<7ebf13ec-3c3e-4681-9292-a74b7259467c>>
+#+begin_src python
+from functools import partial
+#+end_src
+
+<<04cff01d-d240-468e-b628-09e92c05e01b>>
+For demonstrating it, we define an example function.
+
+<<d0e94864-cb14-4138-ba12-75af252da731>>
+#+begin_src python
+def compute_sum(a, b):
+    return a + b
+#+end_src
+
+<<57337bd4-40e2-4afa-88df-df7fb94ef24d>>
+We can then store the =partial= object of that function in combination
+with the parameters in a variable.
+
+<<30b803b4-b38c-4466-80e2-1b0c29319b0f>>
+#+begin_src python
+sum_of_3_and_4 = partial(compute_sum, 3, 4)
+#+end_src
+
+<<d185265c-c293-48d4-9eb2-79121b809478>>
+This object is
+[[https://docs.python.org/3/library/typing.html#typing.Callable][callable]].
+
+<<eaecf16d-f2e7-4a1e-a999-d01b2147763a>>
+#+begin_src python
+sum_of_3_and_4()
+#+end_src
+
+#+begin_example
+7
+#+end_example
+
+<<988ee81d-d881-45db-9754-0b74642d3a45>>
+** Keeping parameters unset
+   :PROPERTIES:
+   :CUSTOM_ID: keeping-parameters-unset
+   :END:
+It is also possible to only partially specify parameters.
+
+<<38385592-cd2a-4e71-baaa-70ed55304243>>
+#+begin_src python
+sum_of_3_and_b = partial(compute_sum, 3)
+#+end_src
+
+<<2b8a0919-971c-44b6-ac11-a054bc9893de>>
+#+begin_src python
+sum_of_3_and_b(9)
+#+end_src
+
+#+begin_example
+12
+#+end_example
+
+<<0b89c247-9124-4027-a7ab-dcbabe260f14>>
+** Passing keyword arguments
+   :PROPERTIES:
+   :CUSTOM_ID: passing-keyword-arguments
+   :END:
+It also works with keyword arguments.
+
+<<3e02d3be-19ab-4498-97b2-e5e7cd3e870c>>
+#+begin_src python
+sum_of_a_and_4 = partial(compute_sum, b=4)
+#+end_src
+
+<<8e9b6ef5-ee4e-4160-b5f2-8878eb8e42ed>>
+#+begin_src python
+sum_of_a_and_4(5)
+#+end_src
+
+#+begin_example
+9
+#+end_example
+
+<<47cf1529-f687-46eb-bd6c-3cd36898ab72>>
+#+begin_src python
+sum_of_a_and_4(a=1)
+#+end_src
+
+#+begin_example
+5
+#+end_example
+
+<<32af919d-a341-466d-b649-d80394221880>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Program a function that determines the Euclidean distance of two points.
+Afterwards, use =partial= to pass one fixed point and a for-loop to
+print out distances of a list of points.
+
+<<afa7eef1-8e61-42fc-a7cf-3f7a66eb4775>>
+#+begin_src python
+fixed_point = (1, 1, 1)
+list_of_points = [(2,1,1), (1,1,3), (2,2,2)]
+#+end_src
+
+<<ab1be2f3-f99d-4a0f-8575-8bf0c042728f>>
+#+begin_src python
+#+end_src
+
+<<85e1e628-b528-4009-8b33-bfa06eb82cfd>>
+#+begin_src python
+#+end_src

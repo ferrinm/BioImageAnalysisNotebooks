@@ -1,0 +1,234 @@
+* Interactive image visualization with napari
+  :PROPERTIES:
+  :CUSTOM_ID: interactive-image-visualization-with-napari
+  :END:
+[[https://napari.org/][napari]] is a python-based image viewer. Today,
+we will use it by remote-controlling it from a jupyter notebook.
+
+See also
+
+- [[https://napari.org/tutorials/index.html][napari tutorials]]
+- [[https://www.youtube.com/watch?v=VgvDSq5aCDQ][Multi-dimensional image
+  visualization in Python using napari [NEUBIAS Academy@Home] webinar]]
+
+For opening an image, we still use scikit-image:
+
+#+begin_src python
+import napari
+
+from skimage.io import imread
+
+image = imread('../../data/Haase_MRT_tfl3d1.tif')
+
+# print out the spatial dimensions of the image
+print(image.shape)
+#+end_src
+
+#+begin_example
+(192, 256, 256)
+#+end_example
+
+#+begin_src python
+# Create an empty viewer
+viewer = napari.Viewer()
+#+end_src
+
+#+begin_src python
+# Add a new layer containing an image
+viewer.add_image(image)
+#+end_src
+
+#+begin_example
+<Image layer 'image' at 0x1d5a7bb9af0>
+#+end_example
+
+With this command, we can make a screenshot of napari and save it in our
+notebook.
+
+#+begin_src python
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:6707c4f09e89943e9dd54fa6ef264e2e024ec6d3.png]]
+
+** Slicing
+   :PROPERTIES:
+   :CUSTOM_ID: slicing
+   :END:
+We can programmatically move the Z-slice slider like this.
+
+#+begin_src python
+dims = viewer.dims.current_step
+dims
+#+end_src
+
+#+begin_example
+(96, 128, 128)
+#+end_example
+
+#+begin_src python
+# modify Z-slice position
+dims = list(dims)
+dims[0] = 60
+viewer.dims.current_step = dims
+
+# take another screenshot
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:e8183e3f3212038274615b3b65634382294e6d7a.png]]
+
+** 3D rendering
+   :PROPERTIES:
+   :CUSTOM_ID: 3d-rendering
+   :END:
+We can also activate the 3D view programmatically.
+
+#+begin_src python
+viewer.dims.ndisplay = 3
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:ef369199eda9a789de565fec8b93d6f4cae9555e.png]]
+
+** Camera orientation
+   :PROPERTIES:
+   :CUSTOM_ID: camera-orientation
+   :END:
+For changing the camera position it is recommended to print out the
+camera, e.g. after a modification was done manually. This allows you to
+understand what =center=, =zoom=, =angles= etc mean. You can then modify
+these parameters using Python.
+
+#+begin_src python
+viewer.camera
+#+end_src
+
+#+begin_example
+Camera(center=(95.5, 127.5, 127.5), zoom=2.2191406249999996, angles=(0.0, 0.0, 90.00000000000001), perspective=0.0, interactive=True)
+#+end_example
+
+#+begin_src python
+viewer.camera.angles = (15, -15, 90)
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:3599d2ee8bd383d608b4b2f3344e82b293b1db18.png]]
+
+#+begin_src python
+viewer.camera.zoom = 1
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:9df5f4b7d4e0adbc12ffdc0533c1e6e74e4f4141.png]]
+
+#+begin_src python
+viewer.dims.ndisplay = 2
+
+dims[0] = 96
+viewer.dims.current_step = dims
+#+end_src
+
+** Layer properties
+   :PROPERTIES:
+   :CUSTOM_ID: layer-properties
+   :END:
+For modifying colormaps / lookup tables and image display range, you can
+call commands like this.
+
+#+begin_src python
+image_layer = viewer.layers[0]
+
+image_layer.colormap = "jet"
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:2e67e031ffe70f5a330cb32b9890b1044eb39e4d.png]]
+
+#+begin_src python
+image_layer.contrast_limits = [0, 500]
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:75c70c252922839bc62a9dcf33ec51476acacab8.png]]
+
+#+begin_src python
+image_layer.colormap = 'gray'
+#+end_src
+
+** Visualizing segmentation results
+   :PROPERTIES:
+   :CUSTOM_ID: visualizing-segmentation-results
+   :END:
+Segmentation results are typically displayed as label images in Napari.
+In a label image intensities correspond to the object (class) a pixel
+belongs to. For example in a semantic segmentation, a pixel with
+intensity 1 belongs to category 1 and a pixel with intensity 2 belongs
+to category 2. When doing instance segmentation, a pixel with intensity
+1 belongs to object 1. A pixel with intensity 2 belongs to object 2.
+
+Label images can be put into Napari's layer list using the command
+=viewer.add_labels()=.
+
+#+begin_src python
+label_image = (image > 50) * 1 + (image > 110) * 2
+
+labels_layer = viewer.add_labels(label_image)
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:2d13abfdac539fbd5eef94eee2aef51ec81f46f3.png]]
+
+Also labels layers can be modified accordingly.
+
+#+begin_src python
+labels_layer.opacity = 0.3
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:b442e7a694f16fc86f0d46170cb75ea27f6634af.png]]
+
+#+begin_src python
+labels_layer.visible = False
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:a59eabb24c25693d25c8d4ee54c8678a4d44e415.png]]
+
+** Removing layers
+   :PROPERTIES:
+   :CUSTOM_ID: removing-layers
+   :END:
+Last but not least, we can also clean up and remove layers.
+
+#+begin_src python
+for l in list(viewer.layers):
+    viewer.layers.remove(l)
+    
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:a3d7a1303f84b8f5afd8869b2e8761dada144bea.png]]
+
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Start a new notebook, import napari, load the image
+=../data/hela-cells.tif= and add its three channels independently to
+napari as three layers. Afterwards, play with colormap and blending in
+the user interface. Can you make it look similar to ImageJ? Also check
+out the napari
+[[https://napari.org/tutorials/fundamentals/image.html][image layer
+tutorial]]. Can you also program such a visualization?
+
+#+begin_src python
+#+end_src

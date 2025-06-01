@@ -1,0 +1,86 @@
+<<ca4f7690-018d-4442-9037-d96de2ebd3aa>>
+* Voronoi-Otsu-Labeling on binary images
+  :PROPERTIES:
+  :CUSTOM_ID: voronoi-otsu-labeling-on-binary-images
+  :END:
+The Voronoi-Otsu-Labeling algorithm can also be used on binary images,
+leading to similar results like the binary watershed in ImageJ. It
+splits roundish objects in case they stick together.
+
+<<f2e65070-7047-43e0-8cb5-798dc2dad5ec>>
+#+begin_src python
+from skimage.io import imread
+from napari_segment_blobs_and_things_with_membranes import voronoi_otsu_labeling, threshold_otsu
+import stackview
+#+end_src
+
+<<71c1a312-26a4-4cf1-8ece-f621f2e08331>>
+To demonstrate this, we start wit a binary image.
+
+<<488052cc-7a36-4797-9d19-6741a4a31635>>
+#+begin_src python
+blobs_image = imread("../../data/blobs.tif")
+binary_image = threshold_otsu(blobs_image)
+
+binary_image
+#+end_src
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 1, 1, 1],
+                  [0, 0, 0, ..., 1, 1, 1],
+                  [0, 0, 0, ..., 1, 1, 1],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]])
+#+end_example
+
+<<29ea255c-6c01-465c-8413-55729d4b3223>>
+We now apply Voronoi-Otsu-Labeling to the binary image.
+
+<<40a18c69-f042-4efc-bb62-64fa0fa1a60d>>
+#+begin_src python
+label_image = voronoi_otsu_labeling(binary_image, spot_sigma=3.5)
+
+label_image
+#+end_src
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 5, 5, 5],
+                  [0, 0, 0, ..., 5, 5, 5],
+                  [0, 0, 0, ..., 5, 5, 5],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]])
+#+end_example
+
+<<a85451b3-5572-4186-bc95-ce03f422d8e0>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Below you see the result of the Watershed in ImageJ. How do you need to
+modify the =label_image= result above to turn it again into a binary
+image like the result of ImageJ?
+
+<<36ad7baf-7d26-473f-a428-6f2096341c8f>>
+#+begin_src python
+binary_watershed_imagej = imread("../../data/blobs_otsu_watershed.tif")
+
+stackview.insight(binary_watershed_imagej)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[  0,   0,   0, ..., 255, 255, 255],
+                  [  0,   0,   0, ..., 255, 255, 255],
+                  [  0,   0,   0, ..., 255, 255, 255],
+                  ...,
+                  [  0,   0,   0, ...,   0,   0,   0],
+                  [  0,   0,   0, ...,   0,   0,   0],
+                  [  0,   0,   0, ...,   0,   0,   0]], dtype=uint8)
+#+end_example
+
+<<74ce16b1-98ae-4e5a-b774-8c3a6e91c0fd>>
+#+begin_src python
+#+end_src

@@ -1,0 +1,224 @@
+<<d4df910f-e8ce-44d4-9fb5-dcb5a0559914>>
+(image_file_formats:aicsimagio=)
+
+* Reading files with AICSImageIO
+  :PROPERTIES:
+  :CUSTOM_ID: reading-files-with-aicsimageio
+  :END:
+The [[https://github.com/AllenCellModeling/aicsimageio][AICSImageIO
+library]] aims streamlining reading microscopy image data.
+
+To install the library, you need to call this command.
+
+#+begin_example
+pip install aicsimageio
+#+end_example
+
+In case specific proprietary file formats should be read, additional
+software must be installed.
+[[https://github.com/AllenCellModeling/aicsimageio#extra-format-installation][Check
+the documentation for details]].
+
+<<ee6f1233-2443-4c93-a91b-2b1ed795a25b>>
+#+begin_src python
+from aicsimageio import AICSImage
+
+from skimage.io import imshow
+#+end_src
+
+<<c2faf622-d46c-47e0-a008-9eeb24aed3a8>>
+First, we create an =AICSImage= object to see if it understands our file
+format. In the following example, we read an
+[[https://docs.openmicroscopy.org/ome-model/5.6.3/ome-tiff/][OME Tif]]
+file that was saved with ImageJ before.
+
+As example we are using here an image shared by
+[[https://datadryad.org/stash/dataset/doi:10.5061/dryad.02v6wwq2c][Célia
+Baroux et al(University of Zurich)]] that was resaved for demonstration
+purposes.
+
+<<69a5e6d0-7324-4d70-a737-2dcfc8c12a19>>
+#+begin_src python
+aics_image = AICSImage("../../data/EM_C_6_c0.ome.tif")
+aics_image
+#+end_src
+
+#+begin_example
+Attempted file (C:/structure/code/BioImageAnalysisNotebooks/data/EM_C_6_c0.ome.tif) load with reader: aicsimageio.readers.bfio_reader.OmeTiledTiffReader failed with error: No module named 'bfio'
+C:\Users\haase\mambaforge\envs\bio39\lib\site-packages\ome_types\_convenience.py:105: FutureWarning: The default XML parser will be changing from 'xmlschema' to 'lxml' in version 0.4.0.  To silence this warning, please provide the `parser` argument, specifying either 'lxml' (to opt into the new behavior), or'xmlschema' (to retain the old behavior).
+  d = to_dict(os.fspath(xml), parser=parser, validate=validate)
+#+end_example
+
+#+begin_example
+<AICSImage [Reader: OmeTiffReader, Image-is-in-Memory: False]>
+#+end_example
+
+<<de6bc84e-dbf3-4bfb-ac48-2d6f25888d59>>
+This object can already give us basic information such as image
+size/shape, dimensions and dimension names and order.
+
+<<d0104b70-9af2-4006-9882-2c6a82393346>>
+#+begin_src python
+aics_image.shape
+#+end_src
+
+#+begin_example
+(1, 1, 256, 256, 256)
+#+end_example
+
+<<8f4955d2-a26f-46b3-afab-8fb1e5b2ed49>>
+#+begin_src python
+aics_image.dims
+#+end_src
+
+#+begin_example
+<Dimensions [T: 1, C: 1, Z: 256, Y: 256, X: 256]>
+#+end_example
+
+<<57ca8ff9-2eea-42b3-b4ed-aaca533d104c>>
+#+begin_src python
+aics_image.dims.order
+#+end_src
+
+#+begin_example
+'TCZYX'
+#+end_example
+
+<<2df670db-32f7-4279-bd35-a1713e849f88>>
+From this object, we can also retrieve pixels as numpy arrays.
+
+<<088b222c-e9eb-45aa-9ee6-ade6318ea647>>
+#+begin_src python
+np_image = aics_image.get_image_data("ZYX", T=0)
+np_image.shape
+#+end_src
+
+#+begin_example
+(256, 256, 256)
+#+end_example
+
+<<7984c296-27ed-449d-9c27-9d748bf5dcdf>>
+#+begin_src python
+imshow(np_image[128])
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x158c9b60ac0>
+#+end_example
+
+[[file:8353f4853c095df3709892b770b61f7904dd8316.png]]
+
+<<d721205a-0b65-47a4-b3b9-a039b749e0d6>>
+** Reading meta data
+   :PROPERTIES:
+   :CUSTOM_ID: reading-meta-data
+   :END:
+When working with microscopy image data, it is important to be aware of
+meta data, for example the voxel size. In order to do volume
+measurements in proper physical units, we need to know how large a voxel
+is in X, Y and Z.
+
+<<b2cf4ca7-a8a2-4f49-8f4a-787084912394>>
+#+begin_src python
+aics_image.physical_pixel_sizes
+#+end_src
+
+#+begin_example
+PhysicalPixelSizes(Z=0.16784672897196262, Y=0.16776018346253663, X=0.16776018346253663)
+#+end_example
+
+<<b2b73073-c812-4727-83b3-3b2b7ff7e1c6>>
+And one can define a helper function for reading the voxel size in Z/Y/X
+format.
+
+<<89553a42-8686-4502-a67f-d5e4cdc15f59>>
+#+begin_src python
+def get_voxel_size_from_aics_image(aics_image):
+    return (aics_image.physical_pixel_sizes.Z,
+            aics_image.physical_pixel_sizes.Y,
+            aics_image.physical_pixel_sizes.X)
+#+end_src
+
+<<67274c33-5adb-4bd1-a5a8-df0d27441b19>>
+#+begin_src python
+get_voxel_size_from_aics_image(aics_image)
+#+end_src
+
+#+begin_example
+(0.16784672897196262, 0.16776018346253663, 0.16776018346253663)
+#+end_example
+
+<<3cc4f77d-4c71-4b49-bb29-f52b3d26719d>>
+** Reading CZI files
+   :PROPERTIES:
+   :CUSTOM_ID: reading-czi-files
+   :END:
+In case additionally the
+[[https://pypi.org/project/aicspylibczi/][=aicspylibczi= library]] is
+installed one can also open CZI files using AICSImageIO.
+
+<<3a878280-afad-40e0-92d7-65f9e30f6d82>>
+#+begin_src python
+czi_image = AICSImage("../../data/PupalWing.czi")
+czi_image.shape
+#+end_src
+
+#+begin_example
+(1, 1, 80, 520, 692)
+#+end_example
+
+<<a8dd581e-9aec-4a9f-a229-fcb9d394a6d7>>
+#+begin_src python
+np_czi_image = czi_image.get_image_data("ZYX", T=0)
+np_czi_image.shape
+#+end_src
+
+#+begin_example
+(80, 520, 692)
+#+end_example
+
+<<3263329e-9a8b-40ca-895d-5bd55f5e0228>>
+#+begin_src python
+get_voxel_size_from_aics_image(czi_image)
+#+end_src
+
+#+begin_example
+(1.0, 0.20476190476190476, 0.20476190476190476)
+#+end_example
+
+<<7c8249fe-5710-40ef-8a31-d6fb79f96bfc>>
+** Reading LIF files
+   :PROPERTIES:
+   :CUSTOM_ID: reading-lif-files
+   :END:
+In case additionally the [[https://pypi.org/project/readlif/][=readlif=
+library]] is installed, one can also read LIF images using AICSImageIO.
+
+<<7a76363c-7f67-4dc7-872f-d060e61f7956>>
+#+begin_src python
+lif_image = AICSImage("../../data/y293-Gal4_vmat-GFP-f01.lif")
+lif_image.shape
+#+end_src
+
+#+begin_example
+(1, 2, 86, 500, 616)
+#+end_example
+
+<<23dec06e-911c-49bb-a5a1-888059e6bf56>>
+#+begin_src python
+np_lif_image = lif_image.get_image_data("ZYX", T=0)
+np_lif_image.shape
+#+end_src
+
+#+begin_example
+(86, 500, 616)
+#+end_example
+
+<<a52c3a35-54ba-4ba7-b1d1-3aa1f8dad5b9>>
+#+begin_src python
+get_voxel_size_from_aics_image(lif_image)
+#+end_src
+
+#+begin_example
+(1.0070810588235295, 0.46827875751503006, 0.46827869918699183)
+#+end_example

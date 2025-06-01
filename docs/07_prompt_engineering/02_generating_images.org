@@ -1,0 +1,136 @@
+<<da9e102d-7303-4a24-a48f-c436e2d626e8>>
+** Generating images using DALL-E
+   :PROPERTIES:
+   :CUSTOM_ID: generating-images-using-dall-e
+   :END:
+In this notebook we will demonstrate how to ask openAI's DALL-E model to
+generate some images. Depending on what we request and how the model was
+trained, the results may be more or less appropriate. We will again use
+a small helper function to return the image directly.
+
+Read more:
+
+- [[https://platform.openai.com/docs/guides/images/usage][openAI image
+  generation documentation]]
+
+<<79b442a6-644f-4844-bde7-9a7352b4d8c0>>
+#+begin_src python
+import openai
+from skimage.io import imread, imshow
+from numpy import random
+from matplotlib import pyplot as plt
+#+end_src
+
+<<9ac33b1d-759c-4f16-b172-c2a47cde7447>>
+#+begin_src python
+def prompt_image(message:str, width:int=1024, height:int=1024, model='dall-e-3'):
+    client = openai.OpenAI()
+    response = client.images.generate(
+      prompt=message,
+      model=model,
+      n=1,
+      size=f"{width}x{height}"
+    )
+    image_url = response.data[0].url
+    image = imread(image_url)
+    
+    return image
+#+end_src
+
+<<8454aa6f-7108-46df-abf7-63d8d20a8782>>
+When generating scientific images, they may, or may not be a proper
+representation. Presumably, DALL-E was trained on many natural images
+(showing cars, trees, houses, etc.) and not so many images of cells.
+
+<<615ae87f-e913-414e-ae0a-70e3eb850f22>>
+#+begin_src python
+nuclei = prompt_image('an image of 100 nuclei in a fluorescence microscopy image')
+imshow(nuclei)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x19eb0e335e0>
+#+end_example
+
+[[file:ffaf72f576653456df7a862431ce780bd67db626.png]]
+
+<<f326ecbf-8e95-44b3-8663-a5c312a3bfc8>>
+Maybe, generating images of histological slices is more promising.
+
+<<c4f2bd5f-71cf-482d-b696-6e55e40f7fe3>>
+#+begin_src python
+histology = prompt_image('a histology image of lung cancer cells and some healthy tissue')
+imshow(histology)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x19eb12ad930>
+#+end_example
+
+[[file:f0c154a7414f3171c1078ec88fd121f4dc49e3e4.png]]
+
+<<a7a2073c-6b1a-4fd5-be90-a1ca8bc63551>>
+In some cases, Dall-E 2 produces more realistic output.
+
+<<e73da6ed-7cb7-4fe5-83d5-05834695e4c3>>
+#+begin_src python
+histology = prompt_image('a histology image of lung cancer cells and some healthy tissue',
+                        model='dall-e-2')
+imshow(histology)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x19eb12f15a0>
+#+end_example
+
+[[file:b8941131e61a7696a54c7c0285df9e05718f73a1.png]]
+
+<<3e0c526f-4c2b-4066-8b9c-e1b6014e4be8>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Evaluating generated images is an active research field. One approach is
+to present readers real images and generated images asking them to
+identify which are real. In the following list of four images of cats
+sitting next to microscopes, one cat is real. Which one? Why?
+
+<<d39bb450-df8b-4d07-91bf-651f2587a79c>>
+#+begin_src python
+cat_microscope_prompt = """
+Image of a cat sitting behind a microscope.
+Both are on a brown floor in front of a white wall.
+The cat is mostly white and has some black dots.
+The cat sits straight.
+The cat is a bit larger than the microsope.
+"""
+#+end_src
+
+<<ea4214aa-b2b3-468b-98c0-a8ff2a7d2918>>
+#+begin_src python
+images = [imread('../../data/real_cat.png')]
+for _ in range(3):
+    images.append(prompt_image(cat_microscope_prompt))
+#+end_src
+
+<<075761ee-0ebb-447a-8007-ab55b2a7c57f>>
+#+begin_src python
+random.shuffle(images)
+#+end_src
+
+<<e7a6c1c1-8990-43cc-880b-06d2f430fcf7>>
+#+begin_src python
+fix, ax = plt.subplots(1,len(images), figsize=(15,15))
+for i, image in enumerate(images):
+    ax[i].imshow(image)
+#+end_src
+
+[[file:b5053d94467e7ff11cda9fd0395f32a331e2d18a.png]]
+
+<<b1a9a75f-4ab2-4a94-961d-edcf8f8fc5a8>>
+Run the same image generation using Dall-E 2 and compare the results
+visually.
+
+<<d083e662-9ac0-4e84-8cc3-77893c00065a>>
+#+begin_src python
+#+end_src

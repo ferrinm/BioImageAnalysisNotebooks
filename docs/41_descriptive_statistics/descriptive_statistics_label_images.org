@@ -1,0 +1,288 @@
+* Descriptive statistics of labeled images
+  :PROPERTIES:
+  :CUSTOM_ID: descriptive-statistics-of-labeled-images
+  :END:
+Using [[https://pandas.pydata.org/][pandas]] and
+[[https://numpy.org][numpy]], we can do basic descriptive statistics.
+Before we start, we derive some measurements from a labeled image.
+
+#+begin_src python
+import pandas as pd
+import numpy as np
+from skimage.io import imread, imshow
+from napari_segment_blobs_and_things_with_membranes import gauss_otsu_labeling
+from skimage.measure import regionprops_table
+#+end_src
+
+We load the image using
+[[https://scikit-image.org/docs/dev/api/skimage.io.html#skimage.io.imread][scikit-image's
+=imread=]] and segment it using
+[[file:Image_segmentation.Gauss-Otsu-Labeling][Gauss-Otsu-Labeling]].
+
+#+begin_src python
+image = imread('../../data/blobs.tif')
+labels = gauss_otsu_labeling(image)
+imshow(labels)
+#+end_src
+
+#+begin_example
+C:\Users\rober\miniconda3\envs\bio_39\lib\site-packages\skimage\io\_plugins\matplotlib_plugin.py:150: UserWarning: Low image data range; displaying image with stretched contrast.
+  lo, hi, cmap = _get_display_range(image)
+#+end_example
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x2819ae7b370>
+#+end_example
+
+[[file:ac375bf6e974aa5fd2352d5c4b78240cf3bf5f69.png]]
+
+From the labeled image we can derive descriptive intensity, size and
+shape statistics using
+[[https://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.regionprops_table][scikit-image's
+=regionprops_table=]]. For post-processing the measurements, we turn
+them into a
+[[https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html][pandas
+Dataframe]].
+
+#+begin_src python
+table = regionprops_table(labels, image, properties=['area', 'minor_axis_length', 'major_axis_length', 'eccentricity', 'feret_diameter_max'])
+data_frame = pd.DataFrame(table)
+data_frame
+#+end_src
+
+#+begin_example
+    area  minor_axis_length  major_axis_length  eccentricity  \
+0    422          16.488550          34.566789      0.878900   
+1    182          11.736074          20.802697      0.825665   
+2    661          28.409502          30.208433      0.339934   
+3    437          23.143996          24.606130      0.339576   
+4    476          19.852882          31.075106      0.769317   
+..   ...                ...                ...           ...   
+56   211          14.522762          18.489138      0.618893   
+57    78           6.028638          17.579799      0.939361   
+58    86           5.426871          21.261427      0.966876   
+59    51           5.032414          13.742079      0.930534   
+60    46           3.803982          15.948714      0.971139   
+
+    feret_diameter_max  
+0            35.227830  
+1            21.377558  
+2            32.756679  
+3            26.925824  
+4            31.384710  
+..                 ...  
+56           18.973666  
+57           18.027756  
+58           22.000000  
+59           14.035669  
+60           15.033296  
+
+[61 rows x 5 columns]
+#+end_example
+
+You can /take/ a column out of the DataFrame. In this context it works
+like a Python dictionary.
+
+#+begin_src python
+data_frame["area"]
+#+end_src
+
+#+begin_example
+0     422
+1     182
+2     661
+3     437
+4     476
+     ... 
+56    211
+57     78
+58     86
+59     51
+60     46
+Name: area, Length: 61, dtype: int32
+#+end_example
+
+Even though this data structure appears more than just a vector, numpy
+is capable of applying basic descriptive statistics functions:
+
+#+begin_src python
+np.mean(data_frame["area"])
+#+end_src
+
+#+begin_example
+358.42622950819674
+#+end_example
+
+#+begin_src python
+np.min(data_frame["area"])
+#+end_src
+
+#+begin_example
+5
+#+end_example
+
+#+begin_src python
+np.max(data_frame["area"])
+#+end_src
+
+#+begin_example
+899
+#+end_example
+
+Individual cells of the DataFrame can be accessed like this:
+
+#+begin_src python
+data_frame["area"][0]
+#+end_src
+
+#+begin_example
+422
+#+end_example
+
+For loops can also iterate over table columns like this:
+
+#+begin_src python
+for area_value in data_frame["area"]:
+    print(area_value)
+#+end_src
+
+#+begin_example
+422
+182
+661
+437
+476
+277
+259
+219
+67
+19
+486
+630
+221
+78
+449
+516
+390
+419
+267
+353
+151
+400
+426
+246
+503
+278
+681
+176
+358
+544
+597
+181
+629
+596
+5
+263
+899
+476
+233
+164
+394
+411
+235
+375
+654
+376
+579
+64
+161
+457
+625
+535
+205
+562
+845
+280
+211
+78
+86
+51
+46
+#+end_example
+
+** Summary statistics with Pandas
+   :PROPERTIES:
+   :CUSTOM_ID: summary-statistics-with-pandas
+   :END:
+Pandas also allows you to visualize summary statistics of measurement
+using
+[[https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.describe.html][the
+=describe()= function]].
+
+#+begin_src python
+data_frame.describe()
+#+end_src
+
+#+begin_example
+             area  minor_axis_length  major_axis_length  eccentricity  \
+count   61.000000          61.000000          61.000000     61.000000   
+mean   358.426230          17.127032          24.796851      0.657902   
+std    210.446942           6.587838           9.074265      0.189669   
+min      5.000000           1.788854           3.098387      0.312788   
+25%    205.000000          14.319400          18.630719      0.503830   
+50%    375.000000          17.523565          23.768981      0.645844   
+75%    503.000000          21.753901          30.208433      0.825665   
+max    899.000000          28.409502          54.500296      0.984887   
+
+       feret_diameter_max  
+count           61.000000  
+mean            25.323368  
+std              8.732456  
+min              3.162278  
+25%             19.313208  
+50%             24.698178  
+75%             31.384710  
+max             52.201533  
+#+end_example
+
+** Correlation matrix
+   :PROPERTIES:
+   :CUSTOM_ID: correlation-matrix
+   :END:
+If you want to learn which parameters are correlated with other
+parameters, you can visualize that using
+[[https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.corr.html][pandas's
+=corr()=]].
+
+#+begin_src python
+data_frame.corr()
+#+end_src
+
+#+begin_example
+                        area  minor_axis_length  major_axis_length  \
+area                1.000000           0.890649           0.895282   
+minor_axis_length   0.890649           1.000000           0.664507   
+major_axis_length   0.895282           0.664507           1.000000   
+eccentricity       -0.192147          -0.566486           0.168454   
+feret_diameter_max  0.916652           0.716706           0.995196   
+
+                    eccentricity  feret_diameter_max  
+area                   -0.192147            0.916652  
+minor_axis_length      -0.566486            0.716706  
+major_axis_length       0.168454            0.995196  
+eccentricity            1.000000            0.103529  
+feret_diameter_max      0.103529            1.000000  
+#+end_example
+
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Process the banana dataset, e.g. using a for-loop that goes through the
+folder =../../data/banana/= and processes all the images. Segment all
+objects in the banana slice images and print out the largest area found
+for each slice. Collect these values in a list and visualize it as
+pandas DataFrame.
+
+#+begin_src python
+#+end_src

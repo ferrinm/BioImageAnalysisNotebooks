@@ -1,0 +1,110 @@
+<<ff11395c-5b0c-4df8-8b20-a5ab712d31ff>>
+* Saving and loading surfaces
+  :PROPERTIES:
+  :CUSTOM_ID: saving-and-loading-surfaces
+  :END:
+In this notebook we will save a surface to disk and reload it from there
+using [[https://vedo.embl.es/][vedo]].
+
+See also
+
+- [[https://vedo.embl.es/docs/vedo/io.html#write]]
+- [[https://vedo.embl.es/docs/vedo/io.html#load]]
+
+<<a43114eb-755f-485d-b602-4d0b6f5330da>>
+#+begin_src python
+import napari_process_points_and_surfaces as nppas
+import vedo
+
+from branchoid import branchoid
+#+end_src
+
+<<526101a6-9bec-461c-9f27-140252b1ee0b>>
+Starting point is again the surface of the simulated branchoid.
+
+<<0bec9a3c-4553-40e9-b51e-3a4d666cb855>>
+#+begin_src python
+binary_image = branchoid()
+surface = nppas.all_labels_to_surface(binary_image)
+surface
+#+end_src
+
+#+begin_example
+(array([[25.5, 44. , 47. ],
+        [26. , 43.5, 47. ],
+        [26. , 44. , 46.5],
+        ...,
+        [74.5, 56. , 51. ],
+        [74.5, 56. , 52. ],
+        [74.5, 56. , 53. ]], dtype=float32),
+ array([[    2,     1,     0],
+        [    4,     3,     0],
+        [    4,     0,     1],
+        ...,
+        [19038, 18870, 18872],
+        [19038, 18872, 19039],
+        [19039, 18872, 18852]], dtype=int64))
+#+end_example
+
+<<9a7a1d1c-3e06-4015-bf11-fcd26cd09586>>
+** Saving surfaces to disk
+   :PROPERTIES:
+   :CUSTOM_ID: saving-surfaces-to-disk
+   :END:
+The [[https://vedo.embl.es/][vedo]] library functions for saving and
+loading surfaces meshes. To convert them from/to napari-compatible
+surface-tuples, we use
+[[https://github.com/haesleinhuepf/napari-process-points-and-surfaces][napari-process-points-and-surfaces
+(nppas)]].
+
+<<2c40840a-d892-4071-9286-752924170582>>
+#+begin_src python
+mesh = nppas.to_vedo_mesh(surface)
+
+filename = "../../data/branchoid.ply"
+
+_ = vedo.write(mesh, filename)
+#+end_src
+
+<<8563f75b-3320-4151-b29f-b54caf5418aa>>
+** Loading meshes from disk
+   :PROPERTIES:
+   :CUSTOM_ID: loading-meshes-from-disk
+   :END:
+
+<<827dffde-feb0-4b74-8666-b8dee735e379>>
+#+begin_src python
+new_mesh = vedo.load(filename)
+new_mesh
+#+end_src
+
+#+begin_example
+<Mesh(0x000001E7DB0C8370) at 0x000001E7F7F8FD60>
+#+end_example
+
+<<a35e74e4-113d-41f5-9bde-25a7875d4a0a>>
+#+begin_src python
+new_surface = nppas.to_napari_surface_data(new_mesh)
+new_surface
+#+end_src
+
+#+begin_example
+(array([[25.5, 44. , 47. ],
+        [26. , 43.5, 47. ],
+        [26. , 44. , 46.5],
+        ...,
+        [74.5, 56. , 51. ],
+        [74.5, 56. , 52. ],
+        [74.5, 56. , 53. ]], dtype=float32),
+ array([[    2,     1,     0],
+        [    4,     3,     0],
+        [    4,     0,     1],
+        ...,
+        [19038, 18870, 18872],
+        [19038, 18872, 19039],
+        [19039, 18872, 18852]], dtype=int64))
+#+end_example
+
+<<5cebe5c5-06b8-423e-8632-ac2a3297967a>>
+#+begin_src python
+#+end_src

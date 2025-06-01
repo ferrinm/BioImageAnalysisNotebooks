@@ -1,0 +1,287 @@
+<<ffb92e31-2984-44e1-b6e3-4d7de96b528b>>
+* Image editing using instruct-pix2pix
+  :PROPERTIES:
+  :CUSTOM_ID: image-editing-using-instruct-pix2pix
+  :END:
+In this notebook we will modify a given image using instructions. These
+instructions allow us to change image characteristic while keeping the
+image content. This might be useful for producing multiple similar
+example images and studying if algorithms, e.g. for segmentation, are
+capable to process these image variations. We will be using the model
+[[https://huggingface.co/timbrooks/instruct-pix2pix][instruct-pix2pix]].
+
+<<1427b779-28c9-45cd-9a0c-369be4cb0824>>
+#+begin_src python
+import PIL
+import requests
+import torch
+from skimage.io import imread
+import numpy as np
+import stackview
+from skimage.transform import resize
+import matplotlib.pyplot as plt
+from diffusers import StableDiffusionInstructPix2PixPipeline, EulerAncestralDiscreteScheduler
+#+end_src
+
+<<1bb089f9-1e2c-4196-83ea-ccd22a5bd322>>
+#+begin_src python
+pipe = StableDiffusionInstructPix2PixPipeline.from_pretrained(
+            "timbrooks/instruct-pix2pix", 
+            torch_dtype=torch.float16, safety_checker=None)
+pipe.to("cuda")
+pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
+#+end_src
+
+#+begin_example
+{"model_id":"e6f0ecaf0e5e4503abca884254c9985b","version_major":2,"version_minor":0}
+#+end_example
+
+<<37e1fa83-727e-4f8a-a6a3-7d919c34dd42>>
+#+begin_src python
+image_np = imread("../../data/blobs.tif")
+# the model prefers images of specific sizes
+scaled_image_np = resize(image_np, (256, 256), preserve_range=True).astype(image_np.dtype)
+#+end_src
+
+<<078fa4bd-f901-46f0-bcbe-11a8d92bcd3d>>
+We need to convert our data in a
+[[https://pillow.readthedocs.io/en/stable/reference/Image.html][Pillow
+image]], a common input format.
+
+<<eae95704-35fe-4155-b4c3-5e41c9dc8e85>>
+#+begin_src python
+image_rgb_np = np.asarray([scaled_image_np, scaled_image_np, scaled_image_np]).swapaxes(0, 2).swapaxes(0, 1)
+image = PIL.Image.fromarray(image_rgb_np)
+image
+#+end_src
+
+[[file:07887eab496114659d2aaf324a82b1893d16a8dd.jpg]]
+
+<<d8cb4436-efe8-4bd7-8dbb-5de286ea2e84>>
+We can then edit the image using a prompt.
+
+<<028b6277-0c51-4326-af5c-613e8b8e883f>>
+#+begin_src python
+result_image = pipe(prompt="blur the image", 
+                    image=image, 
+                    num_inference_steps=5, 
+                    guidance_scale=1, 
+                    image_guidance_scale=1
+                   ).images[0]
+
+stackview.curtain(np.array(result_image), scaled_image_np)
+#+end_src
+
+#+begin_example
+{"model_id":"27628a2d5af04f06ba29ac85dc014465","version_major":2,"version_minor":0}
+#+end_example
+
+#+begin_example
+{"model_id":"42d7d01e6839434f95aff1c07b750cee","version_major":2,"version_minor":0}
+#+end_example
+
+<<e9ae2a9c-157c-4148-ad33-5523d8e1ad97>>
+#+begin_src python
+stackview.insight(np.array(result_image))
+#+end_src
+
+#+begin_example
+StackViewNDArray([[[ 53,  52,  47],
+                   [ 50,  51,  49],
+                   [ 47,  45,  45],
+                   ...,
+                   [239, 238, 236],
+                   [231, 234, 230],
+                   [231, 231, 221]],
+
+                  [[ 54,  52,  52],
+                   [ 50,  49,  48],
+                   [ 46,  43,  45],
+                   ...,
+                   [242, 242, 242],
+                   [240, 238, 238],
+                   [236, 236, 235]],
+
+                  [[ 56,  53,  54],
+                   [ 53,  51,  53],
+                   [ 48,  46,  48],
+                   ...,
+                   [245, 245, 244],
+                   [244, 243, 241],
+                   [241, 244, 241]],
+
+                  ...,
+
+                  [[ 69,  67,  66],
+                   [ 68,  67,  67],
+                   [ 71,  70,  71],
+                   ...,
+                   [ 57,  57,  56],
+                   [ 55,  54,  55],
+                   [ 58,  56,  57]],
+
+                  [[ 71,  69,  69],
+                   [ 69,  67,  68],
+                   [ 70,  66,  68],
+                   ...,
+                   [ 58,  55,  55],
+                   [ 56,  55,  56],
+                   [ 59,  57,  55]],
+
+                  [[ 65,  65,  69],
+                   [ 67,  67,  70],
+                   [ 67,  66,  67],
+                   ...,
+                   [ 59,  56,  59],
+                   [ 55,  56,  58],
+                   [ 60,  55,  54]]], dtype=uint8)
+#+end_example
+
+<<065b5523-84ef-40f8-898b-f5910dc90691>>
+Note that the model is not trained on scientific images specifically.
+Thus, it may not know how to edit images using prompts that contain
+scientific image processing terms. It is capable of modifying images
+using common terms.
+
+<<276452ca-e3a5-4059-b0e1-1efd2b992c74>>
+#+begin_src python
+result_image = pipe(prompt="apply a median filter to the image", 
+                    image=image, 
+                    num_inference_steps=5, 
+                    guidance_scale=1, 
+                    image_guidance_scale=1
+                   ).images[0]
+
+stackview.curtain(np.array(result_image), scaled_image_np)
+#+end_src
+
+#+begin_example
+{"model_id":"01d34decaefe43e2a1e8a1b49bf889ae","version_major":2,"version_minor":0}
+#+end_example
+
+#+begin_example
+{"model_id":"bb1fbd52881643e1bc91c7ec1ce8569c","version_major":2,"version_minor":0}
+#+end_example
+
+<<afd3b8c2-1db6-4ec1-836a-ad8cb315ad23>>
+#+begin_src python
+stackview.insight(np.array(result_image))
+#+end_src
+
+#+begin_example
+StackViewNDArray([[[ 46,  43,  39],
+                   [ 52,  50,  48],
+                   [ 53,  48,  49],
+                   ...,
+                   [145, 138, 142],
+                   [160, 160, 160],
+                   [175, 172, 166]],
+
+                  [[ 59,  56,  54],
+                   [ 57,  56,  55],
+                   [ 62,  60,  60],
+                   ...,
+                   [200, 201, 200],
+                   [190, 188, 187],
+                   [179, 175, 172]],
+
+                  [[ 58,  55,  56],
+                   [ 57,  54,  53],
+                   [ 68,  65,  64],
+                   ...,
+                   [198, 198, 199],
+                   [203, 202, 204],
+                   [182, 181, 178]],
+
+                  ...,
+
+                  [[ 74,  72,  72],
+                   [ 78,  74,  74],
+                   [ 82,  81,  79],
+                   ...,
+                   [ 62,  61,  60],
+                   [ 62,  59,  61],
+                   [ 62,  58,  58]],
+
+                  [[ 78,  77,  77],
+                   [ 82,  79,  78],
+                   [ 80,  78,  77],
+                   ...,
+                   [ 69,  65,  63],
+                   [ 66,  64,  64],
+                   [ 67,  65,  63]],
+
+                  [[ 60,  59,  63],
+                   [ 75,  73,  75],
+                   [ 82,  81,  80],
+                   ...,
+                   [ 64,  63,  63],
+                   [ 62,  62,  61],
+                   [ 54,  48,  45]]], dtype=uint8)
+#+end_example
+
+<<af318511-3282-437b-b14b-3e3d20aa13ab>>
+** Reproducibility
+   :PROPERTIES:
+   :CUSTOM_ID: reproducibility
+   :END:
+Some prompts are more reproducible than others. We can visualize this by
+calling the same prompt multiple times.
+
+<<95c2c0dd-9bf5-40b0-9760-fe3b9a3f940b>>
+#+begin_src python
+def display_panel(image, prompts):
+    fig, axes = plt.subplots(2, 2, figsize=(15,15))
+    
+    for i, prompt in enumerate(prompts):
+        result_image = pipe(prompt=prompt, 
+                            image=image, 
+                            num_inference_steps=5, 
+                            guidance_scale=1, 
+                            image_guidance_scale=1
+                           ).images[0]
+    
+        axes[int(i/2), i%2].imshow(np.array(result_image)[:,:,0], cmap="Greys_r")
+        axes[int(i/2), i%2].set_title(prompt)
+    
+    plt.show()
+#+end_src
+
+<<c3c705f3-18c7-4be1-8e83-4c508c14b14f>>
+#+begin_src python
+display_panel(image, ["blur the image"] * 4)
+#+end_src
+
+#+begin_example
+{"model_id":"6f6b4c45209d4c92af250033a0117efb","version_major":2,"version_minor":0}
+#+end_example
+
+#+begin_example
+{"model_id":"f1a52efb288f4608b7584df30834bada","version_major":2,"version_minor":0}
+#+end_example
+
+#+begin_example
+{"model_id":"793488febc1244da8ba3cca52ef1d9f7","version_major":2,"version_minor":0}
+#+end_example
+
+#+begin_example
+{"model_id":"eca0d465785f4eaaa004c66a6550e037","version_major":2,"version_minor":0}
+#+end_example
+
+[[file:e54ed232bc998c2a2ec969c6d0468d51bcec5d72.png]]
+
+<<8975eb80-5b05-4aa9-acfd-cd880a20f6db>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Generate more images using example prompts. How reproducible are the
+results?
+
+<<3f53bc85-a5e3-4195-ba32-898805ca5409>>
+#+begin_src python
+prompts = ["apply a median filter to the image",
+           "deconvolve the image",
+           "blur the image",
+           "despeckle the image"]
+#+end_src

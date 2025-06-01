@@ -1,0 +1,193 @@
+<<ce720e69>>
+(cell_classification.object_classification)=
+
+* Object classification on OpenCL-compatible GPUs
+  :PROPERTIES:
+  :CUSTOM_ID: object-classification-on-opencl-compatible-gpus
+  :END:
+APOC is based on
+[[https://github.com/clEsperanto/pyclesperanto_prototype][pyclesperanto]]
+and [[https://scikit-learn.org/stable/][scikit-learn]]. It allows
+classifying objects according to measured properties / features such as
+intensity, shape and number of neighboring cells.
+
+<<030613f9>>
+#+begin_src python
+import apoc
+
+from skimage.io import imread, imsave
+import pyclesperanto_prototype as cle
+import numpy as np
+import matplotlib.pyplot as plt
+#+end_src
+
+<<5e231f60>>
+For object classification, we need an intensity image and a label image
+as input.
+
+<<efe2721c>>
+#+begin_src python
+# load intensity image
+image = imread('../../data/blobs.tif')
+
+# segment the image
+labels = cle.label(cle.threshold_otsu(image))
+
+fig, axs = plt.subplots(1, 2)
+
+cle.imshow(image, color_map="Greys_r", plot=axs[0])
+cle.imshow(labels, labels=True, plot=axs[1])
+#+end_src
+
+[[file:c271c545bd835256d8c67f0bf64a7019906b1301.png]]
+
+<<d4baa0e4>>
+** Training
+   :PROPERTIES:
+   :CUSTOM_ID: training
+   :END:
+We also need a ground truth annotation image. This image is also a label
+image with a sparse annotation. A line with value =1= was drawn through
+all objects that are supposed to belong to class =1=. A line with value
+=2= was drawn through all objects that should be classified as class
+=2=. If the line crosses the background, this is ignored. In this
+example, objects were annotated in three classes:
+
+- Elongated objects
+- Roundish objects
+- Small objects
+
+<<1e352aeb>>
+#+begin_src python
+annotation = cle.push(imread('../../data/label_annotation.tif'))
+
+fig, axs = plt.subplots(1, 2)
+
+cle.imshow(labels, labels=True, plot=axs[0])
+cle.imshow(annotation, labels=True, plot=axs[1])
+#+end_src
+
+[[file:5af7f80925c36211c5231abd2e5bf2ecda57296b.png]]
+
+<<309a2487-0eb2-423d-bf7b-8a9a60f13a12>>
+Next, we need to define which features we want to use for classifying
+objects. We will use area, shape and the standard deviation of the
+intensity.
+
+<<49d4b959-5ecf-447a-a742-702a720c2dc7>>
+#+begin_src python
+features = 'area mean_max_distance_to_centroid_ratio standard_deviation_intensity'
+#+end_src
+
+<<7d968488>>
+#+begin_src python
+# Create an object classifier
+filename = "../../data/blobs_object_classifier.cl"
+classifier = apoc.ObjectClassifier(filename)
+
+# train it; after training, it will be saved to the file specified above
+classifier.train(features, labels, annotation, image)
+#+end_src
+
+<<fbbc0f57-5695-45a0-993a-cb118ad06ab9>>
+After the classifier has been trained, we can use it immediately to
+predict the classification of the objects in the image.
+
+<<b73b2591-da2a-47b3-852e-55e4a2f945c9>>
+#+begin_src python
+# determine object classification
+classification_result = classifier.predict(labels, image)
+
+cle.imshow(classification_result, labels=True)
+#+end_src
+
+[[file:e01e5f8305e7097a541494c28d1963ccb243adf7.png]]
+
+<<74fe7de0-70c6-4871-994e-60152e5065f1>>
+** Prediction
+   :PROPERTIES:
+   :CUSTOM_ID: prediction
+   :END:
+You can also reload the classifier from disc and apply it to other
+images. We will simulate this by rotating the original image. This is by
+the way a good sanity check to see if the classification depends on the
+orientation of the image.
+
+<<472bfda7-a1d8-47b4-b757-98f1ffb97af4>>
+#+begin_src python
+image2 = cle.rotate(image, angle_around_z_in_degrees=90)
+labels2 = cle.rotate(labels, angle_around_z_in_degrees=90)
+#+end_src
+
+<<f57c9ea3>>
+#+begin_src python
+classifier2 = apoc.ObjectClassifier("../../data/blobs_object_classifier.cl")
+
+classification_result2 = classifier2.predict(labels2, image2)
+
+cle.imshow(classification_result2, labels=True)
+#+end_src
+
+[[file:451941e9813242c8e5a14584613b87d3fc57b70c.png]]
+
+<<c86a44f9-7025-4726-b138-eec657fdf5d1>>
+** Available features for object classification
+   :PROPERTIES:
+   :CUSTOM_ID: available-features-for-object-classification
+   :END:
+We can print out all available features . Parameters with a =?= expect a
+number at that position and can be specified multiple times with
+multiple values.
+
+<<bf50bf65-16f6-414b-b930-59e622b624dc>>
+#+begin_src python
+apoc.list_available_object_classification_features()
+#+end_src
+
+#+begin_example
+['label',
+ 'original_label',
+ 'bbox_min_x',
+ 'bbox_min_y',
+ 'bbox_min_z',
+ 'bbox_max_x',
+ 'bbox_max_y',
+ 'bbox_max_z',
+ 'bbox_width',
+ 'bbox_height',
+ 'bbox_depth',
+ 'min_intensity',
+ 'max_intensity',
+ 'sum_intensity',
+ 'area',
+ 'mean_intensity',
+ 'sum_intensity_times_x',
+ 'mass_center_x',
+ 'sum_intensity_times_y',
+ 'mass_center_y',
+ 'sum_intensity_times_z',
+ 'mass_center_z',
+ 'sum_x',
+ 'centroid_x',
+ 'sum_y',
+ 'centroid_y',
+ 'sum_z',
+ 'centroid_z',
+ 'sum_distance_to_centroid',
+ 'mean_distance_to_centroid',
+ 'sum_distance_to_mass_center',
+ 'mean_distance_to_mass_center',
+ 'standard_deviation_intensity',
+ 'max_distance_to_centroid',
+ 'max_distance_to_mass_center',
+ 'mean_max_distance_to_centroid_ratio',
+ 'mean_max_distance_to_mass_center_ratio',
+ 'touching_neighbor_count',
+ 'average_distance_of_touching_neighbors',
+ 'average_distance_of_n_nearest_neighbors=?',
+ 'average_distance_of_n_nearest_neighbors=?']
+#+end_example
+
+<<2a881e46-6049-42dd-89f9-bcd07b17e9a3>>
+#+begin_src python
+#+end_src

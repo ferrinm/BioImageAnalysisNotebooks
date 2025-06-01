@@ -1,0 +1,188 @@
+<<14659d24-0c63-4cd7-b144-70ee970df45f>>
+* Optimizing parameters for membrane-image based cell segmentation
+  :PROPERTIES:
+  :CUSTOM_ID: optimizing-parameters-for-membrane-image-based-cell-segmentation
+  :END:
+Workflows for segmenting cells from membrane staining images are often
+hard to optimize. In this notebook we demonstrate how to automatically
+optimizing the
+[[https://en.wikipedia.org/wiki/Watershed_(image_processing)][seeded
+watershed algorithm]], a common approach for this kind of image data.
+
+<<4857bed8>>
+#+begin_src python
+from napari_workflow_optimizer import JaccardLabelImageOptimizer, Workflow
+
+from skimage.io import imread
+import napari_segment_blobs_and_things_with_membranes as nsbatwm
+import pyclesperanto_prototype as cle
+import matplotlib.pyplot as plt
+from the_segmentation_game.metrics import jaccard_index_sparse
+#+end_src
+
+<<9f07370e-b946-4c16-9992-636a54a8680c>>
+We set up a workflow and insert a single operation,
+[[https://www.napari-hub.org/plugins/napari-segment-blobs-and-things-with-membranes#seeded-watershed-using-local-minima-as-starting-points][Seeded
+Watershed using local minima as starting points]] using the Napari
+plugin napari-segment-blobs-and-things-with-membranes. The algorithm has
+two parameters: =spot_sigma= for tuning how close seed points can be and
+=outline_sigma= for tuning how precise the membranes should be
+segmented.
+
+<<b44ea564>>
+#+begin_src python
+w = Workflow()
+w.set("labeled", # result image name
+      nsbatwm.thresholded_local_minima_seeded_watershed, # operation
+      "input", spot_sigma=2, outline_sigma=2) # parameters
+#+end_src
+
+<<605e9b45>>
+#+begin_src python
+# image data source: scikit-image cells3d example, slice 28
+w.set("input", imread("../../data/membranes_2d.tif"))
+input_image = w.get("input")
+cle.imshow(input_image)
+#+end_src
+
+[[file:6ec1c39fe8104dee6b2eb6cfeb95864ecb312e78.png]]
+
+<<76ba0109-6fd7-4131-88fb-3d6f06f03dfb>>
+We produce a first segmentation result that is oversegmented, there are
+obviously too many cells found.
+
+<<c542d9f1>>
+#+begin_src python
+result = w.get("labeled")
+cle.imshow(result, labels=True)
+#+end_src
+
+[[file:249f0c4c35709b791d35839e294c402feb2d9c94.png]]
+
+<<73552bde-9386-4c47-aba6-f2558f0a3720>>
+To give the segmentation algorithm some ground truth to compare
+segmentation results with, we use this sparse annotation image. It
+typically is enough to annotate some example cells accurately. Better
+spend time on making good segmentations and do not draw so many.
+
+<<bd131366>>
+#+begin_src python
+ground_truth = imread("../../data/membranes_2d_sparse_labels.tif")
+cle.imshow(ground_truth, labels=True)
+#+end_src
+
+[[file:d4f94eee3127147b6d12e787f350e597ae3aeaee.png]]
+
+<<21c02309-3622-4bda-97b0-2d62c6d2d73e>>
+We can then initiate the =JaccardLabelImageOptimizer=. Just for testing
+we inspect the current starting point for optimization.
+
+<<12c809a5>>
+#+begin_src python
+jlio = JaccardLabelImageOptimizer(w)
+jlio.get_numeric_parameters()
+#+end_src
+
+#+begin_example
+[2, 2, 500]
+#+end_example
+
+<<9878ea7e-ac54-4154-b60c-732724be2ca8>>
+We then start the optimization and afterwards print out the optimized
+parameter set.
+
+<<2f7a9bad-4393-4658-b4cf-e674161ab605>>
+#+begin_src python
+best_param = jlio.optimize("labeled", ground_truth, maxiter=100)
+best_param
+#+end_src
+
+#+begin_example
+array([  2.34307473,   5.6861856 , -74.78749191])
+#+end_example
+
+<<cd081537-cc83-4e44-95b8-4ffe7440540b>>
+We can also ask the optimizer to set these parameters for us and inspect
+the resulting label image.
+
+<<09dd1ced-2926-4bc8-86c8-c0571cee0585>>
+#+begin_src python
+jlio.set_numeric_parameters(best_param)
+cle.imshow(w.get("labeled"), labels=True)
+#+end_src
+
+[[file:7adb9c58f2871914ee6cfae1d46e31e4451a18e7.png]]
+
+<<22eeb873-7215-4cfe-b59d-4f9d85d0161b>>
+The quality of this image can be measured by averaging the Jaccard Index
+of the three ground truth objects.
+[[https://github.com/haesleinhuepf/the-segmentation-game][The
+Segmentation Game]] library has a function for this.
+
+<<951a36bb-0edd-4856-8350-fbfdf4b095c3>>
+#+begin_src python
+jaccard_index_sparse(ground_truth, w.get("labeled"))
+#+end_src
+
+#+begin_example
+0.8300891581238193
+#+end_example
+
+<<eb993480-e90d-482a-9281-819f745ddcd2>>
+Sometimes, the result is not perfect and we may want to change one
+parameter and see if the result can be improved.
+
+<<92e9584e-2ae5-43db-9720-2eefb8560f62>>
+#+begin_src python
+new_starting_point = best_param.copy()
+new_starting_point[0] = 8
+
+new_starting_point
+#+end_src
+
+#+begin_example
+array([  8.        ,   5.6861856 , -74.78749191])
+#+end_example
+
+<<75a9e378>>
+#+begin_src python
+jlio2 = JaccardLabelImageOptimizer(w)
+jlio2.set_numeric_parameters(new_starting_point)
+cle.imshow(w.get("labeled"), labels=True)
+#+end_src
+
+[[file:bf20eba71a4d724c749b6479f3305f29bb28ca1f.png]]
+
+<<255a5531-4afe-49e2-be2d-71588675acf4>>
+We can then start a second attempt.
+
+<<88070f29-d3f9-4c23-8805-574ed54dd8f6>>
+#+begin_src python
+best_param = jlio.optimize("labeled", ground_truth, maxiter=100)
+best_param
+#+end_src
+
+#+begin_example
+array([  9.50775939,   1.39446381, -83.9132378 ])
+#+end_example
+
+<<dec4a559-f705-474b-a1df-6ea57a2e6b2f>>
+#+begin_src python
+jlio.set_numeric_parameters(best_param)
+cle.imshow(w.get("labeled"), labels=True)
+#+end_src
+
+[[file:64298e6c3c60534895c375dd18e8c5c00f3e1168.png]]
+
+<<f23a556a-7b7a-4c24-be87-4c79694c8a24>>
+#+begin_src python
+jaccard_index_sparse(ground_truth, w.get("labeled"))
+#+end_src
+
+#+begin_example
+0.8905848327576197
+#+end_example
+
+<<c5d8220c-11ca-4d47-b253-d90bfabf92d4>>
+#+begin_src python
+#+end_src

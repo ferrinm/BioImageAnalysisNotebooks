@@ -1,0 +1,119 @@
+<<joined-quest>>
+* Multi-channel image data
+  :PROPERTIES:
+  :CUSTOM_ID: multi-channel-image-data
+  :END:
+Beyond two dimensional images which can be expressed as 2-D matrix, also
+higher dimensional, multi-channel images are quite common. For example
+let's import the =hela-cells.tif= image:
+
+<<5ef98e2a-7054-45ad-b7c6-dc9e18d81576>>
+#+begin_src python
+from skimage.io import imread
+image = imread('../../data/hela-cells.tif')
+#+end_src
+
+<<00248b7b-7161-41d9-a38c-c7ed7d1402b0>>
+#+begin_src python
+image.shape
+#+end_src
+
+#+begin_example
+(512, 672, 3)
+#+end_example
+
+<<25f205ae-1173-4c63-8d74-c9a7eab69f0d>>
+We see that instead of just pixel rows and columns, we now have an
+additional number that tells us we have three planes in our data. In
+this case each image corresponds to a channel but for other data they
+could be z-planes, time points etc.
+
+<<7d059e51-bbc9-4ab3-83e3-2f12a3258b8b>>
+** Playing with dimensions
+   :PROPERTIES:
+   :CUSTOM_ID: playing-with-dimensions
+   :END:
+Re-organizing multi-dimensional data is often necessary to correspond to
+the input of a function. For example =microshow= expects channels to be
+in the first dimension so we have to /move/ the last axis into first
+position and use the Numpy function =np.moveaxis= for this:
+
+<<82ec1194-6c28-4d4d-98c0-9802452caaef>>
+#+begin_src python
+import numpy as np
+
+image_rolled = np.moveaxis(image, source=2, destination=0)
+image_rolled.shape
+#+end_src
+
+#+begin_example
+(3, 512, 672)
+#+end_example
+
+<<6133246e-36cd-4002-a5d0-cccb3cd8c74a>>
+There are plenty of other funcitons in Numpy to do these axis moving
+operations. For example =np.swapaxes=, =np.rollaxis= etc.
+
+<<f5fe7fe4-3610-4941-923b-0b925dc80ed1>>
+** Visualizing multi-channel images
+   :PROPERTIES:
+   :CUSTOM_ID: visualizing-multi-channel-images
+   :END:
+The =microshow= function takes care of displaying the image with
+reasonable defaults:
+
+<<795d3d11-ecb1-409d-9e05-1610b20b528f>>
+#+begin_src python
+from microfilm.microplot import microshow
+microshow(image_rolled);
+#+end_src
+
+[[file:d7a72dbd61144f7bfb2104ee41375687f1fbbd05.png]]
+
+<<4183604c-edde-4f1a-bf22-e41b5f98d705>>
+By default it uses a Cyan, Magenta, Yellow combination of colormaps, but
+those can also be changed:
+
+<<08169567-17ae-481e-b35f-2e90b4c52b11>>
+#+begin_src python
+microshow(image_rolled, cmaps=['pure_red', 'pure_green', 'pure_blue']);
+#+end_src
+
+[[file:6c2bf5ca9f3232cd8e1dd5f415e80c7042950e55.png]]
+
+<<stable-alexander>>
+We can also visualize these three channels independently by splitting
+them. Furthermore, we can arrange multiple images side-by-side using
+[[https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.subplots.html][matplotlib
+subplots]]:
+
+<<general-vertical>>
+#+begin_src python
+channel1 = image[:,:,0]
+channel2 = image[:,:,1]
+channel3 = image[:,:,2]
+
+import matplotlib.pyplot as plt
+
+fig, axs = plt.subplots(1, 3, figsize=(15,15))
+
+microshow(channel1, ax=axs[0], cmaps='pure_cyan')
+microshow(channel2, ax=axs[1], cmaps='pure_magenta')
+microshow(channel3, ax=axs[2], cmaps='pure_yellow');
+#+end_src
+
+[[file:0ef955776f6480001f99a4949beb62175d809d42.png]]
+
+<<moderate-domain>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Explore look-up tables, a.k.a.
+[[https://matplotlib.org/stable/tutorials/colors/colormaps.html][colormaps
+in matplotlib]] and visualize the three channels above as similar as
+possible to how the image is visualized in ImageJ.
+
+<<surrounded-lingerie>>
+#+begin_src python
+#+end_src

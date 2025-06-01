@@ -1,0 +1,176 @@
+<<3f5eb8fd-773b-4f2e-a795-71fffc1b6bab>>
+* Generating images using Stable Diffusion
+  :PROPERTIES:
+  :CUSTOM_ID: generating-images-using-stable-diffusion
+  :END:
+In this notebook we demonstrate how to use free models such as
+[[https://huggingface.co/stabilityai/stable-diffusion-2-1-base][Stable
+Diffusion 2]] from the [[https://huggingface.co/][huggingface hub]] to
+generate images. The example code shown here is modified from
+[[https://huggingface.co/docs/diffusers/api/models/autoencoder_tiny][this
+source]].
+
+<<a9b6a161-a04d-46d7-b113-9bd356f4c0c2>>
+#+begin_src python
+import torch
+import numpy as np
+import stackview
+from diffusers import DiffusionPipeline, AutoencoderTiny
+#+end_src
+
+<<eff498c3-ada2-4450-aa46-4ccdc17a029b>>
+All models from the Huggingface hub work similarily. A =pipe= is set up
+which can be executed later. When executing this code for the first
+time, multiple files will be downloaded, which are locally stored in a
+foolder =.cache/huggingface/hub/<model_name>=. These folders can become
+multiple gigabytes large and this may take some time. When executing the
+code again, the cached models will be used and the process will be much
+faster.
+
+<<8e584be9-6c9c-4084-ae9c-e82bb801d58e>>
+#+begin_src python
+pipe = DiffusionPipeline.from_pretrained(
+    "stabilityai/stable-diffusion-2-1-base", torch_dtype=torch.float16
+)
+#+end_src
+
+#+begin_example
+{"model_id":"51f68c04b0a2453395cea7345e704aa2","version_major":2,"version_minor":0}
+#+end_example
+
+<<b95653b0-87cb-4192-91dc-1b7bed3f93de>>
+If a powerfull [[https://en.wikipedia.org/wiki/CUDA][CUDA]]-compatible
+graphics processing unit (GPU) is available, the executable =pipe= can
+be loaded on the GPU. In most cases, this is limited by available GPU
+memory. Only rare capabale models are executable on laptop GPUs.
+
+<<df26eac6-0666-4be9-828b-9073d0bde796>>
+#+begin_src python
+pipe = pipe.to("cuda")
+#+end_src
+
+<<a8bb1115-2af9-4b8e-bba3-00f847f29966>>
+After the pipe has been set up, we can execute it like this:
+
+<<ec84a16e-85c2-4b90-8b19-49b967ebf6b4>>
+#+begin_src python
+prompt = """
+Draw a greyscale picture of sparse bright blobs on dark background. 
+Some of the blobs are roundish, some are a bit elongated.
+"""
+
+image = pipe(prompt).images[0]
+image
+#+end_src
+
+#+begin_example
+{"model_id":"e6c7edd465c84ea6bad5429ce4aa9c74","version_major":2,"version_minor":0}
+#+end_example
+
+[[file:2a5e671c9a680cdebf81eee711c814414cef3b32.jpg]]
+
+<<33b4ab60-c5bc-4e4c-8627-5bf1974d9cce>>
+Depending on the model / pipeline, we can specify additional parameters:
+
+<<696887b7-6d44-4abd-8186-b895cd3c22e9>>
+#+begin_src python
+image = pipe(prompt, 
+             num_inference_steps=10, 
+             width=512, 
+             height=512).images[0]
+image
+#+end_src
+
+#+begin_example
+{"model_id":"638ff2fc20204f6894bae12a3eac2637","version_major":2,"version_minor":0}
+#+end_example
+
+[[file:ee775e8d45e2b6506fb0fbcdd50ce56e6327019f.jpg]]
+
+<<a595735d-f14b-488a-8dec-24ff63ab49c6>>
+The image is a
+[[https://pillow.readthedocs.io/en/stable/reference/Image.html][pillow
+image]].
+
+<<8474f757-1ee3-4764-bdac-3caca17757cd>>
+#+begin_src python
+type(image)
+#+end_src
+
+#+begin_example
+PIL.Image.Image
+#+end_example
+
+<<373abc40-020e-41ed-b22e-1a336edb23d3>>
+It can be converted to numpy like this
+
+<<c4bd3e4c-2fca-48cf-8619-83421f7880ac>>
+#+begin_src python
+image_np = np.array(image)
+
+stackview.insight(image_np)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[[122, 118, 117],
+                   [113, 109, 109],
+                   [115, 113, 113],
+                   ...,
+                   [ 38,  35,  32],
+                   [ 37,  36,  33],
+                   [ 44,  43,  40]],
+
+                  [[123, 121, 120],
+                   [131, 127, 127],
+                   [133, 132, 130],
+                   ...,
+                   [ 44,  39,  38],
+                   [ 41,  42,  36],
+                   [ 40,  39,  36]],
+
+                  [[120, 116, 118],
+                   [124, 121, 119],
+                   [130, 130, 126],
+                   ...,
+                   [ 42,  38,  35],
+                   [ 41,  38,  35],
+                   [ 43,  41,  39]],
+
+                  ...,
+
+                  [[170, 169, 172],
+                   [169, 171, 171],
+                   [172, 174, 175],
+                   ...,
+                   [106, 107, 107],
+                   [ 94,  94,  96],
+                   [106, 107, 109]],
+
+                  [[171, 174, 175],
+                   [170, 174, 174],
+                   [171, 173, 175],
+                   ...,
+                   [102, 103, 103],
+                   [108, 109, 110],
+                   [109, 109, 110]],
+
+                  [[174, 175, 176],
+                   [172, 174, 176],
+                   [170, 170, 174],
+                   ...,
+                   [108, 108, 108],
+                   [113, 114, 113],
+                   [111, 111, 111]]], dtype=uint8)
+#+end_example
+
+<<47407929-da20-4bc2-bc14-d2747684fe22>>
+* Exercise
+  :PROPERTIES:
+  :CUSTOM_ID: exercise
+  :END:
+Use the =pipe()= function and prompt for another image, e.g. showing a
+cat sitting in front of a microscope.
+
+<<f171c66c-fe8e-4aea-86e5-905548c838cd>>
+#+begin_src python
+#+end_src

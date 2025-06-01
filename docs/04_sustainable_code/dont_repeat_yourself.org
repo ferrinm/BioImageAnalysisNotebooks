@@ -1,0 +1,146 @@
+<<fd4907ce-c38c-4d48-a0f5-c2f77a03943b>>
+* Don't repeat yourself
+  :PROPERTIES:
+  :CUSTOM_ID: dont-repeat-yourself
+  :END:
+Sometimes, we copy & paste code multiple times to process images
+quickly. Long-term this code duplication is not good for code quality,
+because if we want to change something, we need to change it in muliple
+places and may forget about some. Thus, preventing repetitive code is
+key. The software design priniciple is called
+[[https://en.wikipedia.org/wiki/Don%27t_repeat_yourself][Don't repeat
+yourself]].
+
+<<23d84e97-7c50-4a5f-a3e9-fda157acccdf>>
+#+begin_src python
+import pyclesperanto_prototype as cle
+#+end_src
+
+<<f8f0181e-3290-4931-b77d-3ff26e1d06ab>>
+#+begin_src python
+image = cle.imread("../../data/BBBC007_batch/17P1_POS0013_D_1UL.tif")
+labels = cle.voronoi_otsu_labeling(image, spot_sigma=3)
+number_of_nuclei = labels.max()
+number_of_nuclei
+#+end_src
+
+#+begin_example
+44.0
+#+end_example
+
+<<d1a23f73-cddc-496c-a21a-03bcfe469b20>>
+#+begin_src python
+image = cle.imread("../../data/BBBC007_batch/20P1_POS0005_D_1UL.tif")
+labels = cle.voronoi_otsu_labeling(image, spot_sigma=3)
+number_of_nuclei = labels.max()
+number_of_nuclei
+#+end_src
+
+#+begin_example
+41.0
+#+end_example
+
+<<e7ac4af4-d786-434b-9637-e1a646f3c899>>
+#+begin_src python
+image = cle.imread("../../data/BBBC007_batch/20P1_POS0007_D_1UL.tif")
+labels = cle.voronoi_otsu_labeling(image, spot_sigma=3)
+number_of_nuclei = labels.max()
+number_of_nuclei
+#+end_src
+
+#+begin_example
+73.0
+#+end_example
+
+<<45f664ef-c36b-43a1-b4de-afb4b857ad00>>
+If we wanted to now see how changing the =spot_sigma= parameter above
+influences the result, we would need to change this value three times.
+When the code becomes even longer, it may happend that we forget to
+change it in one place.
+
+*** For-loops instead of code repetition
+    :PROPERTIES:
+    :CUSTOM_ID: for-loops-instead-of-code-repetition
+    :END:
+One way of preventing code-repetition are for-loops.
+
+<<fcbb86dc-f20d-4f84-b73b-7ffa9174d7c6>>
+#+begin_src python
+folder = "../../data/BBBC007_batch/"
+files = ["17P1_POS0013_D_1UL.tif",
+        "20P1_POS0005_D_1UL.tif",
+        "20P1_POS0007_D_1UL.tif"]
+#+end_src
+
+<<9b33d522-a7cd-4063-a9b5-ef006071f14a>>
+#+begin_src python
+for file in files:
+    image = cle.imread(folder + file)
+    labels = cle.voronoi_otsu_labeling(
+                    image, 
+                    spot_sigma=3)
+    number_of_nuclei = labels.max()
+    print(file, number_of_nuclei)
+#+end_src
+
+#+begin_example
+17P1_POS0013_D_1UL.tif 44.0
+20P1_POS0005_D_1UL.tif 41.0
+20P1_POS0007_D_1UL.tif 73.0
+#+end_example
+
+<<1fcda315-290c-43d3-aada-b92cd92602dd>>
+*** Functions instead of code-repetion
+    :PROPERTIES:
+    :CUSTOM_ID: functions-instead-of-code-repetion
+    :END:
+We can gain even more flexibility by introducing so called helper
+functions, that /help/ us by doing one dedicated thing, for example
+counting nuclei:
+
+<<b37c4de7-11a8-4e30-948e-57f4eeec1b93>>
+#+begin_src python
+def count_nuclei(image, spot_sigma=3):
+    labels = cle.voronoi_otsu_labeling(
+                    image, 
+                    spot_sigma=spot_sigma)
+    number_of_nuclei = labels.max()
+    
+    return number_of_nuclei
+#+end_src
+
+<<5c6750b1-9f0e-455d-864c-b17cbccbec7a>>
+#+begin_src python
+count_nuclei(cle.imread(folder + files[0]))
+#+end_src
+
+#+begin_example
+44.0
+#+end_example
+
+<<e4e8d662-b994-4509-89a4-8084253dd2ff>>
+#+begin_src python
+count_nuclei(cle.imread(folder + files[1]))
+#+end_src
+
+#+begin_example
+41.0
+#+end_example
+
+<<14a8c024-f4aa-47dd-aeed-118f0ba8c724>>
+#+begin_src python
+count_nuclei(cle.imread(folder + files[2]))
+#+end_src
+
+#+begin_example
+73.0
+#+end_example
+
+<<f886c39a-a59a-48d7-9eb2-a7993c197a0e>>
+#+begin_src python
+count_nuclei(cle.imread(folder + files[2]), spot_sigma=5)
+#+end_src
+
+#+begin_example
+68.0
+#+end_example

@@ -1,0 +1,76 @@
+* Equivalence testing
+  :PROPERTIES:
+  :CUSTOM_ID: equivalence-testing
+  :END:
+null-hypothesis: differences are out of a given range alternative
+hypothesis: differences are small; and thus, bot samples are "equal" up
+to a given tolerance
+
+#+begin_src python
+from numpy import random
+
+x1 = random.normal(loc=5, scale=1, size=1000)
+x2 = random.normal(loc=5, scale=1, size=1000)
+#+end_src
+
+#+begin_src python
+import matplotlib.pyplot as plt
+plt.plot(x1, x2, ".")
+plt.show()
+#+end_src
+
+[[file:80ff56abad0850ff1a959d44fcb99e71ffa0caf5.png]]
+
+#+begin_src python
+from statsmodels.stats.weightstats import ttost_ind
+
+pval = ttost_ind(x1, x2, low=-0.2, upp=0.2)
+
+pval
+#+end_src
+
+#+begin_example
+(0.00030345809258036736,
+ (3.433984168873193, 0.00030345809258036736, 1998.0),
+ (-5.311451764509381, 6.043239585972563e-08, 1998.0))
+#+end_example
+
+** Opposite situation
+   :PROPERTIES:
+   :CUSTOM_ID: opposite-situation
+   :END:
+
+#+begin_src python
+from numpy import random
+
+x1 = random.normal(loc=6, scale=1, size=1000)
+x2 = random.normal(loc=5, scale=1, size=1000)
+#+end_src
+
+#+begin_src python
+import matplotlib.pyplot as plt
+plt.plot(x1, x2, ".")
+plt.show()
+#+end_src
+
+[[file:2bb5a6f13a487cc376a1885c01499fd500ef7714.png]]
+
+#+begin_src python
+from statsmodels.stats.weightstats import ttost_ind
+
+pval = ttost_ind(x1, x2, low=-0.2, upp=0.2)
+
+pval
+#+end_src
+
+#+begin_example
+(1.0,
+ (26.801197639278193, 9.755590019896484e-136, 1998.0),
+ (17.710726885754962, 1.0, 1998.0))
+#+end_example
+
+#+begin_src python
+#+end_src
+
+#+begin_src python
+#+end_src

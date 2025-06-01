@@ -1,0 +1,192 @@
+* Quantitative image analysis
+  :PROPERTIES:
+  :CUSTOM_ID: quantitative-image-analysis
+  :END:
+After segmenting and labeling objects in an image, we can measure
+properties of these objects.
+
+See also
+
+- [[https://scipy-lectures.org/packages/scikit-image/index.html#measuring-regions-properties][SciPy
+  lecture notes: Measuring region properties]]
+- [[https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_regionprops.html][Plot
+  regionprops]]
+
+Before we can do measurements, we need an =image= and a corresponding
+=label_image=. Therefore, we recapitulate filtering, thresholding and
+labeling:
+
+#+begin_src python
+from skimage.io import imread
+from skimage import filters
+from skimage import measure
+from pyclesperanto_prototype import imshow
+import pandas as pd 
+import numpy as np
+#+end_src
+
+#+begin_src python
+# load image
+image = imread("../../data/blobs.tif")
+
+# denoising
+blurred_image = filters.gaussian(image, sigma=1)
+
+# binarization
+threshold = filters.threshold_otsu(blurred_image)
+thresholded_image = blurred_image >= threshold
+
+# labeling
+label_image = measure.label(thresholded_image)
+
+# visualization
+imshow(label_image, labels=True)
+#+end_src
+
+[[file:0eeae1b518d1acf7f0ca05db5c6a37d07ab7c057.png]]
+
+** Measurements / region properties
+   :PROPERTIES:
+   :CUSTOM_ID: measurements--region-properties
+   :END:
+To read out properties from regions, we use the
+[[https://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.regionprops][=regionprops=]]
+function:
+
+#+begin_src python
+# analyse objects
+properties = measure.regionprops(label_image, intensity_image=image)
+#+end_src
+
+The results are stored as =RegionProps= objects, which are not very
+informative:
+
+#+begin_src python
+properties[0:5]
+#+end_src
+
+#+begin_example
+[<skimage.measure._regionprops.RegionProperties at 0x1c272b8f8e0>,
+ <skimage.measure._regionprops.RegionProperties at 0x1c26d278af0>,
+ <skimage.measure._regionprops.RegionProperties at 0x1c26d2784c0>,
+ <skimage.measure._regionprops.RegionProperties at 0x1c26d278b20>,
+ <skimage.measure._regionprops.RegionProperties at 0x1c26d278b80>]
+#+end_example
+
+If you are interested which properties we measured: They are listed in
+the
+[[https://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.regionprops][documentation
+of the =measure.regionprops= function]]. Basically, we now have a
+variable =properties= which contains 40 different features. But we are
+only interested in a small subset of them.
+
+Therefore, we can reorganize the measurements into a dictionary
+containing arrays with our features of interest:
+
+#+begin_src python
+statistics = {
+    'area':       [p.area               for p in properties],
+    'mean':       [p.mean_intensity     for p in properties],
+    'major_axis': [p.major_axis_length  for p in properties],
+    'minor_axis': [p.minor_axis_length for p in properties]
+}
+#+end_src
+
+Reading those dictionaries of arrays is not very convenient. For that we
+introduce
+[[https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html][pandas
+DataFrames]] which are commonly used by data scientists. "DataFrames" is
+just another term for "tables" used in Python.
+
+#+begin_src python
+df = pd.DataFrame(statistics)
+df
+#+end_src
+
+#+begin_example
+    area        mean  major_axis  minor_axis
+0    429  191.440559   34.779230   16.654732
+1    183  179.846995   20.950530   11.755645
+2    658  205.604863   30.198484   28.282790
+3    433  217.515012   24.508791   23.079220
+4    472  213.033898   31.084766   19.681190
+..   ...         ...         ...         ...
+57   213  184.525822   18.753879   14.468993
+58    79  184.810127   18.287489    5.762488
+59    88  182.727273   21.673692    5.389867
+60    52  189.538462   14.335104    5.047883
+61    48  173.833333   16.925660    3.831678
+
+[62 rows x 4 columns]
+#+end_example
+
+You can also add custom columns by computing your own metric, for
+example the =aspect_ratio=:
+
+#+begin_src python
+df['aspect_ratio'] = [p.major_axis_length / p.minor_axis_length for p in properties]
+df
+#+end_src
+
+#+begin_example
+    area        mean  major_axis  minor_axis  aspect_ratio
+0    429  191.440559   34.779230   16.654732      2.088249
+1    183  179.846995   20.950530   11.755645      1.782168
+2    658  205.604863   30.198484   28.282790      1.067734
+3    433  217.515012   24.508791   23.079220      1.061942
+4    472  213.033898   31.084766   19.681190      1.579415
+..   ...         ...         ...         ...           ...
+57   213  184.525822   18.753879   14.468993      1.296143
+58    79  184.810127   18.287489    5.762488      3.173540
+59    88  182.727273   21.673692    5.389867      4.021193
+60    52  189.538462   14.335104    5.047883      2.839825
+61    48  173.833333   16.925660    3.831678      4.417297
+
+[62 rows x 5 columns]
+#+end_example
+
+Those dataframes can be saved to disk conveniently:
+
+#+begin_src python
+df.to_csv("blobs_analysis.csv")
+#+end_src
+
+Furthermore, one can measure properties from our =statistics= table
+using [[https://numpy.org/doc/stable/][numpy]]. For example the mean
+area:
+
+#+begin_src python
+# measure mean area
+np.mean(df['area'])
+#+end_src
+
+#+begin_example
+355.3709677419355
+#+end_example
+
+** Exercises
+   :PROPERTIES:
+   :CUSTOM_ID: exercises
+   :END:
+Analyse the loaded blobs =image=.
+
+- How many objects are in it?
+
+#+begin_src python
+#+end_src
+
+- How large is the largest object?
+
+#+begin_src python
+#+end_src
+
+- What are mean and standard deviation of the image?
+
+#+begin_src python
+#+end_src
+
+- What are mean and standard deviation of the area of the segmented
+  objects?
+
+#+begin_src python
+#+end_src

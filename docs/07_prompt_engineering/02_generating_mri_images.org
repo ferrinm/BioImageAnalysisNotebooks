@@ -1,0 +1,108 @@
+<<da9e102d-7303-4a24-a48f-c436e2d626e8>>
+** Generating Magnetic Resonance images using DALL-E
+   :PROPERTIES:
+   :CUSTOM_ID: generating-magnetic-resonance-images-using-dall-e
+   :END:
+In this notebook we will demonstrate how to ask openAI's DALL-E model to
+generate medial images (for fun).
+
+Read more:
+
+- [[https://platform.openai.com/docs/guides/images/usage][openAI image
+  generation documentation]]
+
+<<90b3b6b1-dd67-4aec-bdeb-de8728ae5934>>
+#+begin_src python
+import openai
+from skimage.io import imread, imshow
+from numpy import random
+from matplotlib import pyplot as plt
+#+end_src
+
+<<4900456d-e426-465c-b9ca-4a0dfcde3536>>
+#+begin_src python
+def prompt_image(message:str, width:int=1024, height:int=1024, model='dall-e-3'):
+    client = openai.OpenAI()
+    response = client.images.generate(
+      prompt=message,
+      model=model,
+      n=1,
+      size=f"{width}x{height}"
+    )
+    image_url = response.data[0].url
+    image = imread(image_url)
+    
+    return image
+#+end_src
+
+<<ab6be75b-b476-47b2-9e6c-a1488404475a>>
+As a real example of an orange slice imaged with MR, we use the example
+dataset [[https://wellcomecollection.org/works/sxm89b3x]["Credit:
+Mandarin orange, axial view, MRI."]] is licensed
+[[http://creativecommons.org/licenses/by/4.0/][(CC-BY 4.0)]] by Alexandr
+Khrapichev, University of Oxford
+
+<<d5311b9b-0365-457c-aaf6-c7547e2ccbac>>
+#+begin_src python
+images = [imread('../../data/mri_fruit_sxm89b3x.jpg')[3063:4087,1024:2048,0]]
+#+end_src
+
+<<d39bb450-df8b-4d07-91bf-651f2587a79c>>
+#+begin_src python
+mri_prompt = """
+A single, high resolution, black-white image of 
+a realistically looking orange fruit slice 
+imaged with T2-weighted magnetic resonance imaging (MRI).
+"""
+#+end_src
+
+<<ea4214aa-b2b3-468b-98c0-a8ff2a7d2918>>
+#+begin_src python
+for _ in range(3):
+    images.append(prompt_image(mri_prompt))
+#+end_src
+
+<<075761ee-0ebb-447a-8007-ab55b2a7c57f>>
+#+begin_src python
+random.shuffle(images)
+#+end_src
+
+<<e7a6c1c1-8990-43cc-880b-06d2f430fcf7>>
+#+begin_src python
+fix, ax = plt.subplots(1,len(images), figsize=(15,15))
+for i, image in enumerate(images):
+    ax[i].imshow(image, cmap='Greys_r')
+#+end_src
+
+[[file:c3d3b90024851c25b12fe77db3cf600863ec6583.png]]
+
+<<e424fbf6-9553-46f6-b8aa-6cd0aab94b17>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+There is another example data set available. Crop out the star fruit
+from that image and repeat the experiment: Write a prompt that generates
+images looking similar.
+
+The example dataset
+[[https://wellcomecollection.org/works/bvtnk4mm]["Collage of mixed
+fruits and vegetables, MRI."]] is licensed
+[[http://creativecommons.org/licenses/by/4.0/][(CC-BY 4.0)]] by Alexandr
+Khrapichev, University of Oxford
+
+<<3c4e7234-8171-445c-b43d-8341c2c7b081>>
+#+begin_src python
+image2 = imread('../../data/mri_fruit_bvtnk4mm.jpg')
+imshow(image2)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x10a35ff4ac0>
+#+end_example
+
+[[file:7382329defb7765d1a1c4ac8d3d65df33d174502.png]]
+
+<<d5933c94-aa20-4ef1-bbe2-76fccab61a8d>>
+#+begin_src python
+#+end_src

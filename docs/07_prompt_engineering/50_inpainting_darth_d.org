@@ -1,0 +1,195 @@
+<<790cc3e5-2360-4431-865e-fda11ea3af24>>
+* Inpainting using Dall-E
+  :PROPERTIES:
+  :CUSTOM_ID: inpainting-using-dall-e
+  :END:
+Inpainting is the task of replacing a selected part of an image by
+generated pixels that make the selection disappear. When working with
+scientific images, this could be seen as scientific misconduct. Be
+careful when applying this technique to your microscopy images.
+
+In this notebook we will use [[https://openai.com/dall-e-2][Dall-E 2]]
+to inpaint a region of an image. For convenience reasons, we will use
+the [[https://github.com/haesleinhuepf/darth-d/][Darth-D]] library to
+process the image.
+
+<<869487e8-d526-4cc3-af1b-b9ac83c4f30b>>
+#+begin_src python
+from darth_d import replace
+
+from skimage.io import imread
+import stackview
+import numpy as np
+#+end_src
+
+<<7d8c8d6e-7d28-493b-816c-0784c9526e09>>
+In this example we aim to replace the cell in the lower middle of this
+image.
+
+<<ce9f03ad-3f37-4940-b1ce-db67a96dc334>>
+#+begin_src python
+input_image = imread("../../data/hela-cells-8bit.tif")
+
+stackview.insight(input_image)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[[ 3,  6,  1],
+                   [ 3,  7,  0],
+                   [ 3,  6,  1],
+                   ...,
+                   [11,  8,  2],
+                   [11,  7,  2],
+                   [11, 11,  2]],
+
+                  [[ 3,  6,  1],
+                   [ 3,  8,  1],
+                   [ 3,  7,  1],
+                   ...,
+                   [11, 10,  2],
+                   [10, 10,  2],
+                   [11, 11,  2]],
+
+                  [[ 4,  6,  1],
+                   [ 3,  6,  1],
+                   [ 4,  6,  1],
+                   ...,
+                   [10, 10,  2],
+                   [11, 10,  2],
+                   [11, 10,  2]],
+
+                  ...,
+
+                  [[15, 14,  8],
+                   [14, 14,  8],
+                   [15, 14,  7],
+                   ...,
+                   [10, 11,  5],
+                   [10, 12,  4],
+                   [11, 14,  5]],
+
+                  [[14, 16,  7],
+                   [16, 15,  7],
+                   [15, 16,  8],
+                   ...,
+                   [10, 11,  4],
+                   [11, 13,  4],
+                   [11, 16,  5]],
+
+                  [[15, 18,  7],
+                   [14, 17,  8],
+                   [14, 17,  8],
+                   ...,
+                   [ 9, 12,  5],
+                   [10, 13,  5],
+                   [11, 15,  5]]], dtype=uint8)
+#+end_example
+
+<<b67a7c6e-4f91-4fcc-bde6-63ce154c1a8c>>
+We mark this cell using a binary mask.
+
+<<252ee395-81cc-4bfd-a7e2-1cb6314941f3>>
+#+begin_src python
+mask = np.zeros(input_image.shape[:2], dtype=np.uint8)
+mask[300:500, 200:500] = 1
+
+stackview.insight(mask)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]], dtype=uint8)
+#+end_example
+
+<<afe70a73-dd3e-4579-868f-89d87e301a16>>
+We then call the =replace= function to generate a new image.
+
+<<6a0375e9-8cd6-40e5-80bb-68412a314a9d>>
+#+begin_src python
+new_image = replace(input_image, mask)
+
+stackview.insight(new_image)
+#+end_src
+
+#+begin_example
+C:\Users\haase\mambaforge\envs\t310\lib\site-packages\darth_d\_replace.py:41: UserWarning: Using the replace function on scientific images could be seen as scientific misconduct. Handle this function with care.
+  warn("Using the replace function on scientific images could be seen as scientific misconduct. Handle this function with care.")
+#+end_example
+
+#+begin_example
+StackViewNDArray([[[ 3,  6,  0],
+                   [ 3,  6,  0],
+                   [ 3,  6,  0],
+                   ...,
+                   [10,  8,  2],
+                   [10,  7,  2],
+                   [10,  9,  2]],
+
+                  [[ 3,  6,  0],
+                   [ 3,  6,  0],
+                   [ 3,  6,  0],
+                   ...,
+                   [10,  9,  2],
+                   [10,  9,  2],
+                   [10,  9,  2]],
+
+                  [[ 3,  6,  0],
+                   [ 3,  6,  0],
+                   [ 3,  6,  0],
+                   ...,
+                   [10,  9,  2],
+                   [10,  9,  2],
+                   [10,  9,  2]],
+
+                  ...,
+
+                  [[13, 14,  6],
+                   [13, 14,  6],
+                   [14, 14,  7],
+                   ...,
+                   [ 8,  9,  3],
+                   [ 9, 11,  3],
+                   [ 9, 12,  3]],
+
+                  [[14, 15,  7],
+                   [14, 14,  7],
+                   [14, 15,  7],
+                   ...,
+                   [ 9, 10,  3],
+                   [ 9, 12,  4],
+                   [ 9, 14,  4]],
+
+                  [[14, 16,  7],
+                   [14, 16,  7],
+                   [14, 15,  7],
+                   ...,
+                   [ 9, 11,  3],
+                   [ 9, 12,  4],
+                   [10, 14,  4]]], dtype=uint8)
+#+end_example
+
+<<13c1f4af-c8a6-4222-86b2-8298ac0a8c79>>
+#+begin_src python
+stackview.curtain(input_image, new_image, zoom_factor=0.5)
+#+end_src
+
+#+begin_example
+{"model_id":"fb936e220f8e4647b836df103051c785","version_major":2,"version_minor":0}
+#+end_example
+
+<<f52d50bd-fada-496e-a267-28a507908d25>>
+** Exercise
+   :PROPERTIES:
+   :CUSTOM_ID: exercise
+   :END:
+Load =../../data/blobs.tif= draw a binary mask sized 100x100 pixels in
+the center of the image and inpaint it.
+
+<<23e7ffad-667b-488c-8361-141cb9c9cd87>>
+#+begin_src python
+#+end_src

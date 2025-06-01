@@ -1,0 +1,106 @@
+* Interactive image visualization with napari
+  :PROPERTIES:
+  :CUSTOM_ID: interactive-image-visualization-with-napari
+  :END:
+[[https://napari.org/][napari]] is a python-based image viewer. This
+notebook demonstrates how to remote control it from python.
+
+See also
+
+- [[https://napari.org/tutorials/fundamentals/viewer.html][napari viewer
+  tutorial]]
+- [[https://napari.org/tutorials/fundamentals/image.html][napari image
+  layer tutorial]]
+- [[https://napari.org/tutorials/fundamentals/labels.html][napari labels
+  layer tutorial]]
+- [[https://www.youtube.com/watch?v=VgvDSq5aCDQ][Multi-dimensional image
+  visualization in Python using napari [NEUBIAS Academy@Home] webinar]]
+
+For opening an image, we still use scikit-image:
+
+#+begin_src python
+import napari
+from skimage.io import imread
+import napari_segment_blobs_and_things_with_membranes as nsbatm
+import napari_skimage_regionprops as nsr
+#+end_src
+
+#+begin_src python
+# Create an empty viewer
+viewer = napari.Viewer()
+#+end_src
+
+First we load an image and show it in the viewer.
+
+#+begin_src python
+image = imread('../../data/nuclei.tif')
+
+viewer.add_image(image)
+#+end_src
+
+#+begin_example
+<Image layer 'image' at 0x1e423868df0>
+#+end_example
+
+With this command, we can make a screenshot of napari and save it in our
+notebook.
+
+#+begin_src python
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:0156ca49ddde95f015f617fc8fdf6f06b2f77f7f.png]]
+
+** Cell segmentation
+   :PROPERTIES:
+   :CUSTOM_ID: cell-segmentation
+   :END:
+We can also segment the nuclei and show them on top of the image.
+
+#+begin_src python
+label_image = nsbatm.voronoi_otsu_labeling(image, spot_sigma=9)
+
+# add labels to viewer
+label_layer = viewer.add_labels(label_image)
+#+end_src
+
+You can visualize labelled objects as overlay (per default)
+
+#+begin_src python
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:731468d0ad5e9475c8da3d94c41f6f183e2bfd26.png]]
+
+... or as opaque contours
+
+#+begin_src python
+label_layer.contour = 2
+label_layer.opacity = 1
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+[[file:5eecd9880a2848d1f5464788ad664e194db0e3a6.png]]
+
+** Quantitative measurements
+   :PROPERTIES:
+   :CUSTOM_ID: quantitative-measurements
+   :END:
+We can also derive quantitative measurements and attach them to the
+napari viewer.
+
+#+begin_src python
+nsr.regionprops_table(image, label_image, napari_viewer=viewer)
+
+napari.utils.nbscreenshot(viewer)
+#+end_src
+
+#+begin_example
+Napari status bar display of label properties disabled because https://github.com/napari/napari/issues/5417 and https://github.com/napari/napari/issues/4342
+#+end_example
+
+[[file:246ea10a34bf23a89d6f173b8bf417df77997bd6.png]]
+
+#+begin_src python
+#+end_src

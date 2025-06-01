@@ -1,0 +1,147 @@
+<<advised-essay>>
+* Plotting with Matplotlib
+  :PROPERTIES:
+  :CUSTOM_ID: plotting-with-matplotlib
+  :END:
+A straigh forward and simple library for plotting data is
+[[https://matplotlib.org/][matplotlib]].
+
+See also:
+
+- [[https://matplotlib.org/stable/tutorials/introductory/sample_plots.html][Matplotlib
+  sample plots]]
+- [[https://matplotlib.org/2.1.1/api/_as_gen/matplotlib.pyplot.plot.html][Matplotlib
+  plotting]]
+
+<<chinese-lancaster>>
+#+begin_src python
+import math
+import matplotlib.pyplot as plt
+#+end_src
+
+<<measured-sunday>>
+For plotting, we need values to plot. Let's start with a list of
+x-values:
+
+<<emotional-manor>>
+#+begin_src python
+x_values = range(0, 360, 10)
+#+end_src
+
+<<knowing-chemical>>
+To compute the corresponding y-values, we use a for loop, that creates a
+new list of values equal to the =x_values= list and computes a new
+number for each entry:
+
+<<labeled-spice>>
+#+begin_src python
+y_values = [math.sin(x * math.pi / 180) for x in x_values]
+#+end_src
+
+<<essential-digest>>
+Then, let's draw a simple plot
+
+<<assumed-course>>
+#+begin_src python
+plt.plot(x_values, y_values)
+#+end_src
+
+#+begin_example
+[<matplotlib.lines.Line2D at 0x12aa15610>]
+#+end_example
+
+[[file:022c07959aef167de05af9ae271ca6a8b6766ad0.png]]
+
+<<fresh-saudi>>
+Plots can be modified in various ways.
+
+<<efficient-loading>>
+#+begin_src python
+plt.plot(x_values, y_values, '*')
+#+end_src
+
+#+begin_example
+[<matplotlib.lines.Line2D at 0x12ab6c3d0>]
+#+end_example
+
+[[file:a12d65bfd7c31031fc316f603a92d788f96fd30f.png]]
+
+<<familiar-florist>>
+#+begin_src python
+plt.plot(x_values, y_values, color='green')
+#+end_src
+
+#+begin_example
+[<matplotlib.lines.Line2D at 0x12abddc10>]
+#+end_example
+
+[[file:5edb97f3be33045ca0b846e1c74ffce4abbdac29.png]]
+
+<<necessary-edinburgh>>
+If you want to combine multiple plots in one figure, you can do this:
+
+<<hydraulic-massage>>
+#+begin_src python
+plt.plot(x_values, y_values, color='green')
+
+neg_y_values = [- y for y in y_values]
+plt.plot(x_values, neg_y_values, color='magenta')
+#+end_src
+
+#+begin_example
+[<matplotlib.lines.Line2D at 0x12ac5d130>]
+#+end_example
+
+[[file:c495462b6c299a16b02448f89149e85adbba761c.png]]
+
+<<atlantic-genome>>
+** Sub-plots
+   :PROPERTIES:
+   :CUSTOM_ID: sub-plots
+   :END:
+The
+[[https://matplotlib.org/3.1.0/gallery/subplots_axes_and_figures/subplots_demo.html][subplots]]
+command allows you to have multiple plots in one block.
+
+<<lonely-grant>>
+#+begin_src python
+fig,axs = plt.subplots(1, 2)
+
+axs[0].plot(x_values, y_values, color='green')
+axs[1].plot(x_values, neg_y_values, color='magenta')
+#+end_src
+
+#+begin_example
+[<matplotlib.lines.Line2D at 0x12acffc10>]
+#+end_example
+
+[[file:41bcb63daa94d3cf98dae32866fc0e10d508e9c3.png]]
+
+<<lesser-therapy>>
+#+begin_src python
+fig,axs = plt.subplots(2, 3, figsize=[15,10])
+
+axs[0,0].plot(x_values, y_values, color='green')
+axs[0,1].plot(x_values, neg_y_values, color='magenta')
+axs[0,2].plot(x_values, neg_y_values, color='red')
+axs[1,0].plot(x_values, neg_y_values, color='cyan')
+axs[1,1].plot(x_values, neg_y_values, color='blue')
+axs[1,2].plot(x_values, neg_y_values, color='yellow')
+#+end_src
+
+#+begin_example
+[<matplotlib.lines.Line2D at 0x12aec7190>]
+#+end_example
+
+[[file:0c1e067c720b57720fa9266bbf4fd22616b50c48.png]]
+
+<<alleged-burlington>>
+* Exercise
+  :PROPERTIES:
+  :CUSTOM_ID: exercise
+  :END:
+Plot sinus and cosinus of values between 0 and 360 degrees in one plot.
+
+<<polished-public>>
+#+begin_src python
+#+end_src

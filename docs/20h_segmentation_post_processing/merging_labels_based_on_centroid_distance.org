@@ -1,0 +1,146 @@
+<<50f6743a-03a3-43b5-8e8a-5bb32ff41f6f>>
+* Merging labels according to centroid-distances
+  :PROPERTIES:
+  :CUSTOM_ID: merging-labels-according-to-centroid-distances
+  :END:
+In this notebook we will merge labels in a label image according to
+their centroid-distances to each other. Labels close-by will be merged.
+
+See also
+
+- [[https://forum.image.sc/t/measure-distances-between-labels/79125][Image.sc
+  discussion]]
+- [[https://github.com/haesleinhuepf/napari-accelerated-pixel-and-object-classification#merging-objects][Merging
+  labels using napari-accelerated-pixel-and-object-classifiers]]
+
+<<626d0d82-dbbb-4092-bf57-80eda98de375>>
+#+begin_src python
+import pyclesperanto_prototype as cle
+from skimage.io import imread
+#+end_src
+
+<<f6585d60-e431-4902-bed9-901afcf4f6ba>>
+For demonstration purposes, we use a modified version of the labels
+derived from the blobs example-image. We artificially introduce gaps
+between them.
+
+<<878e3c57-593c-4ad3-9c3c-096f1eef2c6b>>
+#+begin_src python
+image = imread("../../data/blobs.tif")
+image[:, 80:150] = 0
+image[80:130, 100:] = 0
+
+image = cle.asarray(image)
+labels = cle.voronoi_otsu_labeling(image, spot_sigma=4, outline_sigma=3)
+labels
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 0,  0,  0, ..., 45, 45, 45],
+       [ 0,  0,  0, ..., 45, 45, 45],
+       [ 0,  0,  0, ..., 45, 45, 45],
+       ...,
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0]], dtype=uint32)
+#+end_example
+
+<<f9a0c583-ffd7-4e7a-b5e0-46c67d4013da>>
+From this image, we extract the coordinates of centroids. From these
+centroids, we can build a distance matrix. In this matrix, the distance
+from all centroids to all other centroids is computed. The diagonale is
+zero as it corresponds to the distance of one centroid to itself.
+Furthermore, the distance to background (first row and first colum) is
+also zero, as background is not considered for distance computation.
+
+<<faf523b6-2dc8-47ed-a89a-25b30c2f99b2>>
+#+begin_src python
+centroids = cle.centroids_of_labels(labels)
+
+distance_matrix = cle.generate_distance_matrix(centroids, centroids)
+distance_matrix
+#+end_src
+
+#+begin_example
+cl.OCLArray([[  0.      ,   0.      ,   0.      , ...,   0.      ,   0.      ,
+          0.      ],
+       [  0.      ,   0.      , 199.36461 , ..., 245.29527 , 274.9624  ,
+        306.2263  ],
+       [  0.      , 199.36461 ,   0.      , ..., 321.00064 , 250.97119 ,
+        249.23108 ],
+       ...,
+       [  0.      , 245.29527 , 321.00064 , ...,   0.      , 139.21213 ,
+        186.94691 ],
+       [  0.      , 274.9624  , 250.97119 , ..., 139.21213 ,   0.      ,
+         48.239468],
+       [  0.      , 306.2263  , 249.23108 , ..., 186.94691 ,  48.239468,
+          0.      ]], dtype=float32)
+#+end_example
+
+<<a140beb6-94f2-4aef-9b4a-bb95a795c074>>
+We can threshold this distance matrix with a given maximum distance. The
+result is a binary matrix.
+
+<<d15aff2c-1b37-4aba-9e0f-944ae1dbc257>>
+#+begin_src python
+maximum_distance = 40
+
+merge_matrix = distance_matrix <= maximum_distance
+merge_matrix
+#+end_src
+
+#+begin_example
+cl.OCLArray([[1, 1, 1, ..., 1, 1, 1],
+       [1, 1, 0, ..., 0, 0, 0],
+       [1, 0, 1, ..., 0, 0, 0],
+       ...,
+       [1, 0, 0, ..., 1, 0, 0],
+       [1, 0, 0, ..., 0, 1, 0],
+       [1, 0, 0, ..., 0, 0, 1]], dtype=uint8)
+#+end_example
+
+<<2207fcf0-dad3-4b2d-bbc8-3471e071f20f>>
+If we werged labels with the background, all labels would be merged
+because all touch the background. In order to prevent this, we set the
+first row and column to zero.
+
+<<c6a202c4-1edd-494b-83aa-cf3171195c3e>>
+#+begin_src python
+cle.set_column(merge_matrix, 0, 0)
+cle.set_row(merge_matrix, 0, 0)
+
+merge_matrix
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 0, 0, 0],
+       [0, 1, 0, ..., 0, 0, 0],
+       [0, 0, 1, ..., 0, 0, 0],
+       ...,
+       [0, 0, 0, ..., 1, 0, 0],
+       [0, 0, 0, ..., 0, 1, 0],
+       [0, 0, 0, ..., 0, 0, 1]], dtype=uint8)
+#+end_example
+
+<<80b121d7-5c03-4382-bd8b-3372f223666d>>
+Using the binary matrix above we can now merge the labels accordingly.
+
+<<e7f50e94-60e2-421c-8a50-b739fa51d9f2>>
+#+begin_src python
+merged_labels = cle.merge_labels_according_to_touch_matrix(labels, merge_matrix)
+merged_labels
+#+end_src
+
+#+begin_example
+cl.OCLArray([[0, 0, 0, ..., 3, 3, 3],
+       [0, 0, 0, ..., 3, 3, 3],
+       [0, 0, 0, ..., 3, 3, 3],
+       ...,
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0],
+       [0, 0, 0, ..., 0, 0, 0]], dtype=uint32)
+#+end_example
+
+<<20258bd4-9f74-479e-a7bd-1d5399a6ef21>>
+#+begin_src python
+#+end_src

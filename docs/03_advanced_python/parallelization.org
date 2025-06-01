@@ -1,0 +1,252 @@
+<<632ef739-4aa0-4e94-b367-cd8df9891b0b>>
+* Parallelization
+  :PROPERTIES:
+  :CUSTOM_ID: parallelization
+  :END:
+When programming custom algorithms in python, it can happen that our
+code becomes slow because we run a couple of nested for-loops. If the
+inner loops do not depend on each other, code can be parallelized and
+sped up. Note, we are parallelizing code on a central processing unit
+(CPU) don't mix it up with GPU-acceleration that uses graphics
+processing units (GPUs).
+
+See also
+
+- [[https://scikit-image.org/docs/stable/user_guide/tutorial_parallelization.html][Scikit-image
+  parallelization tutorial]]
+
+<<eb758e9f-259e-4768-b2de-33f33342ace9>>
+#+begin_src python
+import time
+import numpy as np
+from functools import partial
+import timeit
+import matplotlib.pyplot as plt
+import platform
+#+end_src
+
+<<01ba8886-6f3b-4757-8797-5f808a3a3183>>
+We start with an algorithm that does something with an image at given
+pixel coordinates
+
+<<4b205479-f418-4088-8eb0-f1ae6f5c860e>>
+#+begin_src python
+def slow_thing(image, x, y):
+    # Silly algorithm for wasting compute time
+    sum = 0
+    for i in range(1000):
+        for j in range(100):
+            sum = sum + x
+        sum = sum + y
+    image[x, y] = sum
+
+image = np.zeros((10, 10))
+#+end_src
+
+<<4a186868-2971-4780-97ef-c9532a05a590>>
+We now use [[https://docs.python.org/3/library/timeit.html][timeit]] to
+measure how long the operation takes for processing a single pixel.
+
+<<d19d9c74-6187-4b88-a4a6-24d30e47a3ac>>
+#+begin_src python
+%timeit slow_thing(image, 4, 5)
+#+end_src
+
+#+begin_example
+3.3 ms ± 395 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+#+end_example
+
+<<ed6a9e66-c405-411b-a918-2a21bc513b77>>
+We now define the operation on the whole image and measure the time of
+this function.
+
+<<42d965c7-98c7-4e63-9f8f-f5c5dd304271>>
+#+begin_src python
+def process_image(image):
+    for x in range(image.shape[1]):
+        for y in range(image.shape[1]):
+            slow_thing(image, x, y)
+#+end_src
+
+<<2df82cdc-7ed4-4d1c-a31e-7862a211cfe5>>
+#+begin_src python
+%timeit process_image(image)
+#+end_src
+
+#+begin_example
+353 ms ± 42.4 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+#+end_example
+
+<<152d9860-90c9-46ee-9d73-48d6785dafd9>>
+This function is quite slow and parallelization may make sense.
+
+<<d0048e31-5126-43bf-8ff6-293b508e5544>>
+** Parallelization using joblib.Parallel
+   :PROPERTIES:
+   :CUSTOM_ID: parallelization-using-joblibparallel
+   :END:
+A simple and straightforward approach for parallelization is using
+[[https://joblib.readthedocs.io/en/latest/generated/joblib.Parallel.html][=joblib.Parallel=]]
+and =joblib.delayed=.
+
+<<fef01218-9344-409d-bcd6-1da820fef914>>
+#+begin_src python
+from joblib import Parallel, delayed, cpu_count
+#+end_src
+
+<<60999e6e-f489-4884-a15e-95bf861bbc5a>>
+Note the reverse writing of the for loops in the following block. The
+term =delayed(slow_thing)(image, x, y)= is technically a function call,
+that is not executed. Later, when the return value of this call is
+actually needed, then the actually execution will happen. See
+[[https://docs.dask.org/en/stable/delayed.html][dask delayed]] for
+details.
+
+<<326eb729-0b7a-4951-818e-610c961d987c>>
+#+begin_src python
+def process_image_parallel(image):
+    Parallel(n_jobs=-1)(delayed(slow_thing)(image, x, y) 
+                        for y in range(image.shape[0]) 
+                        for x in range(image.shape[1]))
+#+end_src
+
+<<5d98cc5f-99dd-48a4-abd9-22f594683b8c>>
+#+begin_src python
+%timeit process_image_parallel(image)
+#+end_src
+
+#+begin_example
+62.4 ms ± 218 µs per loop (mean ± std. dev. of 7 runs, 1 loop each)
+#+end_example
+
+<<0dfd1716-3270-498f-94d0-1f036f67a35c>>
+A speedup of 7 is not bad. The =n_jobs=-1= implies that all compute
+units / threads are used. We can also print out how many compute cores
+were used:
+
+<<73d74568-984d-4160-ab22-5dd0df446b07>>
+#+begin_src python
+cpu_count()
+#+end_src
+
+#+begin_example
+16
+#+end_example
+
+<<116a2466-fb42-4db4-a42d-5c7018e39bff>>
+For documentation purposes, we can also print out on what kind of CPU
+that algorithm was executed. This string might be more or less
+informative depending on what operating system / computer we are
+executing this notebook.
+
+<<5d97f430-4b8b-4b9b-89aa-d1fbbb4c4803>>
+#+begin_src python
+platform.processor()
+#+end_src
+
+#+begin_example
+'AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD'
+#+end_example
+
+<<3169c33a-1346-4627-8485-9491cefa956b>>
+** Benchmarking execution time
+   :PROPERTIES:
+   :CUSTOM_ID: benchmarking-execution-time
+   :END:
+In image processing, it is very common that execution time of algorithms
+shows different patterns depending on image size. We will now benchmark
+the algorithm above and see how it performs on differently sized images.
+To bind a function to benchmark to a given image without executing it,
+we are using the
+[[https://docs.python.org/3/library/functools.html#functools.partial][partial]]
+pattern.
+
+<<f57c6d5f-4ae7-435d-b6ec-e50d40075f91>>
+#+begin_src python
+def benchmark(target_function):
+    """
+    Tests a function on a couple of image sizes and returns times taken for processing.
+    """
+    sizes = np.arange(1, 5) * 10
+
+    benchmark_data = []
+
+    for size in sizes:
+        print("Size", size)
+
+        # make new data
+        image = np.zeros((size, size))
+        
+        # bind target function to given image
+        partial_function = partial(target_function, image)
+
+        # measure execution time
+        time_in_s = timeit.timeit(partial_function, number=10)
+        print("time", time_in_s, "s")
+
+        # store results
+        benchmark_data.append([size, time_in_s])
+
+    return np.asarray(benchmark_data)
+#+end_src
+
+<<ca137a83-cd86-43c5-8737-0ec1b8c02983>>
+#+begin_src python
+print("Benchmarking normal")
+benchmark_data_normal = benchmark(process_image)
+print("Benchmarking parallel")
+benchmark_data_parallel = benchmark(process_image_parallel)
+#+end_src
+
+#+begin_example
+Benchmarking normal
+Size 10
+time 3.5427859 s
+Size 20
+time 13.8465019 s
+Size 30
+time 30.883478699999998 s
+Size 40
+time 55.4255712 s
+Benchmarking parallel
+Size 10
+time 0.7873560999999967 s
+Size 20
+time 2.0985788000000127 s
+Size 30
+time 4.9782009000000045 s
+Size 40
+time 7.9171936000000045 s
+#+end_example
+
+<<b1ddb8a2-1628-40eb-b656-7bde6541c249>>
+#+begin_src python
+plt.scatter(benchmark_data_normal[:,0] ** 2, benchmark_data_normal[:,1])
+plt.scatter(benchmark_data_parallel[:,0] ** 2, benchmark_data_parallel[:,1])
+plt.legend(["normal", "parallel"])
+plt.xlabel("Image size in pixels")
+plt.ylabel("Compute time in s")
+plt.show()
+#+end_src
+
+[[file:f7d5e5717fd1c0e6777b19757bc05101bbba5b39.png]]
+
+<<71e07e3b-7fae-481d-8686-07777024ff4b>>
+If we see this pattern, we speak of /linear/ relationship between data
+size and compute time. Computer scientists use the
+[[https://en.wikipedia.org/wiki/Big_O_notation][O notation]] to describe
+the
+[[https://en.wikipedia.org/wiki/Computational_complexity][complexity]]
+of algorithms. This algorithm has =O(n)= and =n= represents the number
+of pixels in this case.
+
+** Quality assurance
+   :PROPERTIES:
+   :CUSTOM_ID: quality-assurance
+   :END:
+Note that in this section we only measured compute time of algorithms.
+We did not determine if the differently optimized versions of the
+algorithms produce the same result. Quality assurance is good scientific
+practice. The same is relevant in the context of GPU-acceleration and
+for example described in detail
+[[https://arxiv.org/pdf/2008.11799][here]].

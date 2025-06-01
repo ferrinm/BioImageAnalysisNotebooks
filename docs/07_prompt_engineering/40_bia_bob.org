@@ -1,0 +1,156 @@
+<<b97b3b00-8ff4-4e1b-b7c7-709f87aabc37>>
+** BIA Bob
+   :PROPERTIES:
+   :CUSTOM_ID: bia-bob
+   :END:
+BIA Bob is a Jupyter-magic based assistant for interacting with data via
+code.
+
+<<f4ae3a80-b6ea-4409-95b7-caecd4e4211c>>
+#+begin_src python
+from bia_bob import bob
+bob.initialize('gpt-4-1106-preview')
+bob.__version__
+#+end_src
+
+#+begin_example
+'0.10.2'
+#+end_example
+
+<<d9c9624e-9bdf-4064-8ede-6d49b28db00f>>
+You can use the =%bob= single-line or the =%%bob= multi-line magic to
+ask for programming image analysis tasks and =bob= will generate code
+for this and paste it in a new cell below. You need to wait until this
+cell exists before you can execute it. Thus, running an entire notebook
+in one shot makes little sense. Run it cell-by-cell instead and consider
+reading generated code before executing it.
+
+<<072b6877-d259-414a-9b1a-920135db65f5>>
+#+begin_src python
+%bob Load the ../../data/blobs.tif image file and show it.
+#+end_src
+
+#+begin_example
+<IPython.core.display.Markdown object>
+#+end_example
+
+<<0fd32feb-6ee7-4d5a-9110-c8fb771ca6df>>
+#+begin_src python
+from skimage.io import imread
+import stackview
+
+# Load the image
+image = imread('../../data/blobs.tif')
+
+# Show the image
+stackview.insight(image)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[ 40,  32,  24, ..., 216, 200, 200],
+                  [ 56,  40,  24, ..., 232, 216, 216],
+                  [ 64,  48,  24, ..., 240, 232, 232],
+                  ...,
+                  [ 72,  80,  80, ...,  48,  48,  48],
+                  [ 80,  80,  80, ...,  48,  48,  48],
+                  [ 96,  88,  80, ...,  48,  48,  48]], dtype=uint8)
+#+end_example
+
+<<64bc8a43-44ba-455c-8530-6a53eb3544bc>>
+#+begin_src python
+%%bob
+Load the ../../data/blobs.tif grayscale image from disc.
+Segment the nuclei-like objects in it using 
+Otsu's method and connected component labeling.
+Measure area of the segmented labels.
+Print the area on top of the labels.
+#+end_src
+
+#+begin_example
+<IPython.core.display.Markdown object>
+#+end_example
+
+<<15e994ce-eb67-4bac-98c7-55d111759d49>>
+#+begin_src python
+from skimage.io import imread
+from skimage.filters import threshold_otsu
+from skimage.measure import label, regionprops
+from skimage.color import label2rgb
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Load the image
+image = imread('../../data/blobs.tif')
+
+# Apply Otsu's threshold
+thresh = threshold_otsu(image)
+binary = image > thresh
+
+# Label the image
+label_image = label(binary)
+
+# Measure properties of labeled regions
+properties = regionprops(label_image)
+
+# Annotate the image with area information
+annotated_image = label2rgb(label_image, image=image)
+
+fig, ax = plt.subplots()
+ax.imshow(annotated_image)
+
+for region in properties:
+    # take regions with large enough areas
+    if region.area >= 50: 
+        # draw rectangle around segmented objects
+        minr, minc, maxr, maxc = region.bbox
+        rect = plt.Rectangle((minc, minr), maxc - minc, maxr - minr,
+                             fill=False, edgecolor='red', linewidth=2)
+        ax.add_patch(rect)
+        
+        # print area on top of the nuclei-like objects
+        ax.text(region.centroid[1], region.centroid[0], f'{region.area}', 
+                verticalalignment='center', horizontalalignment='center',
+                color='white', fontsize=8)
+
+ax.set_axis_off()
+plt.tight_layout()
+plt.show()
+#+end_src
+
+[[file:eff0bb0b315ee842bcccd444cd0c12086c12c88b.png]]
+
+<<a448da9b-69c5-4fa4-b250-ea64019db36f>>
+#+begin_src python
+%%bob
+Take the segmented label image and expand the labels by 4 pixels. Show the resulting label image alone.
+#+end_src
+
+#+begin_example
+<IPython.core.display.Markdown object>
+#+end_example
+
+<<0e2ecce9-9f3a-4862-8cf2-86e06d6a90f7>>
+#+begin_src python
+from skimage.segmentation import expand_labels
+import stackview
+
+# Expand the labels by 4 pixels
+expanded_labels = expand_labels(label_image, distance=4)
+
+# Show the resulting expanded label image
+stackview.insight(expanded_labels)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[0, 0, 0, ..., 5, 5, 5],
+                  [0, 0, 0, ..., 5, 5, 5],
+                  [0, 0, 0, ..., 5, 5, 5],
+                  ...,
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0],
+                  [0, 0, 0, ..., 0, 0, 0]])
+#+end_example
+
+<<930b7ce5-db68-4ccb-9ca8-6b45eccefac2>>
+#+begin_src python
+#+end_src

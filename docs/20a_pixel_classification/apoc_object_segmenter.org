@@ -1,0 +1,98 @@
+<<ce720e69>>
+* Object segmentation on OpenCL-compatible GPUs
+  :PROPERTIES:
+  :CUSTOM_ID: object-segmentation-on-opencl-compatible-gpus
+  :END:
+APOC is based on
+[[https://github.com/clEsperanto/pyclesperanto_prototype][pyclesperanto]]
+and [[https://scikit-learn.org/stable/][scikit-learn]]. For object
+segmentation, it uses a pixel classifier and connected components
+labeling.
+
+Let's start with loading an example image and some ground truth:
+
+<<030613f9>>
+#+begin_src python
+from skimage.io import imread, imsave
+import pyclesperanto_prototype as cle
+import numpy as np
+import apoc
+#+end_src
+
+<<4384e011-ad91-4c63-b8bc-f60b1f3c80ee>>
+#+begin_src python
+image = imread('../../data/blobs.tif')
+cle.imshow(image)
+#+end_src
+
+[[file:0691d67b662888d48b2a43a629bababf0db05cb3.png]]
+
+<<f9ce5403>>
+#+begin_src python
+manual_annotations = imread('../../data/blobs_annotations.tif')
+
+cle.imshow(manual_annotations, labels=True)
+#+end_src
+
+[[file:1577ed209a36ea930d7465a0e5426191cdb10429.png]]
+
+<<f0299779>>
+** Training
+   :PROPERTIES:
+   :CUSTOM_ID: training
+   :END:
+We now train a ObjectSegmenter, which is under the hood a
+[[https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html][scikit-learn
+RandomForestClassifier]]. After training, the classifier will be
+converted to
+[[https://github.com/clEsperanto/clij-opencl-kernels][clij-compatible
+OpenCL code]] and save to disk under a given filename.
+
+<<8c162a7f>>
+#+begin_src python
+# define features
+features = apoc.PredefinedFeatureSet.medium_quick.value
+
+# this is where the model will be saved
+cl_filename = '../../data/blobs_object_segmenter.cl'
+
+apoc.erase_classifier(cl_filename)
+clf = apoc.ObjectSegmenter(opencl_filename=cl_filename, positive_class_identifier=2)
+clf.train(features, manual_annotations, image)
+#+end_src
+
+<<5e231f60>>
+** Prediction / segmentation
+   :PROPERTIES:
+   :CUSTOM_ID: prediction--segmentation
+   :END:
+The classifier can then be used to classify all pixels in the given
+image. Starting point is again, the feature stack. Thus, the user must
+make sure that the same features are used for training and for
+prediction. Prediction can be done on the CPU using the original
+scikit-learn code and on the GPU using the generated OpenCL-code. OCLRFC
+works well if both result images look identical.
+
+<<efe2721c>>
+#+begin_src python
+segmentation_result = clf.predict(features=features, image=image)
+cle.imshow(segmentation_result, labels=True)
+#+end_src
+
+[[file:6a265df966acb172b37cf3601a4a214352ee2df2.png]]
+
+<<7f4ba4f6>>
+** Segmentation from a loaded segmenter
+   :PROPERTIES:
+   :CUSTOM_ID: segmentation-from-a-loaded-segmenter
+   :END:
+
+<<40f890ea>>
+#+begin_src python
+clf = apoc.ObjectSegmenter(opencl_filename=cl_filename)
+
+segmentation_result = clf.predict(image=image)
+cle.imshow(segmentation_result, labels=True)
+#+end_src
+
+[[file:6a265df966acb172b37cf3601a4a214352ee2df2.png]]

@@ -1,0 +1,100 @@
+<<40e582fa-519f-4c93-97ea-b2b2d9596dea>>
+* Image Binarization
+  :PROPERTIES:
+  :CUSTOM_ID: image-binarization
+  :END:
+
+<<3b9b71cd-af28-4016-ab93-49d671b727d0>>
+When binarizing an image, we produce an image that has only two values:
+True and False. They may also contain the value =0=, e.g. for
+background, and any other value for foreground.
+
+<<d3126124-9007-44c1-ab38-143ff17b8a19>>
+#+begin_src python
+import numpy as np
+from skimage.io import imread, imshow
+from skimage.filters import gaussian
+#+end_src
+
+<<77812a9c-b4f2-4ebd-bedc-8838b2a782f7>>
+We use this example image of nuclei.
+
+<<e17173dd-dc67-4ee0-864a-196f094f2dbc>>
+#+begin_src python
+image_nuclei = imread('../../data/mitosis_mod.tif')
+
+imshow(image_nuclei)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1dcf6b5dbe0>
+#+end_example
+
+[[file:1adb87a5a0300f4a3a856d65681f15e27bd8e9de.png]]
+
+<<a4ceeee1-05e6-4519-be9e-d18bdb7689f0>>
+** Image Thesholding
+   :PROPERTIES:
+   :CUSTOM_ID: image-thesholding
+   :END:
+The most common binarization technique is thresholding. We /apply a
+threshold/ to determine which pixel lie above a certain pixel intensity
+and which are below.
+
+<<3d6403d9-a01e-4e45-9e9d-04930c4e42bc>>
+#+begin_src python
+image_binary = image_nuclei > 60
+#+end_src
+
+<<8fca1e13-07b8-4ca2-a3fc-26e261e300ae>>
+#+begin_src python
+imshow(image_binary)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1dcf6bb09a0>
+#+end_example
+
+[[file:79aa4db4323dc9988907ed4ee4dd012b5b47e7d6.png]]
+
+<<ba838393-86bf-4920-936d-546b16c52943>>
+** Improving binarization results
+   :PROPERTIES:
+   :CUSTOM_ID: improving-binarization-results
+   :END:
+Sometimes, binarization results appear pixelated. This can be improved
+by applying a filter before thresholding the image.
+
+<<5e75087a-3dd4-4a3d-96ca-eb53476632bc>>
+#+begin_src python
+image_denoised = gaussian(image_nuclei, sigma=1, preserve_range=True)
+imshow(image_denoised, cmap='Greys_r')
+#+end_src
+
+#+begin_example
+C:\Users\haase\mambaforge\envs\bio39\lib\site-packages\skimage\io\_plugins\matplotlib_plugin.py:150: UserWarning: Float image out of standard range; displaying image with stretched contrast.
+  lo, hi, cmap = _get_display_range(image)
+#+end_example
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1dcf6c48640>
+#+end_example
+
+[[file:4d8f6a3a686d2d564289c4e6c37db8da40620cb0.png]]
+
+<<d1ff4709-3d5b-4e49-a01a-9aa08f73a339>>
+#+begin_src python
+image_binary2 = image_denoised > 60
+
+imshow(image_binary2)
+#+end_src
+
+#+begin_example
+<matplotlib.image.AxesImage at 0x1dcf7d61040>
+#+end_example
+
+[[file:549ab28cd16eb23addf07f2ec4e8362b0d85b668.png]]
+
+<<0764ec08-d264-4145-9cab-f3f27cc00792>>
+#+begin_src python
+#+end_src

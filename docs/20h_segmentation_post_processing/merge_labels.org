@@ -1,0 +1,137 @@
+<<8a1bc074-7648-4559-a012-e569e426ac5f>>
+* Merging labels
+  :PROPERTIES:
+  :CUSTOM_ID: merging-labels
+  :END:
+In principle, all segmentation algorithms are limited. In case results
+are sub-optimal and no better segmentation algorithm is available,
+post-processing labels may be an option. There are some functions
+available for merging labels according to their properties such as
+intensity along the edge where labels touch the pixel count of pair-wise
+combined labels.
+
+<<2cff9edb-3a15-4fc6-8ffa-381dc2bafb5d>>
+#+begin_src python
+import pyclesperanto_prototype as cle
+from napari_segment_blobs_and_things_with_membranes import local_minima_seeded_watershed
+import numpy as np
+cle.select_device("TX")
+#+end_src
+
+#+begin_example
+<NVIDIA GeForce RTX 3050 Ti Laptop GPU on Platform: NVIDIA CUDA (1 refs)>
+#+end_example
+
+<<33f6f96f-be5f-422b-b4b2-161dd8959df2>>
+** Merging touching labels
+   :PROPERTIES:
+   :CUSTOM_ID: merging-touching-labels
+   :END:
+The most trivial use-case might be merging labeled objects that touch.
+
+<<68c97923-2988-41ed-ad84-d3cb08f702a6>>
+#+begin_src python
+blobs = cle.imread("../../data/blobs.tif")
+blobs_labels = cle.voronoi_otsu_labeling(blobs, spot_sigma=3)
+blobs_labels
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 0,  0,  0, ..., 68, 68, 68],
+       [ 0,  0,  0, ..., 68, 68, 68],
+       [ 0,  0,  0, ..., 68, 68, 68],
+       ...,
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0]], dtype=uint32)
+#+end_example
+
+<<82186da8-b6e3-450b-951a-56e057955a71>>
+#+begin_src python
+cle.merge_touching_labels(blobs_labels)
+#+end_src
+
+#+begin_example
+cl.OCLArray([[ 0,  0,  0, ..., 57, 57, 57],
+       [ 0,  0,  0, ..., 57, 57, 57],
+       [ 0,  0,  0, ..., 57, 57, 57],
+       ...,
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0],
+       [ 0,  0,  0, ...,  0,  0,  0]], dtype=uint32)
+#+end_example
+
+<<73603a37-9126-445e-8c4a-96baad7c5085>>
+** Merging labels according to border intensity
+   :PROPERTIES:
+   :CUSTOM_ID: merging-labels-according-to-border-intensity
+   :END:
+As an example we use a cropped slice of the
+[[https://scikit-image.org/docs/stable/auto_examples/applications/plot_3d_image_processing.html][=cells3d=
+example dataset in scikit-image]].
+
+<<cd7487d7-d23f-4eda-9f91-3b86828a4b39>>
+#+begin_src python
+image = cle.imread("../../data/membranes_2d.tif")[30:130, 0:100]
+image
+#+end_src
+
+#+begin_example
+cl.OCLArray([[2029., 2518., 2368., ..., 2248., 1888., 1804.],
+       [2425., 2415., 2490., ..., 1814., 1977., 2062.],
+       [2085., 2293., 2316., ..., 1909., 1789., 1820.],
+       ...,
+       [3677., 2483., 2423., ..., 2233., 2456., 2359.],
+       [2859., 2527., 2547., ..., 1936., 2399., 2111.],
+       [2859., 2541., 2510., ..., 2332., 2248., 2066.]], dtype=float32)
+#+end_example
+
+<<bde3ea3a-92cd-4f0a-9127-100f2a2a37fb>>
+In the following example, our cell in the center of the image was
+wrongly segmented as two cells:
+
+<<b1c48e5a-0b91-4586-9259-b82c63621671>>
+#+begin_src python
+labels = local_minima_seeded_watershed(image, spot_sigma=5, outline_sigma=0)
+labels
+#+end_src
+
+#+begin_example
+StackViewNDArray([[ 5,  5,  5, ...,  3,  2,  2],
+                  [ 5,  5,  5, ...,  3,  3,  2],
+                  [ 5,  5,  5, ...,  3,  3,  3],
+                  ...,
+                  [11, 11, 11, ..., 12, 12, 12],
+                  [11, 11, 11, ..., 12, 12, 12],
+                  [11, 11, 11, ..., 12, 12, 12]])
+#+end_example
+
+<<d98d6b8a-7b3b-41c3-9aee-965a7b275af5>>
+This can be corrected by merging cells with border intensity below a
+given threshold.
+
+<<7cd7a49e-8f4e-4d89-89be-779c7eb8f944>>
+#+begin_src python
+merged_labels = cle.merge_labels_with_border_intensity_within_range(image, labels, maximum_intensity=5000)
+merged_labels
+#+end_src
+
+#+begin_example
+c:\structure\code\pyclesperanto_prototype\pyclesperanto_prototype\_tier3\_generate_touch_mean_intensity_matrix.py:30: UserWarning: generate_touch_mean_intensity_matrix is supposed to work with images of integer type only.
+Loss of information is possible when passing non-integer images.
+  warnings.warn("generate_touch_mean_intensity_matrix is supposed to work with images of integer type only.\n" +
+#+end_example
+
+#+begin_example
+cl.OCLArray([[3, 3, 3, ..., 2, 2, 2],
+       [3, 3, 3, ..., 2, 2, 2],
+       [3, 3, 3, ..., 2, 2, 2],
+       ...,
+       [7, 7, 7, ..., 8, 8, 8],
+       [7, 7, 7, ..., 8, 8, 8],
+       [7, 7, 7, ..., 8, 8, 8]], dtype=uint32)
+#+end_example
+
+<<12cc5970-d150-403d-94a7-8d1c34ce3e92>>
+#+begin_src python
+#+end_src

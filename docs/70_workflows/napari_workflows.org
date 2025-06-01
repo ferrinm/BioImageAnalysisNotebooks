@@ -1,0 +1,120 @@
+<<b6ae8a12-e1db-452a-b47a-2e5c8180dacd>>
+* Workflows in napari
+  :PROPERTIES:
+  :CUSTOM_ID: workflows-in-napari
+  :END:
+For using [[https://github.com/napari/napari][napari]] and
+[[https://dask.dev][dask]] together to define and design workflows, we
+made a small library to make these things more convenient:
+[[https://github.com/haesleinhuepf/napari-workflows][napari-workflows]].
+Goal was to allow the user to setup a workflow by clicking in napari.
+These workflows are then accessible as object, similar to a dictionary,
+that can be asked for results of given workflow steps. For example, in
+the workflow shown below, an input image is blurred using a Gaussian
+kernel and then thresholded using
+[[https://ieeexplore.ieee.org/document/4310076][Otsu's method]] and
+[[https://scikit-image.org][scikit-image]].
+
+<<3b987de5>>
+#+begin_src python
+from napari_workflows import Workflow
+
+from skimage.io import imread
+from skimage.filters import threshold_otsu, gaussian
+from skimage.measure import label
+from pyclesperanto_prototype import imshow
+#+end_src
+
+<<64fe6332>>
+First, we define a workflow and add operations to it. E.g. an operation
+that takes an image named ="input"= and produces a ="denoised"= image
+out of it using the =gaussian()= function and =sigma=2= as parameter.
+
+<<86b4a6bf>>
+#+begin_src python
+workflow = Workflow()
+
+# define denoising
+workflow.set("denoised", gaussian, "input", sigma=2)
+#+end_src
+
+<<9cce465e>>
+We can also add custom function, which is for exmaple necessary to
+produce a binary image out of an intensity image directly with a single
+function call.
+
+<<fcb3e945>>
+#+begin_src python
+# define segmentation
+def threshold(image):
+    return image > threshold_otsu(image)
+workflow.set("binarized", threshold, "denoised")
+#+end_src
+
+<<b3dbc14b>>
+We also apply connected component labeling to the binary image.
+
+<<1207d855>>
+#+begin_src python
+workflow.set("labeled", label, "binarized")
+
+# Let's print out the whole workflow
+print(str(workflow))
+#+end_src
+
+#+begin_example
+Workflow:
+denoised <- (<function gaussian at 0x19b297940>, 'input', 2, None, 'nearest', 0, None, False, 4.0)
+binarized <- (<function threshold at 0x19dbd8430>, 'denoised')
+labeled <- (<function label at 0x19ba7c820>, 'binarized', None, False)
+
+#+end_example
+
+<<cf7cb3fc>>
+** Executing workflows
+   :PROPERTIES:
+   :CUSTOM_ID: executing-workflows
+   :END:
+Until here, there were no images involved. We now load an image and
+store it in the workflow as ="input"=.
+
+<<c26e000d>>
+#+begin_src python
+workflow.set("input", imread("https://samples.fiji.sc/blobs.png"))
+
+print(str(workflow))
+#+end_src
+
+#+begin_example
+Workflow:
+denoised <- (<function gaussian at 0x19b297940>, 'input', 2, None, 'nearest', 0, None, False, 4.0)
+binarized <- (<function threshold at 0x19dbd8430>, 'denoised')
+labeled <- (<function label at 0x19ba7c820>, 'binarized', None, False)
+input <- [[ 40  32  24 ... 216 200 200]
+ [ 56  40  24 ... 232 216 216]
+ [ 64  48  24 ... 240 232 232]
+ ...
+ [ 72  80  80 ...  48  48  48]
+ [ 80  80  80 ...  48  48  48]
+ [ 96  88  80 ...  48  48  48]]
+
+#+end_example
+
+<<853cf256>>
+To actually execute computation, we call the =workflow.get()= function
+that produces a single specified output. Under the hood, it will also
+execute all intermediate operations that are necessary to come to the
+final output.
+
+<<ea713793>>
+#+begin_src python
+result = workflow.get("labeled")
+
+imshow(result, labels=True)
+#+end_src
+
+[[file:eeec44ecb4524974fa4a00a7d5dbe4b16ff71d92.png]]
+
+<<11220c1e>>
+#+begin_src python
+#+end_src

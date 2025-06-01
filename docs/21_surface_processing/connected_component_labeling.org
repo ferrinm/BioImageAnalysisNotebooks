@@ -1,0 +1,205 @@
+<<72153cb7-115a-4e62-8b13-58f1cb309944>>
+* Connected component labeling on surfaces
+  :PROPERTIES:
+  :CUSTOM_ID: connected-component-labeling-on-surfaces
+  :END:
+This notebook demonstrates how to differentiate objects according to
+their connectivity.
+
+<<effd8f07-5c88-4649-8ba0-d134fbf68017>>
+#+begin_src python
+import napari_process_points_and_surfaces as nppas
+import pyclesperanto_prototype as cle
+import napari_simpleitk_image_processing as nsitk
+from skimage.data import cells3d
+import stackview
+#+end_src
+
+<<f4a30689-caec-4348-a77f-01503fe23441>>
+We use a 3D image of nuclei...
+
+<<c106f052-c82e-4718-b629-eb5d3a02a7b2>>
+#+begin_src python
+image = cells3d()[:,1]
+stackview.insight(image)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[[5311, 4458, 5880, ..., 4220, 6497, 4932],
+                   [4078, 4552, 3557, ..., 4552, 4884, 5169],
+                   [3414, 5074, 4363, ..., 4078, 6117, 5406],
+                   ...,
+                   [3983, 3983, 2750, ..., 4410, 4600, 5880],
+                   [3604, 4173, 4600, ..., 5548, 5690, 4268],
+                   [4078, 4268, 4220, ..., 5359, 6686, 7492]],
+
+                  [[4220, 4932, 5074, ..., 6449, 6117, 4932],
+                   [3082, 4979, 4505, ..., 4505, 6971, 5880],
+                   [4695, 4315, 4695, ..., 4742, 5785, 5074],
+                   ...,
+                   [3414, 3841, 3462, ..., 5169, 4742, 5027],
+                   [4173, 3319, 2798, ..., 5406, 4600, 4837],
+                   [3225, 3557, 3651, ..., 5453, 5406, 4837]],
+
+                  [[4552, 4505, 4742, ..., 4458, 4979, 4647],
+                   [3367, 4268, 4647, ..., 6402, 6022, 5738],
+                   [3509, 3272, 4647, ..., 5264, 4220, 6259],
+                   ...,
+                   [3841, 3936, 3888, ..., 4884, 5169, 4789],
+                   [3604, 3225, 2798, ..., 4552, 6117, 5690],
+                   [4126, 4458, 4837, ..., 5928, 6734, 5027]],
+
+                  ...,
+
+                  [[5121, 5833, 5738, ..., 5406, 3983, 4220],
+                   [5311, 5453, 5453, ..., 5169, 5027, 4884],
+                   [6544, 5121, 5264, ..., 4363, 5406, 4695],
+                   ...,
+                   [4884, 2324, 3130, ..., 4552, 4979, 6070],
+                   [3225, 2513, 2513, ..., 4742, 3035, 2418],
+                   [3272, 2798, 3888, ..., 3604, 4268, 3746]],
+
+                  [[5359, 5928, 5738, ..., 4268, 4505, 4031],
+                   [7445, 6829, 4268, ..., 4884, 5596, 3082],
+                   [6497, 6544, 4932, ..., 3604, 5359, 4410],
+                   ...,
+                   [5833, 2703, 3367, ..., 3177, 4220, 4220],
+                   [4031, 3509, 5216, ..., 4268, 3604, 4932],
+                   [3557, 2987, 3936, ..., 3604, 3462, 5264]],
+
+                  [[6402, 6781, 4789, ..., 5928, 6022, 3651],
+                   [4363, 4837, 6307, ..., 4315, 3651, 4126],
+                   [4979, 4695, 4742, ..., 4789, 4837, 4552],
+                   ...,
+                   [4078, 2513, 3035, ..., 1849, 3888, 4363],
+                   [3936, 3888, 4315, ..., 5216, 4031, 5643],
+                   [4173, 4505, 3794, ..., 4979, 6781, 4031]]],
+                 dtype=uint16)
+#+end_example
+
+<<b5fadf5f-9021-4276-b747-adc74c513f73>>
+... and segment the nuclei resulting in a 3D binary image.
+
+<<86f69768-b651-41df-b412-9dc658794d61>>
+#+begin_src python
+labels = cle.voronoi_otsu_labeling(image, spot_sigma=9)
+binary = cle.erode_labels(labels) > 0
+
+stackview.insight(binary)
+#+end_src
+
+#+begin_example
+StackViewNDArray([[[0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   ...,
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0]],
+
+                  [[0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   ...,
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0]],
+
+                  [[0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   ...,
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0]],
+
+                  ...,
+
+                  [[0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   ...,
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0]],
+
+                  [[0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   ...,
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0]],
+
+                  [[0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   ...,
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0],
+                   [0, 0, 0, ..., 0, 0, 0]]], dtype=uint8)
+#+end_example
+
+<<3e204746-5e2c-4f2b-81f2-b865414de79c>>
+We convert this binary image into a surface dataset.
+
+<<a70aa6f5-0aea-496f-888f-212a1fec6151>>
+#+begin_src python
+surface = nppas.all_labels_to_surface(binary)
+surface
+#+end_src
+
+#+begin_example
+(array([[ 16.5,  79. ,  54. ],
+        [ 17. ,  78.5,  54. ],
+        [ 17. ,  79. ,  53.5],
+        ...,
+        [ 58.5, 101. ,  46. ],
+        [ 59. , 100.5,  47. ],
+        [ 58.5, 101. ,  47. ]], dtype=float32),
+ array([[     2,      1,      0],
+        [     4,      3,      0],
+        [     4,      0,      1],
+        ...,
+        [151351, 151184, 151186],
+        [151351, 151186, 151353],
+        [151353, 151186, 151177]], dtype=int64))
+#+end_example
+
+<<66448a87-e0bd-4d3a-9f19-75383eda642a>>
+By applying
+[[https://en.wikipedia.org/wiki/Connected-component_labeling][connected
+component labeling]] to the surface, we can identify vertices/faces that
+are connected and differentiate those which are not. The result is also
+a surface dataset where the vertex values correspond to the =n=th label
+these objects belong to. Thus, you can conclude from the maximum number
+of this surface that there are 38 nuclei in this image.
+
+<<c4ece9bf-20f7-49fe-b2b5-3cba8afdfe70>>
+#+begin_src python
+surface_connected_components = nppas.connected_component_labeling(surface)
+surface_connected_components.cmap = 'hsv'
+surface_connected_components
+#+end_src
+
+#+begin_example
+(array([[ 17. ,  79. ,  53.5],
+        [ 17. ,  78.5,  54. ],
+        [ 16.5,  79. ,  54. ],
+        ...,
+        [ 42. ,  67.5, 115. ],
+        [ 41. ,  68. , 115.5],
+        [ 43. ,  66.5, 115. ]], dtype=float32),
+ array([[   0,    1,    2],
+        [   6,    8,    2],
+        [   6,    2,    1],
+        ...,
+        [8961, 8953, 8957],
+        [8961, 8957, 8956],
+        [8956, 8957, 8924]], dtype=int64),
+ array([ 0,  0,  0, ..., 38, 38, 38], dtype=int64))
+#+end_example
+
+<<d15cd639-914c-4250-b355-cc86c9f8060f>>
+#+begin_src python
+#+end_src

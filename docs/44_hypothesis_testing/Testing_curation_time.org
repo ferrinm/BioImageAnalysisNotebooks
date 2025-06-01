@@ -1,0 +1,149 @@
+* Setting up a dataset
+  :PROPERTIES:
+  :CUSTOM_ID: setting-up-a-dataset
+  :END:
+
+#+begin_src python
+import patients
+
+number_of_patients = 100
+
+curation_time_treatment = patients.treatment_group(number_of_patients)
+curation_time_placebo = patients.placebo_group(number_of_patients)
+
+print(curation_time_treatment)
+print(curation_time_placebo)
+#+end_src
+
+#+begin_example
+[ 7.27011443  9.85465087  6.95141023  9.24500459  8.90495633  5.79813565
+  9.9992094   4.28286738  5.0511571   6.01641775  7.83666669  8.28679017
+  8.34411823  8.40852419  6.08060269  7.51628825  5.25725523  8.04858072
+  8.15182518  8.12191271  6.55381928  3.33632874  6.31461858  4.6032308
+  4.94019806 13.35032912  6.03333339  1.85193828  8.1009366   4.87296902
+  6.66458631  5.30685262  6.8634381   6.76577551  6.91485281  8.45594048
+ 10.96326062  8.2848168   5.35423583  6.08847733  5.79986437 11.02288371
+  6.2350441   5.7274503   7.28870892  4.80090545  8.14478415 10.16106687
+  8.38779289  8.5303685   5.60679502  6.46821253  9.13004099 10.87366831
+  8.78542611 10.33541741  3.51638379  6.02953238  5.65259087  4.61802449
+  7.2299876   4.78301236  5.37869989  7.48787149  6.38289068  7.19154068
+  9.27137051  5.54527698 10.65534957  5.08766764  7.02866932  9.05415527
+  7.6600142   9.267061    8.19955612  6.33452432  9.4027188   9.7310974
+  6.48210483  6.26928475  5.27401951  6.74515644  0.68122265  8.18065681
+  9.15268339  7.74697703 10.28201112  7.71229436  7.63087416  7.09212867
+  4.14195812  3.42643788  2.43797867  6.96902512  5.80804667  4.03700635
+  4.8747575   4.7259411   5.56147663  7.57001294]
+[ 5.13524566  8.1089771   7.57939463  6.47165697  5.19815039  8.55567731
+  1.83529688  9.70428483  8.13301694  9.97211549  7.73281157  8.07545269
+  6.40288602  9.04946821  8.48383013 10.20897295  6.94660508 11.64089259
+  8.44294434 10.59686178  8.12008165 10.34050033  6.58178866  6.34215898
+  8.12158417  5.21995735  3.42094155  6.25153858  6.80850307  6.38487336
+  7.77958492  8.04584323  5.16018103  5.32055156  3.2750884   4.74092265
+  8.47644018  8.38169422  6.54200936  4.66342594  7.3811708   5.96611443
+  2.5391737   5.80949073  8.43909846  8.35925088  7.73026043  8.92385488
+  4.42756307  5.43570972  4.37772115  7.20869488  8.61585258  6.95059967
+  5.36276821  8.55683181  5.63832339  8.98418562  9.40877157  7.10719578
+  6.81846318  6.30936051  1.59327067  6.51518219  6.64126646  6.94963272
+  6.16910104  8.44546918  7.27876465  6.3617845   5.65081483  4.77328228
+  5.8978814  12.09305192  9.00288095  7.58249317  7.93682524  7.95180752
+  6.61845776  5.44036616  8.23451973  8.40993964  7.10424768  5.81649113
+  9.93482548  4.05564067 11.28050143  8.55349791  7.61527436  7.59975485
+  8.71477125  5.0134487   9.63238054  3.53756252  6.05610185  6.78353894
+  8.28886174  8.29957261  5.26320487  8.89943049]
+#+end_example
+
+* Descriptive statistics
+  :PROPERTIES:
+  :CUSTOM_ID: descriptive-statistics
+  :END:
+
+#+begin_src python
+import numpy as np
+
+def do_descriptive_statistics(x):
+    mean_x = np.mean(x)
+    standard_deviation_x = np.std(x)
+
+    print("Mean: " + str(mean_x) + " +- " + str(standard_deviation_x))
+#+end_src
+
+#+begin_src python
+print("Treatment group")
+do_descriptive_statistics(curation_time_treatment)
+
+print("Placebo group")
+do_descriptive_statistics(curation_time_placebo)
+#+end_src
+
+#+begin_example
+Treatment group
+Mean: 6.966549057422408 +- 2.138934068447365
+Placebo group
+Mean: 7.10598565233434 +- 1.998905769266872
+#+end_example
+
+#+begin_src python
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots()
+ax.hist(curation_time_treatment, bins=10)
+ax.set_title('Curation time of ' + str(len(curation_time_treatment)) + ' patients treated')
+ax.set_ylabel("count")
+ax.set_xlabel("Curation time / days")
+plt.show()
+
+fig, ax = plt.subplots()
+ax.hist(curation_time_placebo, bins=10)
+ax.set_title('Curation time of ' + str(len(curation_time_placebo)) + ' patients receiving a placebo')
+ax.set_ylabel("count")
+ax.set_xlabel("Curation time / days")
+plt.show()
+#+end_src
+
+[[file:7fdd257d5503213a266755501894364de2eca2e6.png]]
+
+[[file:6310f8c348460cc249ab90bcbc9c987af3b85b0b.png]]
+
+#+begin_src python
+from my_statistics_functions import draw_curation_time_histogram
+
+draw_curation_time_histogram(curation_time_treatment, 
+                             "patients receiving a treatment")
+draw_curation_time_histogram(curation_time_placebo, 
+                             "patients receiving a placebo")
+#+end_src
+
+[[file:7112ffa277ef0c4a95666c1ee51456166b3b0a75.png]]
+
+[[file:6310f8c348460cc249ab90bcbc9c987af3b85b0b.png]]
+
+* Hypothesis testing
+  :PROPERTIES:
+  :CUSTOM_ID: hypothesis-testing
+  :END:
+- null-hypothesis: Patients receiving the treatment feel better earlier
+
+- alternate hypothesis: Patients receiving the placebo need longer to
+  feel better
+
+** Two-sample T-test of independent samples
+   :PROPERTIES:
+   :CUSTOM_ID: two-sample-t-test-of-independent-samples
+   :END:
+
+#+begin_src python
+from scipy import stats
+
+presumptive_ripe_time = 25
+
+statistics, p_value = stats.ttest_ind(curation_time_treatment, curation_time_placebo)
+
+print("p-value: " + str(p_value))
+#+end_src
+
+#+begin_example
+p-value: 0.6360930181448069
+#+end_example
+
+#+begin_src python
+#+end_src

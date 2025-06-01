@@ -1,0 +1,418 @@
+<<3a0317a8-7eb0-49a1-9ea8-a7ae3724d210>>
+* Clustering - a quick walkthrough
+  :PROPERTIES:
+  :CUSTOM_ID: clustering---a-quick-walkthrough
+  :END:
+The term /clustering/ stands for grouping objects according to their
+properties without providing any annotation. Algorithms in this field
+are also reffered to as unsupervised machine learning. The algorithms do
+receive input from the programmer though, e.g. by selecting specific
+measurements, which might render the term /unsupervised/ in this context
+a bit misleading.
+
+When clustering data retrieved from images, we use terms such as
+standard-scaling, dimensionality reduction and finally algorithms such
+as k-means clustering. This notebook is a quick walk through using these
+techniques before the methods are demonstrated in more detail in the
+following notebooks.
+
+See also
+
+- [[https://focalplane.biologists.com/2022/05/23/explorative-image-data-science-with-napari/][Explorative
+  image data science with napari (FocalPlane blog post)]]
+
+<<ca31b334-2dfa-4dd8-8b0b-48b8e100986c>>
+#+begin_src python
+import pyclesperanto_prototype as cle
+from napari_simpleitk_image_processing import label_statistics
+from sklearn.preprocessing import StandardScaler
+from sklearn.mixture import GaussianMixture
+from sklearn.cluster import KMeans
+import pandas as pd
+import seaborn as sns
+import seaborn
+import numpy as np
+import umap
+import matplotlib.pyplot as plt
+from skimage.data import human_mitosis
+#+end_src
+
+<<c2d27837-01b8-4202-89ef-7642a2851f14>>
+First we start by loading a 3D dataset showing a Tribolium castaneum
+embryo undergoing gastrulation (curtesy: Daniela Vorkel, Myers lab,
+MPI-CBG / CSBD Dresden). The dataset shows dense nuclei marked with
+nuclei-GFP on the left forming the embryo and less dense nuclei, called
+serosa, on the right surrounding the embryo.
+
+<<24e3f18b-6bcb-4ed4-aa9e-cc98090affcb>>
+#+begin_src python
+image = cle.imread("../../data/Lund-25MB.tif")
+image
+#+end_src
+
+#+begin_example
+cl.OCLArray([[[ 2.,  1.,  1., ...,  2.,  2.,  3.],
+        [ 1.,  2.,  2., ...,  2.,  2.,  2.],
+        [ 2.,  2.,  2., ...,  2.,  2.,  2.],
+        ...,
+        [ 8.,  8.,  7., ..., 10., 10., 10.],
+        [ 6.,  7.,  7., ...,  9., 10., 10.],
+        [ 7.,  8.,  8., ...,  9.,  9.,  9.]],
+
+       [[ 2.,  1.,  1., ...,  1.,  1.,  2.],
+        [ 1.,  2.,  2., ...,  1.,  2.,  2.],
+        [ 1.,  2.,  2., ...,  1.,  2.,  2.],
+        ...,
+        [ 8.,  7.,  7., ..., 10., 10.,  9.],
+        [ 7.,  8.,  7., ...,  9., 10., 10.],
+        [ 7.,  8.,  9., ...,  9.,  9., 10.]],
+
+       [[ 2.,  1.,  0., ...,  1.,  1.,  2.],
+        [ 2.,  2.,  1., ...,  1.,  2.,  2.],
+        [ 1.,  2.,  2., ...,  1.,  2.,  1.],
+        ...,
+        [ 8.,  7.,  7., ..., 10., 10.,  9.],
+        [ 8.,  8.,  8., ...,  8.,  9., 10.],
+        [ 7.,  8.,  9., ...,  9.,  9., 10.]],
+
+       ...,
+
+       [[ 0.,  0.,  0., ...,  0.,  0.,  0.],
+        [ 0.,  0.,  0., ...,  0.,  0.,  0.],
+        [ 0.,  0.,  0., ...,  0.,  0.,  0.],
+        ...,
+        [ 3.,  2.,  3., ...,  3.,  4.,  3.],
+        [ 2.,  2.,  3., ...,  3.,  3.,  3.],
+        [ 2.,  2.,  3., ...,  3.,  3.,  3.]],
+
+       [[ 0.,  0.,  0., ...,  0.,  0.,  0.],
+        [ 0.,  0.,  0., ...,  0.,  0.,  0.],
+        [ 0.,  0.,  0., ...,  0.,  0.,  0.],
+        ...,
+        [ 3.,  2.,  2., ...,  4.,  3.,  2.],
+        [ 2.,  3.,  3., ...,  3.,  3.,  2.],
+        [ 2.,  3.,  3., ...,  3.,  3.,  2.]],
+
+       [[ 0.,  0.,  0., ...,  0.,  0.,  0.],
+        [ 0.,  0.,  0., ...,  0.,  0.,  0.],
+        [ 0.,  0.,  0., ...,  0.,  0.,  0.],
+        ...,
+        [ 3.,  2.,  2., ...,  3.,  3.,  2.],
+        [ 2.,  3.,  3., ...,  2.,  3.,  2.],
+        [ 2.,  2.,  3., ...,  3.,  3.,  2.]]], dtype=float32)
+#+end_example
+
+<<c116668b-307b-4693-87fb-12c89122fb85>>
+We segment the nuclei as shown in earlier sections using
+[[image-filtering:background_removal][top-hat-filtering for background
+removal]] and
+[[image-segmentation:voronoi-otsu-labeling][Voronoi-Otsu-Labeling]].
+
+<<b1a87314-cf1d-487c-99e3-0a90ffc7b2d5>>
+#+begin_src python
+background_subtracted = cle.top_hat_box(image, radius_x=5, radius_y=5)
+nuclei_labels = cle.voronoi_otsu_labeling(background_subtracted, spot_sigma=1)
+nuclei_labels
+#+end_src
+
+#+begin_example
+cl.OCLArray([[[0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        ...,
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0]],
+
+       [[0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        ...,
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0]],
+
+       [[0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        ...,
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0]],
+
+       ...,
+
+       [[0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        ...,
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0]],
+
+       [[0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        ...,
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0]],
+
+       [[0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        ...,
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0],
+        [0, 0, 0, ..., 0, 0, 0]]], dtype=uint32)
+#+end_example
+
+<<fe181ab3-1813-4e42-b04d-af91c9cd217c>>
+** Feature extraction
+   :PROPERTIES:
+   :CUSTOM_ID: feature-extraction
+   :END:
+We next measure properties such as intensity, size and shape from the
+labeled nuclei using
+[[https://www.napari-hub.org/plugins/napari-simpleitk-image-processing][napari-SimpleITK-image-processing]].
+
+<<59416a65-f55b-4c6c-9064-7f8635800dd6>>
+#+begin_src python
+statistics = label_statistics(image, nuclei_labels,
+                             intensity=True,
+                             perimeter=True,
+                             shape=True)
+statistics.keys()
+#+end_src
+
+#+begin_example
+Index(['label', 'maximum', 'mean', 'median', 'minimum', 'sigma', 'sum',
+       'variance', 'elongation', 'feret_diameter', 'flatness', 'roundness',
+       'equivalent_ellipsoid_diameter_0', 'equivalent_ellipsoid_diameter_1',
+       'equivalent_ellipsoid_diameter_2', 'equivalent_spherical_perimeter',
+       'equivalent_spherical_radius', 'number_of_pixels',
+       'number_of_pixels_on_border', 'perimeter', 'perimeter_on_border',
+       'perimeter_on_border_ratio'],
+      dtype='object')
+#+end_example
+
+<<15492608-d9d1-41b7-960f-fc93fc55bcae>>
+#+begin_src python
+statistics.head()
+#+end_src
+
+#+begin_example
+   label  maximum        mean      median  minimum      sigma      sum  \
+0      1    143.0  117.489451  117.041016     93.0   9.489786  27845.0   
+1      2    113.0   83.052219   82.177734     65.0   9.699808  31809.0   
+2      3    130.0  108.930403  108.076172     92.0   7.557057  29738.0   
+3      4    129.0   94.576991   93.134766     70.0  11.433116  53436.0   
+4      5    149.0  119.454545  119.033203     89.0  12.017958  32850.0   
+
+     variance  elongation  feret_diameter  ...  \
+0   90.056032    1.228690        8.774964  ...   
+1   94.086271    1.325096       13.152946  ...   
+2   57.109109    1.565911       12.884099  ...   
+3  130.716136    1.227027       14.352700  ...   
+4  144.431321    1.429829       10.723805  ...   
+
+   equivalent_ellipsoid_diameter_0  equivalent_ellipsoid_diameter_1  \
+0                         6.517200                         7.518360   
+1                         7.202178                         8.754764   
+2                         5.449251                         7.816819   
+3                         7.665557                        10.710899   
+4                         6.109627                         7.753855   
+
+   equivalent_ellipsoid_diameter_2  equivalent_spherical_perimeter  \
+0                         9.237736                      185.203713   
+1                        11.600904                      255.044898   
+2                        12.240444                      203.513187   
+3                        13.142567                      330.508847   
+4                        11.086684                      204.505937   
+
+   equivalent_spherical_radius  number_of_pixels  number_of_pixels_on_border  \
+0                     3.839016               237                          13   
+1                     4.505089               383                          74   
+2                     4.024309               273                          74   
+3                     5.128456               565                          65   
+4                     4.034113               275                           0   
+
+    perimeter  perimeter_on_border  perimeter_on_border_ratio  
+0  191.790349                 13.0                   0.067782  
+1  311.446414                 74.0                   0.237601  
+2  252.130963                 74.0                   0.293498  
+3  396.766310                 65.0                   0.163824  
+4  234.611278                  0.0                   0.000000  
+
+[5 rows x 22 columns]
+#+end_example
+
+<<13a391c4-0629-42b1-91c2-b93040279724>>
+** Feature selection
+   :PROPERTIES:
+   :CUSTOM_ID: feature-selection
+   :END:
+Selecting the right features for differentiating objects in an art. We
+will select some features here manually and will explain in the next
+sections how a good educated guess for selecting features can be made.
+
+<<8ac53b54-2c43-41d4-b934-b6b6662afabc>>
+#+begin_src python
+selected_statistics = statistics[
+    [
+        'mean',
+        'variance',
+        'number_of_pixels',
+        'elongation',
+        'feret_diameter',
+    ]
+].values
+#+end_src
+
+<<674971c6-f98f-4a76-a9e7-1532042bc43f>>
+** Standard scaling
+   :PROPERTIES:
+   :CUSTOM_ID: standard-scaling
+   :END:
+The selected features need to be scaled so that all values range from -1
+to 1. This is necessary for the following algorithms as they could
+misinterpret a perimeter of 5 microns less than a perimeter of 50
+pixels, even if both might be exactly the same length physically
+([[file:machine_learning_basics.scaling][Read more]]).
+
+<<6217cd12-5d70-4b5a-8483-44cba39974bd>>
+#+begin_src python
+scaled_statistics = StandardScaler().fit_transform(selected_statistics)
+
+type(scaled_statistics), scaled_statistics.shape
+#+end_src
+
+#+begin_example
+(numpy.ndarray, (1200, 5))
+#+end_example
+
+<<cb00d576-ed59-4c9a-a77f-bfc8f038902e>>
+** Dimensionality reduction
+   :PROPERTIES:
+   :CUSTOM_ID: dimensionality-reduction
+   :END:
+As the measured statistics are a large table with many columns, we
+cannot easily get a picture of the distribution of the data points. For
+a clustering algorithm it might also be challenging. Thus, we reduce the
+number of dimensions, e.g. using the
+[[https://arxiv.org/abs/1802.03426][Uniform Manifold Approximation
+Projection (UMAP)]].
+
+<<d8ce567c-3ba8-44b5-a237-4cfa729a1e40>>
+#+begin_src python
+reducer = umap.UMAP(random_state=42)
+embedding = reducer.fit_transform(scaled_statistics)
+type(embedding), embedding.shape
+#+end_src
+
+#+begin_example
+(numpy.ndarray, (1200, 2))
+#+end_example
+
+<<a5f36166-9a26-4cc2-960c-7084603fd614>>
+#+begin_src python
+seaborn.scatterplot(x=embedding[:, 0], 
+                    y=embedding[:, 1])
+
+plt.xlabel('UMAP1')
+plt.ylabel('UMAP2')
+#+end_src
+
+#+begin_example
+Text(0, 0.5, 'UMAP2')
+#+end_example
+
+[[file:79f4fb00019319cea3f06064ce5383ad821f1bfe.png]]
+
+<<6feda872-e6fd-4e78-982c-c5a24137116d>>
+** K-means clustering
+   :PROPERTIES:
+   :CUSTOM_ID: k-means-clustering
+   :END:
+Eventually, we will automatically annotate all data points with a class.
+In the following we will separate data points into two classes. Looking
+at the UMAP visualized above, we need an algorithm that takes
+relationsships of datapoints locally into account.
+[[https://en.wikipedia.org/wiki/K-means_clustering][K-means clustering]]
+has the capability to group data points in a way so that the distance
+between the data points to the cluster centers is minimal. It basically
+splits the data points along a region in the plot where the density of
+the data points is lower than in cluster centers, e.g. in the plot above
+where UMAP1 is approximately 5.
+
+<<66cde5d9-a68a-48f8-8f10-2501ebafb720>>
+#+begin_src python
+num_classes = 2
+
+kmeans = KMeans(n_clusters=num_classes, random_state=42).fit(embedding)
+
+kmeans_prediction = kmeans.predict(embedding)
+#+end_src
+
+#+begin_example
+C:\Users\rober\miniconda3\envs\bio_39\lib\site-packages\sklearn\cluster\_kmeans.py:1332: UserWarning: KMeans is known to have a memory leak on Windows with MKL, when there are less chunks than available threads. You can avoid it by setting the environment variable OMP_NUM_THREADS=5.
+  warnings.warn(
+#+end_example
+
+<<856b239e-a5f2-4e0b-a9bf-099fd88413aa>>
+#+begin_src python
+seaborn.scatterplot(x=embedding[:, 0], 
+                    y=embedding[:, 1],
+                    hue=kmeans_prediction)
+#+end_src
+
+#+begin_example
+<AxesSubplot:>
+#+end_example
+
+[[file:91a84d2e9d60b6db2a8608d182e0ae28a1970cbe.png]]
+
+<<ff24741c-cd64-40bb-b48d-7f54090c0a34>>
+We can also project the cluster identifier (0 or 1) back into the 3D
+image space. We just need to make sure we cannot mix up these two
+classes with background.
+
+<<018d3f87-8d69-499e-a222-c99fd09e937c>>
+#+begin_src python
+# suffix [0] represents background
+# we add 1 to the measurement so that there is no 
+# cluster with ID 0, which corresponds to background.
+cluster_id = [0] + (kmeans_prediction + 1).tolist()
+
+kmeans_prediction_map = cle.replace_intensities(nuclei_labels, cluster_id)
+
+cle.imshow(kmeans_prediction_map, labels=True)
+#+end_src
+
+[[file:989a0bb360cd9c4623820c13ebfded59da5cd97e.png]]
+
+<<72684bec-3e3f-4c6f-926f-04373f00b4bd>>
+** Interpreting clustering results
+   :PROPERTIES:
+   :CUSTOM_ID: interpreting-clustering-results
+   :END:
+For technical reasons it is illegal to claim that k-means clustering can
+differentiate serosa and embryo. The algorithm was not informed about
+what to differentiate and thus, just differentiates objects according to
+their properties. It is now the task of the scientists to figure out
+which parameters influenced the decision making. For example, if
+shape-based parameters dominated the decision making, a follow-up
+questions would be why so. It might be possible that nuclei within the
+embryo are differently shaped than nuclei within the serosa. But it is
+also possible that the nuclei segmentation algorithm caused objects to
+be segmented wrongly. Thus, clustering is just a tool for generating new
+hypotheses which need to be investigated further, before an algorithm
+can be designed that differentiates nuclei in serosa and embryo. Such an
+algorithm then also needs to be validated, e.g. by processing new,
+unseen datasets, and measuring the quality of the clustering
+quantitatively, e.g. by providing ground-truth annotations and comparing
+with them.
+
+<<ff504759-7157-4694-ada8-4f2ff038ae8a>>
+#+begin_src python
+#+end_src
